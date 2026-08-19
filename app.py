@@ -93,86 +93,7 @@ st.markdown(
         color: white;
     }
 
-        .ludotheque-hero-shell {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 0.9rem 2.2rem 0 2.2rem;
-        margin: 0;
-    }
-
-    .ludotheque-hero {
-        display: block;
-        box-sizing: border-box;
-        width: calc(100% - 180px);
-        max-width: 900px;
-        margin: 0 auto 1.8rem auto;
-        padding: 1.45rem 2rem 1.5rem 2rem;
-        background: linear-gradient(135deg, #102a56 0%, #1f447d 100%);
-        color: white;
-        border: none;
-        border-radius: 30px !important;
-        -webkit-border-radius: 30px !important;
-        overflow: hidden;
-        box-shadow: 0 12px 30px rgba(16, 42, 86, 0.18);
-        text-align: center;
-    }
-
-    .ludotheque-hero-inner {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-        width: 100%;
-    }
-
-    .ludotheque-hero-icon {
-        font-size: 3.2rem;
-        line-height: 1;
-        flex: 0 0 auto;
-    }
-
-    .ludotheque-hero-copy {
-        text-align: center;
-        flex: 0 1 auto;
-    }
-
-    .ludotheque-hero-title {
-        font-size: 2.25rem;
-        font-weight: 800;
-        margin: 0;
-        line-height: 1.08;
-    }
-
-    .ludotheque-hero-subtitle {
-        font-size: 1.05rem;
-        margin-top: 0.45rem;
-        opacity: 0.92;
-    }
-
-    @media (max-width: 900px) {
-        .ludotheque-hero-shell {
-            padding: 0.7rem 0.8rem 0 0.8rem;
-        }
-
-        .ludotheque-hero {
-            width: calc(100% - 40px);
-            max-width: 760px;
-            padding: 1.15rem 1rem 1.2rem 1rem;
-            border-radius: 24px !important;
-            -webkit-border-radius: 24px !important;
-        }
-
-        .ludotheque-hero-title {
-            font-size: 1.75rem;
-        }
-
-        .ludotheque-hero-icon {
-            font-size: 2.6rem;
-        }
-    }
-
-    .section-title {
+        .section-title {
         text-align: center;
         font-size: 1.65rem;
         font-weight: 800;
@@ -279,13 +200,57 @@ st.markdown(
 def hero():
     st.markdown(
         """
-        <div class="ludotheque-hero-shell">
-            <div class="ludotheque-hero">
-                <div class="ludotheque-hero-inner">
-                    <div class="ludotheque-hero-icon">🧪</div>
-                    <div class="ludotheque-hero-copy">
-                        <div class="ludotheque-hero-title">Ludothèque Physique-Chimie</div>
-                        <div class="ludotheque-hero-subtitle">
+        <div style="
+            width:100%;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            box-sizing:border-box;
+            padding:18px 40px 8px 40px;
+        ">
+            <div style="
+                width:820px;
+                max-width:calc(100vw - 120px);
+                box-sizing:border-box;
+                background:linear-gradient(135deg,#102a56 0%,#1f447d 100%);
+                color:white;
+                border-radius:30px;
+                padding:24px 34px 26px 34px;
+                box-shadow:0 12px 30px rgba(16,42,86,0.18);
+                text-align:center;
+                overflow:hidden;
+            ">
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    gap:18px;
+                    flex-wrap:wrap;
+                ">
+                    <div style="
+                        font-size:52px;
+                        line-height:1;
+                        flex:0 0 auto;
+                    ">🧪</div>
+
+                    <div style="
+                        text-align:center;
+                        flex:0 1 auto;
+                    ">
+                        <div style="
+                            font-size:36px;
+                            font-weight:800;
+                            line-height:1.08;
+                            margin:0;
+                        ">
+                            Ludothèque Physique-Chimie
+                        </div>
+
+                        <div style="
+                            font-size:17px;
+                            margin-top:8px;
+                            opacity:0.93;
+                        ">
                             Apprendre en jouant, progresser avec plaisir !
                         </div>
                     </div>
