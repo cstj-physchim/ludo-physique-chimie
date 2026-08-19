@@ -6,7 +6,11 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import qrcode
 import streamlit as st
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 from upstash_redis import Redis
 from levels import LEVELS, LEVEL_NAMES
 
@@ -27,6 +31,14 @@ CLASSES_KEY = "ludo:classes"
 CHALLENGES_KEY = "ludo:challenges"
 STUDENTS_KEY = "ludo:students"
 RESULTS_KEY = "ludo:results"
+
+# URL utilisée dans les QR codes élèves.
+# Si tu ajoutes APP_PUBLIC_URL dans les Secrets Streamlit, elle sera utilisée.
+# Sinon Ludo utilise l'adresse publique actuelle de l'application.
+APP_PUBLIC_URL = st.secrets.get(
+    "APP_PUBLIC_URL",
+    "https://ludo-physique-chimie.streamlit.app",
+).rstrip("/")
 
 
 def redis_read_json(key, default):
@@ -263,6 +275,218 @@ def find_student_by_code(code):
     return None
 
 
+def find_student_by_id(student_id):
+    student_id = str(student_id).strip()
+
+    for student in get_students():
+        if (
+            student.get("active", True)
+            and student["id"] == student_id
+        ):
+            return student
+
+    return None
+
+
+def student_qr_url(student):
+    """
+    Le QR ne contient ni prénom, ni classe, ni code visible.
+    Il contient uniquement l'identifiant aléatoire interne de l'élève.
+    """
+    return f"{APP_PUBLIC_URL}/?student={student['id']}"
+
+
+def make_qr_png_bytes(student):
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=2,
+    )
+    qr.add_data(student_qr_url(student))
+    qr.make(fit=True)
+
+    image = qr.make_image(
+        fill_color="black",
+        back_color="white",
+    )
+
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return buffer.getvalue()
+
+
+def generate_student_cards_pdf(students, title="Ludo Physique-Chimie"):
+    """
+    Génère un PDF A4 de 8 cartes par page (2 colonnes x 4 lignes).
+    Chaque carte contient : prénom + initiale, classe, code personnel et QR.
+    """
+    buffer = BytesIO()
+
+    pdf = canvas.Canvas(
+        buffer,
+        pagesize=A4,
+    )
+
+    page_width, page_height = A4
+
+    margin_x = 10 * mm
+    margin_y = 10 * mm
+    gap_x = 6 * mm
+    gap_y = 5 * mm
+
+    cols = 2
+    rows = 4
+
+    card_width = (
+        page_width
+        - 2 * margin_x
+        - gap_x
+    ) / cols
+
+    card_height = (
+        page_height
+        - 2 * margin_y
+        - 3 * gap_y
+    ) / rows
+
+    qr_size = 31 * mm
+
+    sorted_students = sorted(
+        students,
+        key=lambda s: (
+            s["class_name"],
+            s["first_name"].lower(),
+            s["last_initial"],
+        ),
+    )
+
+    for index, student in enumerate(sorted_students):
+
+        slot = index % (cols * rows)
+
+        if slot == 0 and index > 0:
+            pdf.showPage()
+
+        row = slot // cols
+        col = slot % cols
+
+        x = (
+            margin_x
+            + col * (card_width + gap_x)
+        )
+
+        y = (
+            page_height
+            - margin_y
+            - (row + 1) * card_height
+            - row * gap_y
+        )
+
+        # Bordure de la carte
+        pdf.setLineWidth(0.8)
+        pdf.roundRect(
+            x,
+            y,
+            card_width,
+            card_height,
+            4 * mm,
+            stroke=1,
+            fill=0,
+        )
+
+        # En-tête
+        pdf.setFont("Helvetica-Bold", 11)
+        pdf.drawString(
+            x + 5 * mm,
+            y + card_height - 8 * mm,
+            title,
+        )
+
+        # Identité minimale
+        pdf.setFont("Helvetica-Bold", 13)
+        pdf.drawString(
+            x + 5 * mm,
+            y + card_height - 17 * mm,
+            f"{student['first_name']} {student['last_initial']}.",
+        )
+
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(
+            x + 5 * mm,
+            y + card_height - 24 * mm,
+            f"Classe : {student['class_name']}",
+        )
+
+        # Code personnel
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(
+            x + 5 * mm,
+            y + card_height - 35 * mm,
+            "Code personnel",
+        )
+
+        pdf.setFont("Helvetica-Bold", 20)
+        pdf.drawString(
+            x + 5 * mm,
+            y + card_height - 45 * mm,
+            student["code"],
+        )
+
+        pdf.setFont("Helvetica", 7.5)
+        pdf.drawString(
+            x + 5 * mm,
+            y + 7 * mm,
+            "Conserve cette carte pour l'année scolaire.",
+        )
+
+        # QR code
+        qr_bytes = make_qr_png_bytes(student)
+
+        from reportlab.lib.utils import ImageReader
+
+        qr_reader = ImageReader(
+            BytesIO(qr_bytes)
+        )
+
+        qr_x = (
+            x
+            + card_width
+            - qr_size
+            - 5 * mm
+        )
+
+        qr_y = (
+            y
+            + (card_height - qr_size) / 2
+            - 2 * mm
+        )
+
+        pdf.drawImage(
+            qr_reader,
+            qr_x,
+            qr_y,
+            width=qr_size,
+            height=qr_size,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+
+        pdf.setFont("Helvetica", 6.5)
+        pdf.drawCentredString(
+            qr_x + qr_size / 2,
+            qr_y - 2.5 * mm,
+            "QR personnel Ludo",
+        )
+
+    pdf.save()
+
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 def get_challenges():
     return redis_read_json(CHALLENGES_KEY, [])
 
@@ -407,12 +631,32 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
 
 
 def show_turn(direction):
+    """
+    Virage du serpent : la chaîne descend verticalement avant de repartir
+    dans l'autre sens. La flèche est donc volontairement verticale.
+    """
     align = "right" if direction == "right" else "left"
-    pad = "padding-right:4%;" if direction == "right" else "padding-left:4%;"
-    arrow = "↘" if direction == "right" else "↙"
+
+    pad = (
+        "padding-right:8%;"
+        if direction == "right"
+        else "padding-left:8%;"
+    )
+
     st.markdown(
-        f"<div style='text-align:{align};font-size:2rem;{pad}"
-        f"margin-top:-.4rem;margin-bottom:-.2rem'>{arrow}</div>",
+        f"""
+        <div style="
+            text-align:{align};
+            font-size:3.4rem;
+            font-weight:800;
+            line-height:0.8;
+            {pad}
+            margin-top:-0.5rem;
+            margin-bottom:0.25rem;
+        ">
+            ↓
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -541,6 +785,7 @@ def domino_game(level, suffix="free", challenge=None, student=None):
             ):
                 st.session_state.pop("challenge_student", None)
                 st.session_state.pop("active_challenge", None)
+                st.query_params.clear()
                 st.rerun()
         else:
             current_index = LEVEL_NAMES.index(level)
@@ -599,6 +844,17 @@ def page_free_play():
 def page_join_challenge():
     st.subheader("🏆 Participer à un défi")
 
+    # Si l'élève arrive grâce à son QR personnel,
+    # on récupère automatiquement son identifiant dans l'URL.
+    if not st.session_state.get("challenge_student"):
+        qr_student_id = st.query_params.get("student")
+
+        if qr_student_id:
+            qr_student = find_student_by_id(qr_student_id)
+
+            if qr_student:
+                st.session_state.challenge_student = qr_student
+
     student = st.session_state.get("challenge_student")
     challenge = st.session_state.get("active_challenge")
 
@@ -651,6 +907,7 @@ def page_join_challenge():
         with c2:
             if st.button("Changer d'élève", use_container_width=True):
                 st.session_state.pop("challenge_student", None)
+                st.query_params.clear()
                 st.rerun()
         return
 
@@ -887,6 +1144,28 @@ def page_teacher():
             st.caption(
                 f"{len(filtered)} élève(s) affiché(s) sur {len(students)} enregistré(s)."
             )
+
+            if filtered:
+                pdf_cards = generate_student_cards_pdf(
+                    filtered,
+                    title="Ludo Physique-Chimie",
+                )
+
+                if selected_filter == "Toutes":
+                    pdf_filename = "cartes_eleves_ludo_toutes_classes.pdf"
+                else:
+                    pdf_filename = (
+                        f"cartes_eleves_ludo_{selected_filter}.pdf"
+                    )
+
+                st.download_button(
+                    "🖨️ Télécharger les cartes élèves en PDF (code + QR)",
+                    data=pdf_cards,
+                    file_name=pdf_filename,
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key=f"download_cards_{selected_filter}",
+                )
 
             for student in sorted(
                 filtered,
