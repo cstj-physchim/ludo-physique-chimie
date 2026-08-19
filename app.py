@@ -3,24 +3,8 @@ import time
 from pathlib import Path
 
 import streamlit as st
-from levels import LEVELS, LEVEL_NAMESimport random
-import time
-from pathlib import Path
-
-import streamlit as st
 from upstash_redis import Redis
 from levels import LEVELS, LEVEL_NAMES
-
-redis = Redis(
-    url=st.secrets["UPSTASH_REDIS_REST_URL"],
-    token=st.secrets["UPSTASH_REDIS_REST_TOKEN"],
-)
-
-st.set_page_config(
-    page_title="Ludo Physique-Chimie",
-    page_icon="🧪",
-    layout="wide",
-)
 
 st.set_page_config(
     page_title="Ludo Physique-Chimie",
@@ -29,6 +13,14 @@ st.set_page_config(
 )
 
 ASSETS = Path("assets/molecules")
+
+# Connexion à la base Upstash.
+# L'URL et le token sont stockés dans les Secrets de Streamlit,
+# jamais dans GitHub.
+redis = Redis(
+    url=st.secrets["UPSTASH_REDIS_REST_URL"],
+    token=st.secrets["UPSTASH_REDIS_REST_TOKEN"],
+)
 
 
 def game_key(level):
