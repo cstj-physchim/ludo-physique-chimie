@@ -93,7 +93,31 @@ st.markdown(
         color: white;
     }
 
-        .section-title {
+        
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    @media (max-width: 900px) {
+        
+
+        
+
+        
+
+        
+    }
+
+    .section-title {
         text-align: center;
         font-size: 1.65rem;
         font-weight: 800;
@@ -198,68 +222,28 @@ st.markdown(
 # ============================================================
 
 def hero():
-    st.markdown(
-        """
-        <div style="
-            width:100%;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            box-sizing:border-box;
-            padding:18px 40px 8px 40px;
-        ">
-            <div style="
-                width:820px;
-                max-width:calc(100vw - 120px);
-                box-sizing:border-box;
-                background:linear-gradient(135deg,#102a56 0%,#1f447d 100%);
-                color:white;
-                border-radius:30px;
-                padding:24px 34px 26px 34px;
-                box-shadow:0 12px 30px rgba(16,42,86,0.18);
-                text-align:center;
-                overflow:hidden;
-            ">
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    gap:18px;
-                    flex-wrap:wrap;
-                ">
-                    <div style="
-                        font-size:52px;
-                        line-height:1;
-                        flex:0 0 auto;
-                    ">🧪</div>
-
-                    <div style="
-                        text-align:center;
-                        flex:0 1 auto;
-                    ">
-                        <div style="
-                            font-size:36px;
-                            font-weight:800;
-                            line-height:1.08;
-                            margin:0;
-                        ">
-                            Ludothèque Physique-Chimie
-                        </div>
-
-                        <div style="
-                            font-size:17px;
-                            margin-top:8px;
-                            opacity:0.93;
-                        ">
-                            Apprendre en jouant, progresser avec plaisir !
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    hero_html = (
+        '<div style="width:100%;display:flex;justify-content:center;align-items:center;'
+        'box-sizing:border-box;padding:18px 40px 8px 40px;">'
+        '<div style="width:820px;max-width:calc(100vw - 120px);box-sizing:border-box;'
+        'background:linear-gradient(135deg,#102a56 0%,#1f447d 100%);color:white;'
+        'border-radius:30px;padding:24px 34px 26px 34px;'
+        'box-shadow:0 12px 30px rgba(16,42,86,0.18);text-align:center;overflow:hidden;">'
+        '<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;">'
+        '<div style="font-size:52px;line-height:1;flex:0 0 auto;">🧪</div>'
+        '<div style="text-align:center;flex:0 1 auto;">'
+        '<div style="font-size:36px;font-weight:800;line-height:1.08;margin:0;">'
+        'Ludothèque Physique-Chimie'
+        '</div>'
+        '<div style="font-size:17px;margin-top:8px;opacity:0.93;">'
+        'Apprendre en jouant, progresser avec plaisir !'
+        '</div>'
+        '</div>'
+        '</div>'
+        '</div>'
+        '</div>'
     )
+    st.markdown(hero_html, unsafe_allow_html=True)
 
 
 def nav_card(icon, title, text, color_class="card-blue", coming_soon=False):
