@@ -1,8 +1,14 @@
 # Ludo Physique-Chimie
 
-Application pédagogique de jeux interactifs de physique-chimie pour le collège.
+Plateforme de jeux et d'exercices interactifs de physique-chimie pour le collège.
 
-## Dominos Molécules
-Première version : adaptation numérique du jeu facile A de Stéphane Bois et Hervé Abbes.
+## Dominos — Molécules
 
-Licence de cette adaptation : CC BY-NC-SA.
+Quatre niveaux :
+- 🟢 Facile
+- 🟡 Moyen
+- 🟠 Difficile
+- 🔴 Très difficile
+
+Adaptation numérique du jeu de Stéphane Bois et Hervé Abbes, sous licence CC BY-NC-SA.
+Les illustrations moléculaires de cette version ont été recréées pour l'application.

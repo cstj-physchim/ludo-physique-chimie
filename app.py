@@ -3,94 +3,48 @@ import time
 from pathlib import Path
 
 import streamlit as st
+from levels import LEVELS, LEVEL_NAMES
 
-st.set_page_config(
-    page_title="Ludo Physique-Chimie",
-    page_icon="🧪",
-    layout="wide",
-)
-
+st.set_page_config(page_title="Ludo Physique-Chimie", page_icon="🧪", layout="wide")
 ASSETS = Path("assets/molecules")
 
-DOMINOS = [
-    ("A1", "h2", "O₂"),
-    ("A6", "o2", "2 C"),
-    ("A11", "2c", "CH₄"),
-    ("A10", "ch4", "N₂"),
-    ("A8", "n2", "2 H"),
-    ("A9", "2h", "H₂O"),
-    ("A12", "h2o", "CO₂"),
-    ("A7", "co2", "C + O₂"),
-    ("A3", "c_plus_o2", "N + O₂"),
-    ("A14", "n_plus_o2", "H₂ + O"),
-    ("A2", "h2_plus_o", "CO"),
-    ("A13", "co", "NO₂"),
-    ("A5", "no2", "2 N"),
-    ("A4", "2n", "H₂"),
-]
 
-ORDER = [d[0] for d in DOMINOS]
-BY_ID = {d[0]: d for d in DOMINOS}
+def game_key(level):
+    return f"game_{level}"
 
 
-def init_game():
-    start = random.choice(ORDER)
-    remaining = [x for x in ORDER if x != start]
+def init_game(level):
+    cfg = LEVELS[level]
+    order = cfg["order"]
+    start = random.choice(order)
+    remaining = [x for x in order if x != start]
     random.shuffle(remaining)
 
-    st.session_state.chain = [start]
-    st.session_state.remaining = remaining
-    st.session_state.errors = 0
-    st.session_state.started = time.time()
-
-
-def next_expected():
-    current = st.session_state.chain[-1]
-    i = ORDER.index(current)
-    return ORDER[(i + 1) % len(ORDER)]
+    st.session_state[game_key(level)] = {
+        "chain": [start],
+        "remaining": remaining,
+        "errors": 0,
+        "started": time.time(),
+    }
 
 
 def formula_block(formula):
     st.markdown(
-        f"""
-        <div style="
-            min-height:115px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:1.7rem;
-            text-align:center;
-            font-weight:500;
-        ">
-            {formula}
-        </div>
-        """,
+        f"""<div style="
+        min-height:108px;display:flex;align-items:center;justify-content:center;
+        font-size:1.55rem;text-align:center;font-weight:500;">{formula}</div>""",
         unsafe_allow_html=True,
     )
 
 
 def molecule_block(image_name):
-    st.image(
-        str(ASSETS / f"{image_name}.svg"),
-        width=115,
-    )
+    st.image(str(ASSETS / f"{image_name}.svg"), width=110)
 
 
-def show_domino(domino_id, key=None, clickable=False, reversed_domino=False):
-    """
-    Affiche un domino de taille constante.
-
-    reversed_domino=False : [ modèle | formule ]
-    reversed_domino=True  : [ formule | modèle ]
-
-    On inverse donc réellement les deux moitiés quand la chaîne repart
-    de droite vers la gauche, comme avec de vrais dominos.
-    """
-    _, image_name, formula = BY_ID[domino_id]
-
+def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=False):
+    image_name, formula = LEVELS[level]["dominos"][domino_id]
     with st.container(border=True):
         left, right = st.columns([1, 1], vertical_alignment="center")
-
         if reversed_domino:
             with left:
                 formula_block(formula)
@@ -103,156 +57,131 @@ def show_domino(domino_id, key=None, clickable=False, reversed_domino=False):
                 formula_block(formula)
 
         if clickable:
-            return st.button(
-                "Placer",
-                key=key,
-                use_container_width=True,
-            )
-
+            return st.button("Placer", key=key, use_container_width=True)
     return False
 
 
 def show_turn(direction):
-    """Indique visuellement le virage de la chaîne."""
-    if direction == "right":
-        st.markdown(
-            """
-            <div style="
-                text-align:right;
-                font-size:2rem;
-                padding-right:4%;
-                margin-top:-0.4rem;
-                margin-bottom:-0.2rem;
-            ">↘</div>
-            """,
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            """
-            <div style="
-                text-align:left;
-                font-size:2rem;
-                padding-left:4%;
-                margin-top:-0.4rem;
-                margin-bottom:-0.2rem;
-            ">↙</div>
-            """,
-            unsafe_allow_html=True,
-        )
+    align = "right" if direction == "right" else "left"
+    pad = "padding-right:4%;" if direction == "right" else "padding-left:4%;"
+    arrow = "↘" if direction == "right" else "↙"
+    st.markdown(
+        f"<div style='text-align:{align};font-size:2rem;{pad}margin-top:-.4rem;margin-bottom:-.2rem'>{arrow}</div>",
+        unsafe_allow_html=True,
+    )
 
 
-def show_chain_snake(chain, per_row=4):
-    """
-    Affiche toute la chaîne comme un vrai serpent :
-
-    ligne 1 :  [modèle|formule] → [modèle|formule] → ...
-    ligne 2 :  ... ← [formule|modèle] ← [formule|modèle]
-    ligne 3 :  [modèle|formule] → [modèle|formule] → ...
-
-    Les dominos de chaque ligne allant vers la gauche sont donc retournés.
-    """
+def show_chain_snake(level, chain, per_row=4):
     for row_index, start in enumerate(range(0, len(chain), per_row)):
         row = chain[start:start + per_row]
         cols = st.columns(per_row)
-
         going_right = row_index % 2 == 0
 
         if going_right:
-            # Le premier domino de la ligne se place à gauche,
-            # puis les suivants avancent vers la droite.
             positions = list(range(len(row)))
         else:
-            # Le premier domino de la ligne se place à droite,
-            # puis les suivants avancent vers la gauche.
             positions = list(reversed(range(per_row - len(row), per_row)))
 
         for domino_id, col_index in zip(row, positions):
             with cols[col_index]:
-                show_domino(
-                    domino_id,
-                    reversed_domino=not going_right,
-                )
+                show_domino(level, domino_id, reversed_domino=not going_right)
 
-        # Virage uniquement s'il existe déjà au moins un domino
-        # sur la ligne suivante.
         if start + per_row < len(chain):
             show_turn("right" if going_right else "left")
 
 
-st.title("🧪 Ludo Physique-Chimie")
-st.subheader("Dominos — Molécules · Niveau facile")
+def next_expected(level, chain):
+    order = LEVELS[level]["order"]
+    i = order.index(chain[-1])
+    return order[(i + 1) % len(order)]
 
-st.write(
+
+st.title("🧪 Ludo Physique-Chimie")
+st.subheader("🁢 Dominos — Molécules")
+
+level = st.selectbox(
+    "Choisis ton niveau",
+    LEVEL_NAMES,
+    format_func=lambda x: f"{LEVELS[x]['emoji']} {x}",
+)
+
+key = game_key(level)
+if key not in st.session_state:
+    init_game(level)
+
+game = st.session_state[key]
+total = len(LEVELS[level]["order"])
+
+top1, top2, top3 = st.columns([1, 1, 2])
+with top1:
+    if st.button("🔄 Nouvelle partie", use_container_width=True):
+        init_game(level)
+        st.rerun()
+with top2:
+    st.metric("Erreurs", game["errors"])
+with top3:
+    st.write(f"Dominos posés : **{len(game['chain'])} / {total}**")
+
+st.info(
     "Observe l'extrémité libre du dernier domino posé et choisis, "
     "parmi tes cartes, celle dont le modèle correspond."
 )
 
-if "chain" not in st.session_state:
-    init_game()
-
-top1, top2, top3 = st.columns([1, 1, 2])
-
-with top1:
-    if st.button("🔄 Nouvelle partie", use_container_width=True):
-        init_game()
-        st.rerun()
-
-with top2:
-    st.metric("Erreurs", st.session_state.errors)
-
-with top3:
-    st.write(
-        f"Dominos posés : **{len(st.session_state.chain)} / {len(DOMINOS)}**"
-    )
-
 st.markdown("### Chaîne construite")
+show_chain_snake(level, game["chain"], per_row=4)
 
-show_chain_snake(st.session_state.chain, per_row=4)
-
-if st.session_state.remaining:
+if game["remaining"]:
     st.markdown("### Dominos disponibles")
-
-    expected = next_expected()
+    expected = next_expected(level, game["chain"])
     clicked = None
 
-    # Les cartes de la réserve restent toujours dans leur orientation d'origine.
-    for row_start in range(0, len(st.session_state.remaining), 3):
-        row = st.session_state.remaining[row_start:row_start + 3]
+    for row_start in range(0, len(game["remaining"]), 3):
+        row = game["remaining"][row_start:row_start + 3]
         cols = st.columns(3)
 
         for i, did in enumerate(row):
             with cols[i]:
                 if show_domino(
-                    did,
-                    key=f"pick_{did}",
-                    clickable=True,
-                    reversed_domino=False,
+                    level, did, key=f"{level}_{did}",
+                    clickable=True, reversed_domino=False
                 ):
                     clicked = did
 
     if clicked:
         if clicked == expected:
-            st.session_state.chain.append(clicked)
-            st.session_state.remaining.remove(clicked)
+            game["chain"].append(clicked)
+            game["remaining"].remove(clicked)
             st.rerun()
         else:
-            st.session_state.errors += 1
-            st.error(
-                "Ce domino ne correspond pas. "
-                "Observe à nouveau l'extrémité de la chaîne."
-            )
+            game["errors"] += 1
+            st.error("Ce domino ne correspond pas. Observe à nouveau l'extrémité de la chaîne.")
 
 else:
-    elapsed = int(time.time() - st.session_state.started)
-
+    elapsed = int(time.time() - game["started"])
     st.success(
-        f"🎉 Chaîne terminée ! "
-        f"Erreurs : {st.session_state.errors} · "
+        f"🎉 Niveau terminé ! Erreurs : {game['errors']} · "
         f"Temps : {elapsed // 60} min {elapsed % 60:02d} s"
     )
 
+    if game["errors"] == 0:
+        st.markdown("### 🎯 Badge obtenu : **Sans faute**")
+
+    current_index = LEVEL_NAMES.index(level)
+    a, b = st.columns(2)
+
+    with a:
+        if st.button("🔄 Rejouer ce niveau", use_container_width=True):
+            init_game(level)
+            st.rerun()
+
+    with b:
+        if current_index < len(LEVEL_NAMES) - 1:
+            nxt = LEVEL_NAMES[current_index + 1]
+            st.info(f"Niveau suivant : {LEVELS[nxt]['emoji']} **{nxt}**")
+        else:
+            st.info("🏆 Tu as terminé le niveau le plus difficile.")
+
 st.divider()
 st.caption(
-    "Adaptation numérique du jeu de Stéphane Bois et Hervé Abbes — CC BY-NC-SA."
+    "Adaptation numérique du jeu de Stéphane Bois et Hervé Abbes — licence CC BY-NC-SA."
 )
