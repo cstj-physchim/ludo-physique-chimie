@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 from upstash_redis import Redis
 from levels import LEVELS, LEVEL_NAMES
@@ -100,6 +101,159 @@ def add_student(first_name, last_initial, class_name):
     save_students(students)
     return student, None
 
+
+
+def normalize_column_name(name):
+    return (
+        str(name)
+        .strip()
+        .lower()
+        .replace("é", "e")
+        .replace("è", "e")
+        .replace("ê", "e")
+        .replace("à", "a")
+        .replace("ù", "u")
+        .replace("ï", "i")
+        .replace("î", "i")
+        .replace("ô", "o")
+        .replace("ç", "c")
+        .replace("_", " ")
+        .replace("-", " ")
+    )
+
+
+def detect_student_columns(df):
+    normalized = {
+        normalize_column_name(col): col
+        for col in df.columns
+    }
+
+    first_name_candidates = [
+        "prenom",
+        "prénom",
+        "first name",
+        "firstname",
+    ]
+
+    last_name_candidates = [
+        "nom",
+        "nom de famille",
+        "last name",
+        "lastname",
+    ]
+
+    initial_candidates = [
+        "initiale",
+        "initiale nom",
+        "initiale du nom",
+    ]
+
+    class_candidates = [
+        "classe",
+        "class",
+        "division",
+    ]
+
+    def find_candidate(candidates):
+        for candidate in candidates:
+            key = normalize_column_name(candidate)
+            if key in normalized:
+                return normalized[key]
+        return None
+
+    first_col = find_candidate(first_name_candidates)
+    last_col = find_candidate(last_name_candidates)
+    initial_col = find_candidate(initial_candidates)
+    class_col = find_candidate(class_candidates)
+
+    return first_col, last_col, initial_col, class_col
+
+
+def import_students_from_dataframe(df):
+    first_col, last_col, initial_col, class_col = detect_student_columns(df)
+
+    if not first_col:
+        return 0, 0, ["Colonne Prénom introuvable."]
+    if not class_col:
+        return 0, 0, ["Colonne Classe introuvable."]
+    if not last_col and not initial_col:
+        return 0, 0, ["Il faut une colonne Nom ou Initiale du nom."]
+
+    students = get_students()
+
+    existing_keys = {
+        (
+            s["first_name"].strip().lower(),
+            s["last_initial"].strip().upper(),
+            s["class_name"].strip().upper(),
+        )
+        for s in students
+    }
+
+    added = 0
+    duplicates = 0
+    errors = []
+
+    for excel_index, row in df.iterrows():
+        row_number = excel_index + 2
+
+        first_name = str(row.get(first_col, "")).strip()
+        class_name = str(row.get(class_col, "")).strip().upper()
+
+        if initial_col:
+            last_initial = str(row.get(initial_col, "")).strip().upper().replace(".", "")[:1]
+        else:
+            last_name = str(row.get(last_col, "")).strip()
+            last_initial = last_name[:1].upper() if last_name else ""
+
+        # Ignore fully empty rows
+        if not first_name and not class_name and not last_initial:
+            continue
+
+        if not first_name or not class_name or not last_initial:
+            errors.append(
+                f"Ligne {row_number} : prénom, nom/initiale ou classe manquant."
+            )
+            continue
+
+        key = (
+            first_name.lower(),
+            last_initial,
+            class_name,
+        )
+
+        if key in existing_keys:
+            duplicates += 1
+            continue
+
+        # Add class automatically if it does not exist yet
+        add_class(class_name)
+
+        student = {
+            "id": secrets.token_urlsafe(12),
+            "code": generate_student_code(),
+            "first_name": first_name,
+            "last_initial": last_initial,
+            "class_name": class_name,
+            "active": True,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+        }
+
+        students.append(student)
+        existing_keys.add(key)
+        added += 1
+
+    save_students(students)
+    return added, duplicates, errors
+
+
+def make_student_template():
+    return pd.DataFrame(
+        [
+            {"Prénom": "Emma", "Nom": "Durand", "Classe": "4B"},
+            {"Prénom": "Lucas", "Nom": "Martin", "Classe": "4B"},
+        ]
+    )
 
 def find_student_by_code(code):
     code = code.strip().upper()
@@ -573,59 +727,189 @@ def page_teacher():
 
     with tab_students:
         classes = get_classes()
-        st.markdown("### Ajouter un élève")
+
+        st.markdown("### Importer une base élèves depuis Excel")
+
+        st.write(
+            "Le fichier Excel doit contenir au minimum les colonnes "
+            "**Prénom**, **Classe** et soit **Nom**, soit **Initiale du nom**. "
+            "Si le nom complet est fourni, Ludo n'en conserve que la première lettre."
+        )
+
+        template_df = make_student_template()
+        template_bytes = template_df.to_csv(index=False, sep=";").encode("utf-8-sig")
+
+        st.download_button(
+            "📄 Télécharger un exemple de structure",
+            data=template_bytes,
+            file_name="exemple_base_eleves.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+        uploaded_students = st.file_uploader(
+            "Choisir un fichier Excel",
+            type=["xlsx", "xlsm"],
+            key="student_excel_upload",
+        )
+
+        if uploaded_students is not None:
+            try:
+                excel_df = pd.read_excel(uploaded_students)
+
+                st.markdown("#### Aperçu du fichier")
+                st.dataframe(
+                    excel_df.head(15),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                first_col, last_col, initial_col, class_col = detect_student_columns(excel_df)
+
+                detected = []
+                if first_col:
+                    detected.append(f"Prénom → **{first_col}**")
+                if last_col:
+                    detected.append(f"Nom → **{last_col}**")
+                if initial_col:
+                    detected.append(f"Initiale → **{initial_col}**")
+                if class_col:
+                    detected.append(f"Classe → **{class_col}**")
+
+                if detected:
+                    st.info("Colonnes détectées : " + " · ".join(detected))
+
+                if st.button(
+                    "📥 Importer les élèves dans Ludo",
+                    type="primary",
+                    use_container_width=True,
+                    key="import_students_button",
+                ):
+                    added, duplicates, errors = import_students_from_dataframe(excel_df)
+
+                    if added:
+                        st.success(
+                            f"✅ {added} élève(s) importé(s). "
+                            f"{duplicates} doublon(s) ignoré(s)."
+                        )
+
+                    if errors:
+                        st.warning(
+                            f"{len(errors)} ligne(s) n'ont pas été importées."
+                        )
+                        for message in errors[:20]:
+                            st.write("• " + message)
+
+                    if added:
+                        st.rerun()
+
+            except Exception as exc:
+                st.error(
+                    "Impossible de lire ce fichier Excel. "
+                    f"Détail : {exc}"
+                )
+
+        st.markdown("---")
+        st.markdown("### Ajouter ponctuellement un élève")
 
         if not classes:
-            st.warning("Crée d'abord au moins une classe.")
+            st.info(
+                "Tu peux importer directement un fichier Excel : "
+                "les classes seront créées automatiquement."
+            )
         else:
             c1, c2, c3 = st.columns([2, 1, 1])
+
             with c1:
-                first_name = st.text_input("Prénom", key="new_student_firstname")
-            with c2:
-                last_initial = st.text_input(
-                    "Initiale du nom", max_chars=1, key="new_student_initial"
-                )
-            with c3:
-                student_class = st.selectbox(
-                    "Classe", classes, key="new_student_class"
+                first_name = st.text_input(
+                    "Prénom",
+                    key="new_student_firstname",
                 )
 
-            if st.button("➕ Ajouter l'élève et générer son code", use_container_width=True):
-                student, error = add_student(first_name, last_initial, student_class)
+            with c2:
+                last_initial = st.text_input(
+                    "Initiale du nom",
+                    max_chars=1,
+                    key="new_student_initial",
+                )
+
+            with c3:
+                student_class = st.selectbox(
+                    "Classe",
+                    classes,
+                    key="new_student_class",
+                )
+
+            if st.button(
+                "➕ Ajouter l'élève et générer son code",
+                use_container_width=True,
+            ):
+                student, error = add_student(
+                    first_name,
+                    last_initial,
+                    student_class,
+                )
+
                 if error:
                     st.error(error)
                 else:
                     st.success(
-                        f"Élève ajouté : **{student['first_name']} {student['last_initial']}.** "
-                        f"— code personnel **{student['code']}**"
+                        f"Élève ajouté : **{student['first_name']} "
+                        f"{student['last_initial']}.** — code personnel "
+                        f"**{student['code']}**"
                     )
                     st.rerun()
 
         students = get_students()
+
         st.markdown("### Élèves enregistrés")
 
         if not students:
             st.info("Aucun élève enregistré.")
         else:
             filter_classes = ["Toutes"] + get_classes()
+
             selected_filter = st.selectbox(
-                "Filtrer par classe", filter_classes, key="student_filter"
+                "Filtrer par classe",
+                filter_classes,
+                key="student_filter",
             )
+
             filtered = [
-                s for s in students
-                if selected_filter == "Toutes" or s["class_name"] == selected_filter
+                s
+                for s in students
+                if (
+                    selected_filter == "Toutes"
+                    or s["class_name"] == selected_filter
+                )
             ]
+
+            st.caption(
+                f"{len(filtered)} élève(s) affiché(s) sur {len(students)} enregistré(s)."
+            )
 
             for student in sorted(
                 filtered,
-                key=lambda s: (s["class_name"], s["first_name"].lower(), s["last_initial"])
+                key=lambda s: (
+                    s["class_name"],
+                    s["first_name"].lower(),
+                    s["last_initial"],
+                ),
             ):
                 with st.container(border=True):
                     a, b, c = st.columns([2, 1, 1])
+
                     with a:
-                        st.write(f"**{student['first_name']} {student['last_initial']}.**")
+                        st.write(
+                            f"**{student['first_name']} "
+                            f"{student['last_initial']}.**"
+                        )
+
                     with b:
-                        st.write(f"Classe **{student['class_name']}**")
+                        st.write(
+                            f"Classe **{student['class_name']}**"
+                        )
+
                     with c:
                         st.code(student["code"])
 
