@@ -2,17 +2,7 @@
 
 Application pédagogique de jeux interactifs de physique-chimie pour le collège.
 
-## Premiers jeux prévus
+## Dominos Molécules
+Première version : adaptation numérique du jeu facile A de Stéphane Bois et Hervé Abbes.
 
-- Dominos **Molécules**
-- Dominos **Électricité**
-- Dominos **Ions**
-
-L'application est développée en Python avec Streamlit.
-
-## Lancer localement
-
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
+Licence de cette adaptation : CC BY-NC-SA.
