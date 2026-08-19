@@ -1,6 +1,7 @@
 import random
 import time
 from pathlib import Path
+
 import streamlit as st
 
 st.set_page_config(
@@ -49,37 +50,57 @@ def next_expected():
     return ORDER[(i + 1) % len(ORDER)]
 
 
-def show_domino(domino_id, key=None, clickable=False):
-    """Affiche un domino toujours dans une case de largeur identique."""
+def formula_block(formula):
+    st.markdown(
+        f"""
+        <div style="
+            min-height:115px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:1.7rem;
+            text-align:center;
+            font-weight:500;
+        ">
+            {formula}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def molecule_block(image_name):
+    st.image(
+        str(ASSETS / f"{image_name}.svg"),
+        width=115,
+    )
+
+
+def show_domino(domino_id, key=None, clickable=False, reversed_domino=False):
+    """
+    Affiche un domino de taille constante.
+
+    reversed_domino=False : [ modèle | formule ]
+    reversed_domino=True  : [ formule | modèle ]
+
+    On inverse donc réellement les deux moitiés quand la chaîne repart
+    de droite vers la gauche, comme avec de vrais dominos.
+    """
     _, image_name, formula = BY_ID[domino_id]
 
     with st.container(border=True):
-        c1, c2 = st.columns([1, 1], vertical_alignment="center")
+        left, right = st.columns([1, 1], vertical_alignment="center")
 
-        with c1:
-            # largeur fixe pour éviter que le premier domino soit gigantesque
-            st.image(
-                str(ASSETS / f"{image_name}.svg"),
-                width=115,
-            )
-
-        with c2:
-            st.markdown(
-                f"""
-                <div style="
-                    min-height:115px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:1.7rem;
-                    text-align:center;
-                    font-weight:500;
-                ">
-                    {formula}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        if reversed_domino:
+            with left:
+                formula_block(formula)
+            with right:
+                molecule_block(image_name)
+        else:
+            with left:
+                molecule_block(image_name)
+            with right:
+                formula_block(formula)
 
         if clickable:
             return st.button(
@@ -91,51 +112,79 @@ def show_domino(domino_id, key=None, clickable=False):
     return False
 
 
+def show_turn(direction):
+    """Indique visuellement le virage de la chaîne."""
+    if direction == "right":
+        st.markdown(
+            """
+            <div style="
+                text-align:right;
+                font-size:2rem;
+                padding-right:4%;
+                margin-top:-0.4rem;
+                margin-bottom:-0.2rem;
+            ">↘</div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div style="
+                text-align:left;
+                font-size:2rem;
+                padding-left:4%;
+                margin-top:-0.4rem;
+                margin-bottom:-0.2rem;
+            ">↙</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def show_chain_snake(chain, per_row=4):
     """
-    Affiche toute la chaîne.
-    Ligne 1 : gauche -> droite
-    Ligne 2 : droite -> gauche
-    Ligne 3 : gauche -> droite
-    etc.
+    Affiche toute la chaîne comme un vrai serpent :
+
+    ligne 1 :  [modèle|formule] → [modèle|formule] → ...
+    ligne 2 :  ... ← [formule|modèle] ← [formule|modèle]
+    ligne 3 :  [modèle|formule] → [modèle|formule] → ...
+
+    Les dominos de chaque ligne allant vers la gauche sont donc retournés.
     """
     for row_index, start in enumerate(range(0, len(chain), per_row)):
         row = chain[start:start + per_row]
-
-        # On crée TOUJOURS 4 colonnes, même lorsqu'il n'y a qu'un domino.
-        # Ainsi les cartes gardent la même taille du début à la fin.
         cols = st.columns(per_row)
 
-        if row_index % 2 == 0:
-            # ligne normale
+        going_right = row_index % 2 == 0
+
+        if going_right:
+            # Le premier domino de la ligne se place à gauche,
+            # puis les suivants avancent vers la droite.
             positions = list(range(len(row)))
         else:
-            # ligne inversée : effet serpent
+            # Le premier domino de la ligne se place à droite,
+            # puis les suivants avancent vers la gauche.
             positions = list(reversed(range(per_row - len(row), per_row)))
 
         for domino_id, col_index in zip(row, positions):
             with cols[col_index]:
-                show_domino(domino_id)
+                show_domino(
+                    domino_id,
+                    reversed_domino=not going_right,
+                )
 
-        # petit indicateur visuel du virage du serpent
+        # Virage uniquement s'il existe déjà au moins un domino
+        # sur la ligne suivante.
         if start + per_row < len(chain):
-            if row_index % 2 == 0:
-                st.markdown(
-                    "<div style='text-align:right;font-size:1.8rem;padding-right:4%;'>↘</div>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    "<div style='text-align:left;font-size:1.8rem;padding-left:4%;'>↙</div>",
-                    unsafe_allow_html=True,
-                )
+            show_turn("right" if going_right else "left")
 
 
 st.title("🧪 Ludo Physique-Chimie")
 st.subheader("Dominos — Molécules · Niveau facile")
 
 st.write(
-    "Observe la formule située à droite du dernier domino posé et choisis, "
+    "Observe l'extrémité libre du dernier domino posé et choisis, "
     "parmi tes cartes, celle dont le modèle correspond."
 )
 
@@ -153,11 +202,12 @@ with top2:
     st.metric("Erreurs", st.session_state.errors)
 
 with top3:
-    st.write(f"Dominos posés : **{len(st.session_state.chain)} / {len(DOMINOS)}**")
+    st.write(
+        f"Dominos posés : **{len(st.session_state.chain)} / {len(DOMINOS)}**"
+    )
 
 st.markdown("### Chaîne construite")
 
-# Toute la chaîne reste visible, en serpent.
 show_chain_snake(st.session_state.chain, per_row=4)
 
 if st.session_state.remaining:
@@ -166,14 +216,19 @@ if st.session_state.remaining:
     expected = next_expected()
     clicked = None
 
-    # 3 cartes par ligne pour garder une bonne lisibilité des choix
+    # Les cartes de la réserve restent toujours dans leur orientation d'origine.
     for row_start in range(0, len(st.session_state.remaining), 3):
         row = st.session_state.remaining[row_start:row_start + 3]
         cols = st.columns(3)
 
         for i, did in enumerate(row):
             with cols[i]:
-                if show_domino(did, key=f"pick_{did}", clickable=True):
+                if show_domino(
+                    did,
+                    key=f"pick_{did}",
+                    clickable=True,
+                    reversed_domino=False,
+                ):
                     clicked = did
 
     if clicked:
@@ -185,7 +240,7 @@ if st.session_state.remaining:
             st.session_state.errors += 1
             st.error(
                 "Ce domino ne correspond pas. "
-                "Observe à nouveau le modèle et la formule."
+                "Observe à nouveau l'extrémité de la chaîne."
             )
 
 else:
