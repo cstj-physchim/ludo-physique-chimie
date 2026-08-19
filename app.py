@@ -23,7 +23,7 @@ from levels import LEVELS, LEVEL_NAMES
 # ============================================================
 
 st.set_page_config(
-    page_title="Ludo Physique-Chimie",
+    page_title="Ludothèque Physique-Chimie",
     page_icon="🧪",
     layout="wide",
 )
@@ -223,7 +223,7 @@ def hero():
     st.markdown(
         """
         <div class="hero">
-            <div class="hero-title">🧪 Ludo Physique-Chimie</div>
+            <div class="hero-title">🧪 Ludothèque Physique-Chimie</div>
             <div class="hero-subtitle">
                 Apprendre en jouant, progresser avec plaisir !
             </div>
@@ -391,8 +391,12 @@ def detect_student_columns(df):
 
     candidates = {
         "first": ["prenom", "prénom", "first name", "firstname"],
-        "last": ["nom", "nom de famille", "last name", "lastname"],
-        "initial": ["initiale", "initiale nom", "initiale du nom"],
+        "initial": [
+            "initiale",
+            "initiale nom",
+            "initiale du nom",
+            "initiale nom de famille",
+        ],
         "class": ["classe", "class", "division"],
     }
 
@@ -405,21 +409,29 @@ def detect_student_columns(df):
 
     return (
         find_candidate(candidates["first"]),
-        find_candidate(candidates["last"]),
         find_candidate(candidates["initial"]),
         find_candidate(candidates["class"]),
     )
 
 
 def import_students_from_dataframe(df):
-    first_col, last_col, initial_col, class_col = detect_student_columns(df)
+    first_col, initial_col, class_col = detect_student_columns(df)
+
+    missing = []
 
     if not first_col:
-        return 0, 0, ["Colonne Prénom introuvable."]
+        missing.append("Prénom")
+    if not initial_col:
+        missing.append("Initiale du nom")
     if not class_col:
-        return 0, 0, ["Colonne Classe introuvable."]
-    if not last_col and not initial_col:
-        return 0, 0, ["Il faut une colonne Nom ou Initiale du nom."]
+        missing.append("Classe")
+
+    if missing:
+        return 0, 0, [
+            "Colonne(s) obligatoire(s) introuvable(s) : "
+            + ", ".join(missing)
+            + "."
+        ]
 
     students = get_students()
 
@@ -441,24 +453,19 @@ def import_students_from_dataframe(df):
 
         first_name = str(row.get(first_col, "")).strip()
         class_name = str(row.get(class_col, "")).strip().upper()
-
-        if initial_col:
-            last_initial = (
-                str(row.get(initial_col, ""))
-                .strip()
-                .upper()
-                .replace(".", "")[:1]
-            )
-        else:
-            last_name = str(row.get(last_col, "")).strip()
-            last_initial = last_name[:1].upper() if last_name else ""
+        last_initial = (
+            str(row.get(initial_col, ""))
+            .strip()
+            .upper()
+            .replace(".", "")[:1]
+        )
 
         if not first_name and not class_name and not last_initial:
             continue
 
         if not first_name or not class_name or not last_initial:
             errors.append(
-                f"Ligne {row_number} : prénom, nom/initiale ou classe manquant."
+                f"Ligne {row_number} : prénom, initiale du nom ou classe manquant."
             )
             continue
 
@@ -492,10 +499,43 @@ def import_students_from_dataframe(df):
 def make_student_template():
     return pd.DataFrame(
         [
-            {"Prénom": "Emma", "Nom": "Durand", "Classe": "4B"},
-            {"Prénom": "Lucas", "Nom": "Martin", "Classe": "4B"},
+            {"Prénom": "Emma", "Initiale du nom": "D", "Classe": "4B"},
+            {"Prénom": "Lucas", "Initiale du nom": "M", "Classe": "4B"},
         ]
     )
+
+
+def delete_student(student_id):
+    students = get_students()
+    new_students = [s for s in students if s["id"] != student_id]
+
+    if len(new_students) == len(students):
+        return False
+
+    save_students(new_students)
+    return True
+
+
+def delete_class(class_name):
+    students = get_students()
+
+    if any(s["class_name"] == class_name for s in students):
+        return False, "Cette classe contient encore des élèves."
+
+    classes = [c for c in get_classes() if c != class_name]
+    redis_write_json(CLASSES_KEY, classes)
+    return True, None
+
+
+def reset_database():
+    """
+    Réinitialisation complète des données pédagogiques.
+    Les clés Upstash sont conservées mais remises à des listes vides.
+    """
+    redis_write_json(CLASSES_KEY, [])
+    redis_write_json(STUDENTS_KEY, [])
+    redis_write_json(CHALLENGES_KEY, [])
+    redis_write_json(RESULTS_KEY, [])
 
 
 # ============================================================
@@ -587,7 +627,7 @@ def generate_student_cards_pdf(students):
         pdf.drawString(
             x + 5 * mm,
             y + card_height - 8 * mm,
-            "Ludo Physique-Chimie",
+            "Ludothèque Physique-Chimie",
         )
 
         pdf.setFont("Helvetica-Bold", 13)
@@ -644,7 +684,7 @@ def generate_student_cards_pdf(students):
         pdf.drawCentredString(
             qr_x + qr_size / 2,
             qr_y - 2.5 * mm,
-            "QR personnel Ludo",
+            "QR personnel Ludothèque",
         )
 
     pdf.save()
@@ -1514,7 +1554,7 @@ def teacher_dashboard():
         """
         <div class="teacher-band">
             <div class="teacher-band-title">👨‍🏫 Espace professeur</div>
-            <div>Gérez votre plateforme Ludo depuis ce tableau de bord.</div>
+            <div>Gérez votre Ludothèque depuis ce tableau de bord.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1581,6 +1621,34 @@ def teacher_dashboard():
         unsafe_allow_html=True,
     )
 
+    with st.expander("⚠️ Administration et réinitialisation"):
+        st.warning(
+            "La réinitialisation complète efface les classes, les élèves, "
+            "les défis et tous les résultats. Cette action est irréversible."
+        )
+
+        reset_confirmation = st.text_input(
+            "Pour confirmer, saisissez exactement : REINITIALISER",
+            key="reset_database_confirmation",
+        )
+
+        if st.button(
+            "🗑️ Réinitialiser toute la base de données",
+            disabled=reset_confirmation != "REINITIALISER",
+            use_container_width=True,
+            key="reset_database_button",
+        ):
+            reset_database()
+
+            for session_key in [
+                "challenge_student",
+                "active_challenge",
+            ]:
+                st.session_state.pop(session_key, None)
+
+            st.success("Base de données réinitialisée.")
+            st.rerun()
+
 
 def teacher_classes():
     teacher_header("Classes")
@@ -1637,6 +1705,45 @@ def teacher_classes():
             use_container_width=True,
             hide_index=True,
         )
+
+        st.markdown("---")
+        st.subheader("Supprimer une classe")
+
+        class_to_delete = st.selectbox(
+            "Classe à supprimer",
+            classes,
+            key="class_to_delete",
+        )
+
+        effectif_to_delete = sum(
+            1 for s in students if s["class_name"] == class_to_delete
+        )
+
+        if effectif_to_delete:
+            st.warning(
+                f"La classe {class_to_delete} contient encore "
+                f"{effectif_to_delete} élève(s). "
+                "Supprimez ou déplacez d'abord ces élèves."
+            )
+        else:
+            confirm_class = st.checkbox(
+                f"Je confirme la suppression de la classe {class_to_delete}.",
+                key="confirm_delete_class",
+            )
+
+            if st.button(
+                "🗑️ Supprimer cette classe",
+                disabled=not confirm_class,
+                use_container_width=True,
+                key="delete_class_button",
+            ):
+                ok, error = delete_class(class_to_delete)
+
+                if ok:
+                    st.success(f"Classe {class_to_delete} supprimée.")
+                    st.rerun()
+                else:
+                    st.error(error or "Suppression impossible.")
     else:
         st.info("Aucune classe enregistrée.")
 
@@ -1647,8 +1754,8 @@ def teacher_students():
     st.subheader("Importer une base élèves depuis Excel")
 
     st.write(
-        "Le fichier doit contenir au minimum **Prénom**, **Classe** "
-        "et soit **Nom**, soit **Initiale du nom**."
+        "Le fichier doit contenir exactement les informations nécessaires : "
+        "**Prénom**, **Initiale du nom** et **Classe**."
     )
 
     template_df = make_student_template()
@@ -1678,7 +1785,7 @@ def teacher_students():
                 hide_index=True,
             )
 
-            first_col, last_col, initial_col, class_col = detect_student_columns(
+            first_col, initial_col, class_col = detect_student_columns(
                 excel_df
             )
 
@@ -1686,8 +1793,6 @@ def teacher_students():
 
             if first_col:
                 detected.append(f"Prénom → **{first_col}**")
-            if last_col:
-                detected.append(f"Nom → **{last_col}**")
             if initial_col:
                 detected.append(f"Initiale → **{initial_col}**")
             if class_col:
@@ -1804,9 +1909,9 @@ def teacher_students():
         pdf_cards = generate_student_cards_pdf(filtered)
 
         filename = (
-            "cartes_eleves_ludo_toutes_classes.pdf"
+            "cartes_eleves_ludotheque_toutes_classes.pdf"
             if selected_filter == "Toutes"
-            else f"cartes_eleves_ludo_{selected_filter}.pdf"
+            else f"cartes_eleves_ludotheque_{selected_filter}.pdf"
         )
 
         st.download_button(
@@ -1839,6 +1944,45 @@ def teacher_students():
         use_container_width=True,
         hide_index=True,
     )
+
+    st.markdown("---")
+    st.subheader("Retirer un élève")
+
+    student_options = {
+        f"{s['first_name']} {s['last_initial']}. — {s['class_name']} — {s['code']}": s["id"]
+        for s in sorted(
+            filtered,
+            key=lambda s: (
+                s["class_name"],
+                s["first_name"].lower(),
+                s["last_initial"],
+            ),
+        )
+    }
+
+    if student_options:
+        selected_student_label = st.selectbox(
+            "Élève à retirer",
+            list(student_options.keys()),
+            key="student_to_delete",
+        )
+
+        confirm_student = st.checkbox(
+            "Je confirme le retrait de cet élève de la base.",
+            key="confirm_delete_student",
+        )
+
+        if st.button(
+            "🗑️ Retirer cet élève",
+            disabled=not confirm_student,
+            use_container_width=True,
+            key="delete_student_button",
+        ):
+            if delete_student(student_options[selected_student_label]):
+                st.success("Élève retiré de la base.")
+                st.rerun()
+            else:
+                st.error("Élève introuvable.")
 
 
 def teacher_challenges():
@@ -2084,7 +2228,7 @@ else:
 
 st.markdown(
     '<div class="footer-note">'
-    'Ludo Physique-Chimie · Plateforme pédagogique de jeux et d’activités interactives'
+    'Ludothèque Physique-Chimie · Plateforme pédagogique de jeux et d’activités interactives'
     '</div>',
     unsafe_allow_html=True,
 )
