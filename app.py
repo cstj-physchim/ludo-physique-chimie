@@ -94,25 +94,59 @@ st.markdown(
     }
 
     .hero {
+        width: min(78%, 980px);
+        margin: 0 auto 1.6rem auto;
         background: linear-gradient(135deg, #102a56 0%, #193c75 100%);
         color: white;
         border-radius: 24px;
-        padding: 1.35rem 1.7rem;
-        margin-bottom: 1.4rem;
-        box-shadow: 0 12px 30px rgba(16, 42, 86, 0.16);
+        padding: 1.45rem 2rem;
+        box-shadow: 0 12px 30px rgba(16, 42, 86, 0.18);
+        text-align: center;
+    }
+
+    .hero-inner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .hero-icon {
+        font-size: 3.2rem;
+        line-height: 1;
+    }
+
+    .hero-copy {
+        text-align: center;
     }
 
     .hero-title {
         font-size: 2.25rem;
         font-weight: 800;
         margin: 0;
-        line-height: 1.1;
+        line-height: 1.08;
     }
 
     .hero-subtitle {
         font-size: 1.05rem;
-        margin-top: 0.35rem;
-        opacity: 0.9;
+        margin-top: 0.4rem;
+        opacity: 0.92;
+    }
+
+    @media (max-width: 900px) {
+        .hero {
+            width: 92%;
+            padding: 1.15rem 1rem;
+        }
+
+        .hero-title {
+            font-size: 1.75rem;
+        }
+
+        .hero-icon {
+            font-size: 2.6rem;
+        }
     }
 
     .section-title {
@@ -223,9 +257,14 @@ def hero():
     st.markdown(
         """
         <div class="hero">
-            <div class="hero-title">🧪 Ludothèque Physique-Chimie</div>
-            <div class="hero-subtitle">
-                Apprendre en jouant, progresser avec plaisir !
+            <div class="hero-inner">
+                <div class="hero-icon">🧪</div>
+                <div class="hero-copy">
+                    <div class="hero-title">Ludothèque Physique-Chimie</div>
+                    <div class="hero-subtitle">
+                        Apprendre en jouant, progresser avec plaisir !
+                    </div>
+                </div>
             </div>
         </div>
         """,
