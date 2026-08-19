@@ -103,7 +103,8 @@ st.markdown(
     .ludotheque-hero {
         display: block;
         box-sizing: border-box;
-        width: min(70%, 900px);
+        width: calc(100% - 180px);
+        max-width: 900px;
         margin: 0 auto 1.8rem auto;
         padding: 1.45rem 2rem 1.5rem 2rem;
         background: linear-gradient(135deg, #102a56 0%, #1f447d 100%);
@@ -155,7 +156,8 @@ st.markdown(
         }
 
         .ludotheque-hero {
-            width: 100%;
+            width: calc(100% - 40px);
+            max-width: 760px;
             padding: 1.15rem 1rem 1.2rem 1rem;
             border-radius: 24px !important;
             -webkit-border-radius: 24px !important;
