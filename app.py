@@ -93,58 +93,71 @@ st.markdown(
         color: white;
     }
 
-    .hero {
-        width: min(78%, 980px);
-        margin: 0 auto 1.6rem auto;
-        background: linear-gradient(135deg, #102a56 0%, #193c75 100%);
+        .ludotheque-hero {
+        display: block;
+        box-sizing: border-box;
+        width: 76%;
+        max-width: 980px;
+        margin: 0.8rem auto 1.8rem auto;
+        padding: 1.45rem 2rem 1.5rem 2rem;
+        background: linear-gradient(135deg, #102a56 0%, #1f447d 100%);
         color: white;
-        border-radius: 24px;
-        padding: 1.45rem 2rem;
+        border: none;
+        border-radius: 28px !important;
+        -webkit-border-radius: 28px !important;
+        overflow: hidden;
+        clip-path: inset(0 round 28px);
         box-shadow: 0 12px 30px rgba(16, 42, 86, 0.18);
         text-align: center;
     }
 
-    .hero-inner {
+    .ludotheque-hero-inner {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 1rem;
         flex-wrap: wrap;
+        width: 100%;
     }
 
-    .hero-icon {
+    .ludotheque-hero-icon {
         font-size: 3.2rem;
         line-height: 1;
+        flex: 0 0 auto;
     }
 
-    .hero-copy {
+    .ludotheque-hero-copy {
         text-align: center;
+        flex: 0 1 auto;
     }
 
-    .hero-title {
+    .ludotheque-hero-title {
         font-size: 2.25rem;
         font-weight: 800;
         margin: 0;
         line-height: 1.08;
     }
 
-    .hero-subtitle {
+    .ludotheque-hero-subtitle {
         font-size: 1.05rem;
-        margin-top: 0.4rem;
+        margin-top: 0.45rem;
         opacity: 0.92;
     }
 
     @media (max-width: 900px) {
-        .hero {
+        .ludotheque-hero {
             width: 92%;
-            padding: 1.15rem 1rem;
+            padding: 1.15rem 1rem 1.2rem 1rem;
+            border-radius: 22px !important;
+            -webkit-border-radius: 22px !important;
+            clip-path: inset(0 round 22px);
         }
 
-        .hero-title {
+        .ludotheque-hero-title {
             font-size: 1.75rem;
         }
 
-        .hero-icon {
+        .ludotheque-hero-icon {
             font-size: 2.6rem;
         }
     }
@@ -256,12 +269,12 @@ st.markdown(
 def hero():
     st.markdown(
         """
-        <div class="hero">
-            <div class="hero-inner">
-                <div class="hero-icon">🧪</div>
-                <div class="hero-copy">
-                    <div class="hero-title">Ludothèque Physique-Chimie</div>
-                    <div class="hero-subtitle">
+        <div class="ludotheque-hero">
+            <div class="ludotheque-hero-inner">
+                <div class="ludotheque-hero-icon">🧪</div>
+                <div class="ludotheque-hero-copy">
+                    <div class="ludotheque-hero-title">Ludothèque Physique-Chimie</div>
+                    <div class="ludotheque-hero-subtitle">
                         Apprendre en jouant, progresser avec plaisir !
                     </div>
                 </div>
