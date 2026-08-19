@@ -22,6 +22,11 @@ redis = Redis(
     token=st.secrets["UPSTASH_REDIS_REST_TOKEN"],
 )
 
+# Test temporaire de connexion Upstash :
+# écrit une valeur puis la relit afin de vérifier que la base répond bien.
+redis.set("ludo:test", "connexion_ok")
+test_upstash = redis.get("ludo:test")
+
 
 def game_key(level):
     return f"game_{level}"
@@ -141,6 +146,7 @@ if "selected_level" not in st.session_state:
 
 
 st.title("🧪 Ludo Physique-Chimie")
+st.success(f"Test Upstash : {test_upstash}")
 st.subheader("🁢 Dominos — Molécules")
 
 # Le selectbox utilise désormais une clé de session.
