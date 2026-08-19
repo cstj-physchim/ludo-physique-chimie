@@ -1,2 +1,4 @@
 streamlit
 upstash-redis
+pandas
+openpyxl
