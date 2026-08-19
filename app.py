@@ -31,20 +31,28 @@ def init_game(level):
 def formula_block(formula):
     st.markdown(
         f"""<div style="
-        min-height:108px;display:flex;align-items:center;justify-content:center;
+        min-height:115px;display:flex;align-items:center;justify-content:center;
         font-size:1.55rem;text-align:center;font-weight:500;">{formula}</div>""",
         unsafe_allow_html=True,
     )
 
 
 def molecule_block(image_name):
-    st.image(str(ASSETS / f"{image_name}.svg"), width=110)
+    # Les SVG de la V3 ont davantage de marge interne que ceux de la V2.
+    # On les affiche donc nettement plus grands pour retrouver la lisibilité
+    # et la taille visuelle de la première version.
+    st.image(
+        str(ASSETS / f"{image_name}.svg"),
+        width=240,
+    )
 
 
 def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=False):
     image_name, formula = LEVELS[level]["dominos"][domino_id]
+
     with st.container(border=True):
         left, right = st.columns([1, 1], vertical_alignment="center")
+
         if reversed_domino:
             with left:
                 formula_block(formula)
@@ -58,6 +66,7 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
 
         if clickable:
             return st.button("Placer", key=key, use_container_width=True)
+
     return False
 
 
@@ -65,8 +74,10 @@ def show_turn(direction):
     align = "right" if direction == "right" else "left"
     pad = "padding-right:4%;" if direction == "right" else "padding-left:4%;"
     arrow = "↘" if direction == "right" else "↙"
+
     st.markdown(
-        f"<div style='text-align:{align};font-size:2rem;{pad}margin-top:-.4rem;margin-bottom:-.2rem'>{arrow}</div>",
+        f"<div style='text-align:{align};font-size:2rem;{pad}"
+        f"margin-top:-.4rem;margin-bottom:-.2rem'>{arrow}</div>",
         unsafe_allow_html=True,
     )
 
@@ -84,7 +95,11 @@ def show_chain_snake(level, chain, per_row=4):
 
         for domino_id, col_index in zip(row, positions):
             with cols[col_index]:
-                show_domino(level, domino_id, reversed_domino=not going_right)
+                show_domino(
+                    level,
+                    domino_id,
+                    reversed_domino=not going_right,
+                )
 
         if start + per_row < len(chain):
             show_turn("right" if going_right else "left")
@@ -106,6 +121,7 @@ level = st.selectbox(
 )
 
 key = game_key(level)
+
 if key not in st.session_state:
     init_game(level)
 
@@ -113,12 +129,15 @@ game = st.session_state[key]
 total = len(LEVELS[level]["order"])
 
 top1, top2, top3 = st.columns([1, 1, 2])
+
 with top1:
     if st.button("🔄 Nouvelle partie", use_container_width=True):
         init_game(level)
         st.rerun()
+
 with top2:
     st.metric("Erreurs", game["errors"])
+
 with top3:
     st.write(f"Dominos posés : **{len(game['chain'])} / {total}**")
 
@@ -132,6 +151,7 @@ show_chain_snake(level, game["chain"], per_row=4)
 
 if game["remaining"]:
     st.markdown("### Dominos disponibles")
+
     expected = next_expected(level, game["chain"])
     clicked = None
 
@@ -142,8 +162,11 @@ if game["remaining"]:
         for i, did in enumerate(row):
             with cols[i]:
                 if show_domino(
-                    level, did, key=f"{level}_{did}",
-                    clickable=True, reversed_domino=False
+                    level,
+                    did,
+                    key=f"{level}_{did}",
+                    clickable=True,
+                    reversed_domino=False,
                 ):
                     clicked = did
 
@@ -154,10 +177,14 @@ if game["remaining"]:
             st.rerun()
         else:
             game["errors"] += 1
-            st.error("Ce domino ne correspond pas. Observe à nouveau l'extrémité de la chaîne.")
+            st.error(
+                "Ce domino ne correspond pas. "
+                "Observe à nouveau l'extrémité de la chaîne."
+            )
 
 else:
     elapsed = int(time.time() - game["started"])
+
     st.success(
         f"🎉 Niveau terminé ! Erreurs : {game['errors']} · "
         f"Temps : {elapsed // 60} min {elapsed % 60:02d} s"
