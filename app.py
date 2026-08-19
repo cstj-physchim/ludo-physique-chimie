@@ -93,20 +93,25 @@ st.markdown(
         color: white;
     }
 
-        .ludotheque-hero {
+        .ludotheque-hero-shell {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.9rem 2.2rem 0 2.2rem;
+        margin: 0;
+    }
+
+    .ludotheque-hero {
         display: block;
         box-sizing: border-box;
-        width: 76%;
-        max-width: 980px;
-        margin: 0.8rem auto 1.8rem auto;
+        width: min(70%, 900px);
+        margin: 0 auto 1.8rem auto;
         padding: 1.45rem 2rem 1.5rem 2rem;
         background: linear-gradient(135deg, #102a56 0%, #1f447d 100%);
         color: white;
         border: none;
-        border-radius: 28px !important;
-        -webkit-border-radius: 28px !important;
+        border-radius: 30px !important;
+        -webkit-border-radius: 30px !important;
         overflow: hidden;
-        clip-path: inset(0 round 28px);
         box-shadow: 0 12px 30px rgba(16, 42, 86, 0.18);
         text-align: center;
     }
@@ -145,12 +150,15 @@ st.markdown(
     }
 
     @media (max-width: 900px) {
+        .ludotheque-hero-shell {
+            padding: 0.7rem 0.8rem 0 0.8rem;
+        }
+
         .ludotheque-hero {
-            width: 92%;
+            width: 100%;
             padding: 1.15rem 1rem 1.2rem 1rem;
-            border-radius: 22px !important;
-            -webkit-border-radius: 22px !important;
-            clip-path: inset(0 round 22px);
+            border-radius: 24px !important;
+            -webkit-border-radius: 24px !important;
         }
 
         .ludotheque-hero-title {
@@ -269,13 +277,15 @@ st.markdown(
 def hero():
     st.markdown(
         """
-        <div class="ludotheque-hero">
-            <div class="ludotheque-hero-inner">
-                <div class="ludotheque-hero-icon">🧪</div>
-                <div class="ludotheque-hero-copy">
-                    <div class="ludotheque-hero-title">Ludothèque Physique-Chimie</div>
-                    <div class="ludotheque-hero-subtitle">
-                        Apprendre en jouant, progresser avec plaisir !
+        <div class="ludotheque-hero-shell">
+            <div class="ludotheque-hero">
+                <div class="ludotheque-hero-inner">
+                    <div class="ludotheque-hero-icon">🧪</div>
+                    <div class="ludotheque-hero-copy">
+                        <div class="ludotheque-hero-title">Ludothèque Physique-Chimie</div>
+                        <div class="ludotheque-hero-subtitle">
+                            Apprendre en jouant, progresser avec plaisir !
+                        </div>
                     </div>
                 </div>
             </div>
