@@ -1646,6 +1646,276 @@ def ion_domino_html(left_side, right_side):
     )
 
 
+
+def _nuclide_html(spec):
+    """
+    spec: A:Z:Symbole:charge
+    Exemple 9:4:Be:+2
+    """
+    mass, atomic, symbol, charge = spec.split(":")
+    charge_num = int(charge)
+
+    if charge_num == 0:
+        charge_html = ""
+    else:
+        sign = "+" if charge_num > 0 else "−"
+        n = abs(charge_num)
+        charge_html = f"{'' if n == 1 else n}{sign}"
+
+    return f"""
+    <div class="nuclide-wrap">
+        <span class="nuclide-mass">{mass}</span>
+        <span class="nuclide-atomic">{atomic}</span>
+        <span class="nuclide-symbol">{symbol}</span>
+        <span class="nuclide-charge">{charge_html}</span>
+    </div>
+    """
+
+
+def _composition_html(spec):
+    p, n, e = spec.split(":")
+    return f"""
+    <div class="composition-wrap">
+        <div class="composition-title">Composé de :</div>
+        <ul>
+            <li>{p} proton{"s" if p != "1" else ""}</li>
+            <li>{n} neutron{"s" if n != "1" else ""}</li>
+            <li>{e} électron{"s" if e != "1" else ""}</li>
+        </ul>
+    </div>
+    """
+
+
+def ion_composition_domino_html(left_side, right_side):
+    """
+    Domino rose inspiré du modèle fourni :
+    écriture nucléaire à gauche, composition p/n/e à droite.
+    """
+    def render(side):
+        if side.startswith("nuclide:"):
+            return _nuclide_html(side[8:])
+        if side.startswith("comp:"):
+            return _composition_html(side[5:])
+        return side
+
+    st.markdown(
+        f"""
+        <style>
+        .ion-comp-domino {{
+            display:grid;
+            grid-template-columns: 42% 58%;
+            min-height:142px;
+            background:linear-gradient(135deg,#f9d1d1,#f5bcbc);
+            border:4px solid #111;
+            border-radius:24px;
+            overflow:hidden;
+            box-shadow:0 2px 4px rgba(0,0,0,.10);
+        }}
+        .ion-comp-domino > div {{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:10px;
+        }}
+        .ion-comp-domino > div + div {{
+            border-left:3px solid #111;
+        }}
+        .nuclide-wrap {{
+            position:relative;
+            width:120px;
+            height:92px;
+            font-family:Arial,Helvetica,sans-serif;
+            color:#111;
+        }}
+        .nuclide-symbol {{
+            position:absolute;
+            left:44px;
+            top:19px;
+            font-size:3.15rem;
+            line-height:1;
+            font-weight:900;
+        }}
+        .nuclide-mass {{
+            position:absolute;
+            left:12px;
+            top:5px;
+            font-size:1.25rem;
+            font-weight:800;
+        }}
+        .nuclide-atomic {{
+            position:absolute;
+            left:12px;
+            bottom:4px;
+            font-size:1.25rem;
+            font-weight:800;
+        }}
+        .nuclide-charge {{
+            position:absolute;
+            left:88px;
+            top:2px;
+            font-size:1.35rem;
+            font-weight:900;
+        }}
+        .composition-wrap {{
+            font-family:Arial,Helvetica,sans-serif;
+            color:#111;
+            text-align:left;
+            width:100%;
+            padding-left:8px;
+        }}
+        .composition-title {{
+            font-size:1.05rem;
+            font-weight:700;
+            margin-bottom:4px;
+        }}
+        .composition-wrap ul {{
+            margin:0;
+            padding-left:1.25rem;
+            font-size:1.03rem;
+            line-height:1.35;
+        }}
+        </style>
+        <div class="ion-comp-domino">
+            <div>{render(left_side)}</div>
+            <div>{render(right_side)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+
+def _species_html(spec):
+    """
+    spec : symbole:charge:Z
+    Ex : Be:+2:4
+    """
+    symbol, charge, atomic = spec.split(":")
+    charge_num = int(charge)
+
+    if charge_num == 0:
+        charge_html = ""
+    else:
+        sign = "+" if charge_num > 0 else "−"
+        n = abs(charge_num)
+        charge_html = f"{'' if n == 1 else n}{sign}"
+
+    symbol_html = _chem_formula_html(symbol)
+
+    return f"""
+    <div class="blue-species">
+        <span class="blue-z">{atomic}</span>
+        <span class="blue-symbol">{symbol_html}</span>
+        <span class="blue-charge">{charge_html}</span>
+    </div>
+    """
+
+
+def _pe_html(spec):
+    p, e = spec.split(":")
+    return f"""
+    <div class="blue-comp">
+        <div class="blue-comp-title">Composé de :</div>
+        <ul>
+            <li>{p} proton{"s" if p != "1" else ""}</li>
+            <li>{e} électron{"s" if e != "1" else ""}</li>
+        </ul>
+    </div>
+    """
+
+
+def ion_blue_domino_html(left_side, right_side):
+    """Domino bleu, inspiré des fiches fournies."""
+    def render(side):
+        if side.startswith("species:"):
+            return _species_html(side[8:])
+        if side.startswith("pe:"):
+            return _pe_html(side[3:])
+        return side
+
+    st.markdown(
+        f"""
+        <style>
+        .ion-blue-domino {{
+            display:grid;
+            grid-template-columns: 42% 58%;
+            min-height:138px;
+            background:linear-gradient(135deg,#cfe8ff,#9fcef7);
+            border:4px solid #0d2740;
+            border-radius:24px;
+            overflow:hidden;
+            box-shadow:0 2px 5px rgba(0,0,0,.10);
+        }}
+        .ion-blue-domino > div {{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:10px;
+        }}
+        .ion-blue-domino > div + div {{
+            border-left:3px solid #0d2740;
+        }}
+        .blue-species {{
+            position:relative;
+            width:120px;
+            height:88px;
+            font-family:Arial,Helvetica,sans-serif;
+            color:#0a1620;
+        }}
+        .blue-z {{
+            position:absolute;
+            left:12px;
+            bottom:5px;
+            font-size:1.28rem;
+            font-weight:800;
+        }}
+        .blue-symbol {{
+            position:absolute;
+            left:43px;
+            top:18px;
+            font-size:3rem;
+            line-height:1;
+            font-weight:900;
+        }}
+        .blue-symbol sub {{
+            font-size:.52em;
+            vertical-align:-0.22em;
+        }}
+        .blue-charge {{
+            position:absolute;
+            left:91px;
+            top:3px;
+            font-size:1.35rem;
+            font-weight:900;
+        }}
+        .blue-comp {{
+            font-family:Arial,Helvetica,sans-serif;
+            color:#0a1620;
+            text-align:left;
+            width:100%;
+            padding-left:8px;
+        }}
+        .blue-comp-title {{
+            font-size:1.05rem;
+            font-weight:700;
+            margin-bottom:4px;
+        }}
+        .blue-comp ul {{
+            margin:0;
+            padding-left:1.3rem;
+            font-size:1.04rem;
+            line-height:1.42;
+        }}
+        </style>
+        <div class="ion-blue-domino">
+            <div>{render(left_side)}</div>
+            <div>{render(right_side)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def molecule_block(image_name):
     st.image(
         str(asset_path(image_name)),
@@ -1748,6 +2018,18 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
             if reversed_domino:
                 left_side, right_side = right_side, left_side
             ion_domino_html(left_side, right_side)
+
+        elif level_data.get("variant") == "ion_comp":
+            left_side, right_side = level_data["dominos"][domino_id]
+            if reversed_domino:
+                left_side, right_side = right_side, left_side
+            ion_composition_domino_html(left_side, right_side)
+
+        elif level_data.get("variant") == "ion_blue":
+            left_side, right_side = level_data["dominos"][domino_id]
+            if reversed_domino:
+                left_side, right_side = right_side, left_side
+            ion_blue_domino_html(left_side, right_side)
 
         elif level_data.get("variant") in ("textes", "verrerie"):
             left_side, right_side = level_data["dominos"][domino_id]
@@ -1884,10 +2166,21 @@ def domino_game(level, suffix="free", challenge=None, student=None):
             "le domino qui porte son illustration."
         )
     elif LEVELS[level].get("theme") == "Ions":
-        st.info(
-            "Observe le nom ou la formule de l'ion à l'extrémité de la chaîne, "
-            "puis choisis le domino qui présente l'information correspondante."
-        )
+        if LEVELS[level].get("variant") == "ion_comp":
+            st.info(
+                "Observe l'écriture de l'atome ou de l'ion et sa composition. "
+                "Relie chaque écriture nucléaire au bon nombre de protons, neutrons et électrons."
+            )
+        elif LEVELS[level].get("variant") == "ion_blue":
+            st.info(
+                "Observe l'atome ou l'ion à l'extrémité de la chaîne et relie-le "
+                "à la composition correcte en protons et en électrons."
+            )
+        else:
+            st.info(
+                "Observe le nom ou la formule de l'ion à l'extrémité de la chaîne, "
+                "puis choisis le domino qui présente l'information correspondante."
+            )
     elif LEVELS[level].get("variant") == "textes":
         st.info(
             "Observe l'extrémité libre du dernier domino puis cherche la représentation "
@@ -2673,6 +2966,8 @@ def page_free_level():
                 descriptions = {
                     "Ions — Essentiel": "10 ions usuels : formule ↔ nom.",
                     "Ions — Complet": "Les 18 ions de la liste : formule ↔ nom.",
+                    "Ions — Composition": "Écriture nucléaire ↔ protons, neutrons et électrons.",
+                    "Ions — Charges et électrons": "18 dominos bleus : atome/ion ↔ protons et électrons.",
                 }
                 nav_card(
                     LEVELS[level]["emoji"],

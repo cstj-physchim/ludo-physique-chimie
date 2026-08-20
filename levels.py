@@ -229,6 +229,55 @@ LEVELS = {
         },
     },
 
+    "Ions — Composition": {
+        "emoji": "🧬",
+        "theme": "Ions",
+        "variant": "ion_comp",
+        "order": ["C1","C2","C3","C4","C5","C6","C7","C8","C9","C10","C11","C12"],
+        "dominos": {
+            "C1":  ("nuclide:7:3:Li:0",   "comp:4:5:2"),
+            "C2":  ("nuclide:9:4:Be:+2",  "comp:9:10:10"),
+            "C3":  ("nuclide:19:9:F:-1",  "comp:1:0:0"),
+            "C4":  ("nuclide:1:1:H:+1",   "comp:12:12:10"),
+            "C5":  ("nuclide:24:12:Mg:+2","comp:17:18:18"),
+            "C6":  ("nuclide:35:17:Cl:-1","comp:11:12:10"),
+            "C7":  ("nuclide:23:11:Na:+1","comp:2:2:0"),
+            "C8":  ("nuclide:4:2:He:+2",  "comp:7:7:10"),
+            "C9":  ("nuclide:14:7:N:-3",  "comp:26:30:23"),
+            "C10": ("nuclide:56:26:Fe:+3","comp:29:35:27"),
+            "C11": ("nuclide:64:29:Cu:+2","comp:47:61:46"),
+            "C12": ("nuclide:108:47:Ag:+1","comp:3:4:3"),
+        },
+    },
+
+    "Ions — Charges et électrons": {
+        "emoji": "🔷",
+        "theme": "Ions",
+        "variant": "ion_blue",
+        "order": ["B1","B2","B3","B4","B5","B6","B7","B8","B9","B10","B11","B12","B13","B14","B15","B16","B17","B18"],
+        "dominos": {
+            # Chaque moitié droite décrit volontairement le domino suivant.
+            "B1":  ("species:Be:+2:4",  "pe:9:10"),   # -> F−
+            "B2":  ("species:F:-1:9",   "pe:1:0"),    # -> H+
+            "B3":  ("species:H:+1:1",   "pe:12:10"),  # -> Mg2+
+            "B4":  ("species:Mg:+2:12", "pe:17:18"),  # -> Cl−
+            "B5":  ("species:Cl:-1:17", "pe:11:10"),  # -> Na+
+            "B6":  ("species:Na:+1:11", "pe:2:2"),    # -> He
+            "B7":  ("species:He:0:2",   "pe:7:10"),   # -> N3−
+            "B8":  ("species:N:-3:7",   "pe:26:26"),  # -> Fe
+            "B9":  ("species:Fe:0:26",  "pe:47:47"),  # -> Ag
+            "B10": ("species:Ag:0:47",  "pe:8:10"),   # -> O2−
+            "B11": ("species:O:-2:8",   "pe:26:23"),  # -> Fe3+
+            "B12": ("species:Fe:+3:26", "pe:6:6"),    # -> C
+            "B13": ("species:C:0:6",    "pe:29:27"),  # -> Cu2+
+            "B14": ("species:Cu:+2:29", "pe:26:24"),  # -> Fe2+
+            "B15": ("species:Fe:+2:26", "pe:3:3"),    # -> Li
+            "B16": ("species:Li:0:3",   "pe:8:8"),    # -> O
+            "B17": ("species:O:0:8",    "pe:11:11"),  # -> Na
+            "B18": ("species:Na:0:11",  "pe:4:2"),    # -> Be2+ et boucle
+        },
+    },
+
     "Violet": {
         "emoji": "🟣",
         "theme": "Électricité",
@@ -300,7 +349,7 @@ LEVELS = {
 MOLECULE_LEVEL_NAMES = ["Facile", "Moyen", "Difficile", "Très difficile", "Facile + textes", "Moyen + textes", "Difficile + textes", "Très difficile + textes"]
 ELECTRICITY_LEVEL_NAMES = ["Violet", "Jaune", "Vert", "Bleu", "Orange", "Rouge"]
 GLASSWARE_LEVEL_NAMES = ["Verrerie — Essentiel", "Verrerie — Complet"]
-ION_LEVEL_NAMES = ["Ions — Essentiel", "Ions — Complet"]
+ION_LEVEL_NAMES = ["Ions — Essentiel", "Ions — Complet", "Ions — Composition", "Ions — Charges et électrons"]
 
 # Compatibilité avec le code plus ancien
 LEVEL_NAMES = MOLECULE_LEVEL_NAMES
