@@ -2310,11 +2310,11 @@ def teacher_challenges():
                 key="challenge_duration",
             )
 
-        no_time_limit = st.checkbox(
-            "♾️ Sans limite de temps",
-            value=False,
-            key="challenge_no_time_limit",
-        )
+            no_time_limit = st.checkbox(
+                "♾️ Sans limite de temps",
+                value=False,
+                key="challenge_no_time_limit",
+            )
 
         if st.button(
             "🏆 Créer le défi",
