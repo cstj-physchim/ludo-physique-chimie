@@ -130,6 +130,19 @@ st.markdown(
         color: white;
     }
 
+    div[data-testid="stDownloadButton"] > button[kind="primary"] {
+        background: #2f6fe4;
+        color: white;
+        border-color: #2f6fe4;
+        font-weight: 700;
+    }
+
+    div[data-testid="stDownloadButton"] > button[kind="primary"]:hover {
+        background: #245fc8;
+        border-color: #245fc8;
+        color: white;
+    }
+
         
 
     
@@ -558,6 +571,32 @@ def make_student_template():
     )
 
 
+def student_template_xlsx_bytes():
+    """Génère un véritable fichier Excel .xlsx servant de modèle d'import."""
+    buffer = BytesIO()
+    template_df = make_student_template()
+
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        template_df.to_excel(
+            writer,
+            index=False,
+            sheet_name="Élèves",
+        )
+
+        worksheet = writer.book["Élèves"]
+        worksheet.freeze_panes = "A2"
+        worksheet.column_dimensions["A"].width = 18
+        worksheet.column_dimensions["B"].width = 22
+        worksheet.column_dimensions["C"].width = 12
+
+        for cell in worksheet[1]:
+            cell.font = cell.font.copy(bold=True)
+            cell.alignment = cell.alignment.copy(horizontal="center")
+
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 def delete_student(student_id):
     students = get_students()
     new_students = [s for s in students if s["id"] != student_id]
@@ -751,7 +790,7 @@ def generate_student_cards_pdf(students):
 # ============================================================
 
 def get_challenges():
-    return redis_read_json(teacher_key("challenges"), [])
+    return expire_current_teacher_challenges()
 
 
 def save_challenges(challenges):
@@ -770,8 +809,25 @@ def generate_challenge_code():
     raise RuntimeError("Impossible de générer un code de défi unique.")
 
 
-def create_challenge(class_name, activity, theme, level, max_attempts):
+def create_challenge(
+    class_name,
+    activity,
+    theme,
+    level,
+    max_attempts,
+    duration_minutes=55,
+    no_time_limit=False,
+):
     challenges = get_challenges()
+
+    created_ts = time.time()
+
+    if no_time_limit:
+        expires_at = None
+        stored_duration = None
+    else:
+        stored_duration = int(duration_minutes)
+        expires_at = created_ts + stored_duration * 60
 
     challenge = {
         "code": generate_challenge_code(),
@@ -783,12 +839,76 @@ def create_challenge(class_name, activity, theme, level, max_attempts):
         "max_attempts": int(max_attempts),
         "status": "open",
         "created_at": datetime.now().isoformat(timespec="seconds"),
+        "created_ts": created_ts,
+        "duration_minutes": stored_duration,
+        "expires_at": expires_at,
     }
 
     challenges.append(challenge)
     save_challenges(challenges)
 
     return challenge
+
+
+def challenge_is_expired(challenge):
+    expires_at = challenge.get("expires_at")
+    if expires_at in (None, ""):
+        return False
+
+    try:
+        return time.time() >= float(expires_at)
+    except (TypeError, ValueError):
+        return False
+
+
+def challenge_remaining_seconds(challenge):
+    expires_at = challenge.get("expires_at")
+    if expires_at in (None, ""):
+        return None
+
+    try:
+        return max(0, int(float(expires_at) - time.time()))
+    except (TypeError, ValueError):
+        return None
+
+
+def format_remaining_time(seconds):
+    if seconds is None:
+        return "Sans limite"
+
+    if seconds <= 0:
+        return "Terminé"
+
+    minutes, sec = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+
+    if hours:
+        return f"{hours} h {minutes:02d} min"
+
+    if minutes:
+        return f"{minutes} min {sec:02d} s"
+
+    return f"{sec} s"
+
+
+def expire_current_teacher_challenges():
+    """Ferme automatiquement les défis arrivés à échéance."""
+    challenges = redis_read_json(teacher_key("challenges"), [])
+    changed = False
+
+    for challenge in challenges:
+        if (
+            challenge.get("status") == "open"
+            and challenge_is_expired(challenge)
+        ):
+            challenge["status"] = "closed"
+            challenge["closed_reason"] = "expired"
+            changed = True
+
+    if changed:
+        redis_write_json(teacher_key("challenges"), challenges)
+
+    return challenges
 
 
 def close_challenge(code):
@@ -803,11 +923,30 @@ def close_challenge(code):
 
 def find_open_challenge(code, teacher_id):
     code = code.strip()
-    for challenge in redis_read_json(teacher_key("challenges", teacher_id), []):
-        if str(challenge["code"]) == code and challenge["status"] == "open":
+    challenges = redis_read_json(teacher_key("challenges", teacher_id), [])
+    changed = False
+
+    for challenge in challenges:
+        if challenge.get("status") == "open" and challenge_is_expired(challenge):
+            challenge["status"] = "closed"
+            challenge["closed_reason"] = "expired"
+            changed = True
+
+    if changed:
+        redis_write_json(
+            teacher_key("challenges", teacher_id),
+            challenges,
+        )
+
+    for challenge in challenges:
+        if (
+            str(challenge["code"]) == code
+            and challenge.get("status") == "open"
+        ):
             found = dict(challenge)
             found["_teacher_id"] = teacher_id
             return found
+
     return None
 
 
@@ -1515,10 +1654,19 @@ def page_challenge():
         f"### Défi {challenge['code']} — {challenge['game']}"
     )
 
+    remaining = challenge_remaining_seconds(challenge)
+
+    timing_text = (
+        "Sans limite de temps"
+        if remaining is None
+        else f"Temps restant : {format_remaining_time(remaining)}"
+    )
+
     st.write(
         f"**Classe :** {challenge['class_name']}  ·  "
         f"**Niveau :** {LEVELS[challenge['level']]['emoji']} {challenge['level']}  ·  "
-        f"**Tentatives autorisées :** {challenge['max_attempts']}"
+        f"**Tentatives autorisées :** {challenge['max_attempts']}  ·  "
+        f"**{timing_text}**"
     )
 
     suffix = f"challenge_{challenge['code']}_{student['id']}"
@@ -1878,13 +2026,11 @@ def teacher_students():
         "**Prénom**, **Initiale du nom** et **Classe**."
     )
 
-    template_df = make_student_template()
-
     st.download_button(
-        "📄 Télécharger un exemple de structure",
-        data=template_df.to_csv(index=False, sep=";").encode("utf-8-sig"),
-        file_name="exemple_base_eleves.csv",
-        mime="text/csv",
+        "📥 Télécharger le modèle Excel pour importer une classe",
+        data=student_template_xlsx_bytes(),
+        file_name="modele_import_classe_ludotheque.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
 
@@ -2039,6 +2185,7 @@ def teacher_students():
             data=pdf_cards,
             file_name=filename,
             mime="application/pdf",
+            type="primary",
             use_container_width=True,
         )
 
@@ -2115,7 +2262,7 @@ def teacher_challenges():
     if not classes:
         st.warning("Créez d'abord au moins une classe.")
     else:
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
 
         with c1:
             selected_class = st.selectbox(
@@ -2153,6 +2300,22 @@ def teacher_challenges():
                 index=0,
             )
 
+        with c6:
+            duration_minutes = st.number_input(
+                "Durée (min)",
+                min_value=5,
+                max_value=480,
+                value=55,
+                step=5,
+                key="challenge_duration",
+            )
+
+        no_time_limit = st.checkbox(
+            "♾️ Sans limite de temps",
+            value=False,
+            key="challenge_no_time_limit",
+        )
+
         if st.button(
             "🏆 Créer le défi",
             type="primary",
@@ -2164,11 +2327,18 @@ def teacher_challenges():
                 theme,
                 challenge_level,
                 max_attempts,
+                duration_minutes=duration_minutes,
+                no_time_limit=no_time_limit,
             )
+
+            if challenge.get("duration_minutes") is None:
+                timing_text = "sans limite de temps"
+            else:
+                timing_text = f"pour {challenge['duration_minutes']} min"
 
             st.success(
                 f"Défi créé — code **{challenge['code']}** "
-                f"pour **{challenge['class_name']}**."
+                f"pour **{challenge['class_name']}**, {timing_text}."
             )
             st.rerun()
 
@@ -2183,13 +2353,20 @@ def teacher_challenges():
 
     for challenge in reversed(challenges):
         status_open = challenge.get("status") == "open"
+        remaining = challenge_remaining_seconds(challenge)
 
         with st.container(border=True):
-            c1, c2, c3, c4, c5 = st.columns([1, 1.5, 2, 1, 1])
+            c1, c2, c3, c4, c5, c6 = st.columns([1, 1.35, 1.7, 1, 1.5, 1])
 
             with c1:
                 st.markdown(f"### {challenge['code']}")
-                st.write("🟢 Ouvert" if status_open else "⚫ Fermé")
+
+                if status_open:
+                    st.write("🟢 Ouvert")
+                elif challenge.get("closed_reason") == "expired":
+                    st.write("⏱️ Terminé")
+                else:
+                    st.write("⚫ Fermé")
 
             with c2:
                 st.write(f"**Classe :** {challenge['class_name']}")
@@ -2209,6 +2386,19 @@ def teacher_challenges():
                 )
 
             with c5:
+                duration = challenge.get("duration_minutes")
+
+                if duration is None:
+                    st.write("**Durée :** Sans limite")
+                else:
+                    st.write(f"**Durée :** {duration} min")
+
+                if status_open:
+                    st.write(
+                        f"**Restant :** {format_remaining_time(remaining)}"
+                    )
+
+            with c6:
                 if status_open:
                     if st.button(
                         "Fermer",
