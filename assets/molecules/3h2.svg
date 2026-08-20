@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200">
+<defs>
+<radialGradient id="gH" cx="33%" cy="28%"><stop offset="0%" stop-color="#ffffff"/><stop offset="70%" stop-color="#ffffff"/><stop offset="100%" stop-color="#cecece"/></radialGradient>
+<radialGradient id="gC" cx="33%" cy="28%"><stop offset="0%" stop-color="#555555"/><stop offset="70%" stop-color="#555555"/><stop offset="100%" stop-color="#111111"/></radialGradient>
+</defs>
+<line x1="79" y1="65" x2="111" y2="65" stroke="#b8b8b8" stroke-width="6" stroke-linecap="round"/><circle cx="79" cy="65" r="12" fill="url(#gH)" stroke="#cecece" stroke-width="1.5"/><circle cx="111" cy="65" r="12" fill="url(#gH)" stroke="#cecece" stroke-width="1.5"/><line x1="194" y1="65" x2="226" y2="65" stroke="#b8b8b8" stroke-width="6" stroke-linecap="round"/><circle cx="194" cy="65" r="12" fill="url(#gH)" stroke="#cecece" stroke-width="1.5"/><circle cx="226" cy="65" r="12" fill="url(#gH)" stroke="#cecece" stroke-width="1.5"/><line x1="134" y1="135" x2="166" y2="135" stroke="#b8b8b8" stroke-width="6" stroke-linecap="round"/><circle cx="134" cy="135" r="12" fill="url(#gH)" stroke="#cecece" stroke-width="1.5"/><circle cx="166" cy="135" r="12" fill="url(#gH)" stroke="#cecece" stroke-width="1.5"/></svg>
