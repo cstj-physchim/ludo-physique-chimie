@@ -482,6 +482,7 @@ def create_collab_team(student, challenge):
         "created_at": time.time(),
         "game": None,
         "result_saved": False,
+        "movements": [],
     }
 
     teams[code] = team
@@ -510,14 +511,9 @@ def join_collab_team(student, challenge, team_code):
     if len(team.get("members", [])) >= target_size:
         return None, None, "Cette équipe est déjà complète."
 
-    # Si l'élève avait quitté cette équipe auparavant, on retire son départ
-    # de la liste active des départs puisqu'il revient dans la partie.
-    previous_departures = team.get("departures", [])
-    team["departures"] = [
-        departure
-        for departure in previous_departures
-        if departure.get("id") != student["id"]
-    ]
+    # On conserve l'historique des départs, même si l'élève revient ensuite.
+    # Si la partie a déjà commencé, cette arrivée est enregistrée comme mouvement.
+    joining_during_game = team.get("status") == "playing"
 
     team["members"].append(
         {
@@ -529,6 +525,23 @@ def join_collab_team(student, challenge, team_code):
             "turns": 0,
         }
     )
+
+    if joining_during_game:
+        had_left_before = any(
+            departure.get("id") == student["id"]
+            for departure in team.get("departures", [])
+        )
+
+        team.setdefault("movements", []).append(
+            {
+                "type": "return" if had_left_before else "join",
+                "id": student["id"],
+                "first_name": student["first_name"],
+                "last_initial": student["last_initial"],
+                "at": time.time(),
+                "at_text": datetime.now().isoformat(timespec="seconds"),
+            }
+        )
 
     if team.get("status") == "lobby":
         if len(team["members"]) >= target_size:
@@ -602,14 +615,25 @@ def leave_collab_team(student, challenge, team_code):
 
     leaving_member = members[leaving_index]
 
-    team.setdefault("departures", []).append(
+    departure_event = {
+        "id": leaving_member["id"],
+        "first_name": leaving_member["first_name"],
+        "last_initial": leaving_member["last_initial"],
+        "left_at": time.time(),
+        "left_at_text": datetime.now().isoformat(timespec="seconds"),
+        "reason": "quit_button",
+    }
+
+    team.setdefault("departures", []).append(departure_event)
+
+    team.setdefault("movements", []).append(
         {
+            "type": "leave",
             "id": leaving_member["id"],
             "first_name": leaving_member["first_name"],
             "last_initial": leaving_member["last_initial"],
-            "left_at": time.time(),
-            "left_at_text": datetime.now().isoformat(timespec="seconds"),
-            "reason": "quit_button",
+            "at": departure_event["left_at"],
+            "at_text": departure_event["left_at_text"],
         }
     )
 
@@ -1370,6 +1394,7 @@ def save_collab_result(team, challenge):
                 for m in team["members"]
             ],
             "team_departures": team.get("departures", []),
+            "team_movements": team.get("movements", []),
             "first_name": f"Équipe {team['code']}",
             "last_initial": "",
             "class_name": team["class_name"],
@@ -1390,6 +1415,32 @@ def save_collab_result(team, challenge):
     team["result_saved"] = True
     save_collab_team(team)
     return True
+
+
+def format_team_movements(movements):
+    """Retourne un résumé chronologique et lisible des mouvements d'une équipe."""
+    labels = []
+
+    for movement in movements:
+        name = (
+            f"{movement.get('first_name', '')} "
+            f"{movement.get('last_initial', '')}."
+        ).strip()
+
+        movement_type = movement.get("type")
+
+        if movement_type == "leave":
+            action = "a quitté l'équipe"
+        elif movement_type == "return":
+            action = "est revenu(e) dans l'équipe"
+        elif movement_type == "join":
+            action = "a rejoint l'équipe en cours de partie"
+        else:
+            action = "mouvement enregistré"
+
+        labels.append(f"{name} {action}")
+
+    return " ; ".join(labels)
 
 
 # ============================================================
@@ -1852,14 +1903,22 @@ def collaborative_domino_fragment(student, challenge, team_code):
                 f"— {m.get('turns', 0)} tour(s)"
             )
 
-        departures = team.get("departures", [])
-        if departures:
-            st.markdown("### Élèves ayant quitté la partie")
-            for departure in departures:
-                st.write(
-                    f"• {departure['first_name']} "
-                    f"{departure['last_initial']}."
+        movements = team.get("movements", [])
+        if movements:
+            st.markdown("### Mouvements dans l'équipe")
+            for movement in movements:
+                name = (
+                    f"{movement.get('first_name', '')} "
+                    f"{movement.get('last_initial', '')}."
                 )
+                if movement.get("type") == "leave":
+                    action = "a quitté l'équipe"
+                elif movement.get("type") == "return":
+                    action = "est revenu(e) dans l'équipe"
+                else:
+                    action = "a rejoint l'équipe en cours de partie"
+
+                st.write(f"• {name} — {action}")
 
         st.info("Le résultat de l'équipe a été envoyé à l'espace professeur.")
         return
@@ -3269,7 +3328,9 @@ def teacher_challenges():
                             challenge.get("team_size", 4),
                         ),
                         "État": team.get("status", "lobby"),
-                        "Élèves ayant quitté": departed_names or "—",
+                        "Mouvements": format_team_movements(
+                            team.get("movements", [])
+                        ) or "—",
                         "Dominos": len(game.get("chain", [])) if game else 0,
                         "Erreurs": game.get("errors", 0) if game else 0,
                     }
@@ -3339,15 +3400,14 @@ def teacher_results():
                 f"{m['first_name']} {m['last_initial']}."
                 for m in r.get("team_members", [])
             )
-            departed_text = ", ".join(
-                f"{d['first_name']} {d['last_initial']}."
-                for d in r.get("team_departures", [])
+            movement_text = format_team_movements(
+                r.get("team_movements", [])
             )
             participant = f"Équipe {r.get('team_code', '')}"
             mode = "👥 Collaboratif"
         else:
             members_text = ""
-            departed_text = ""
+            movement_text = ""
             participant = f"{r['first_name']} {r['last_initial']}."
             mode = "👤 Individuel"
 
@@ -3356,7 +3416,7 @@ def teacher_results():
                 "Rang": rank,
                 "Participant": participant,
                 "Membres à la fin": members_text,
-                "Ont quitté": departed_text,
+                "Mouvements équipe": movement_text,
                 "Mode": mode,
                 "Classe": r["class_name"],
                 "Défi": r["challenge_code"],
