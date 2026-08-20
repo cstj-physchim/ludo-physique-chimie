@@ -1417,8 +1417,16 @@ def init_game(level, suffix="free"):
 
 
 def asset_path(image_name):
-    if str(image_name).startswith("elec_"):
+    """Retourne le chemin d'un asset moléculaire ou électrique."""
+    image_name = str(image_name)
+
+    if image_name.endswith(".png"):
+        return ASSETS_ELECTRICITY / image_name
+
+    if image_name.startswith("elec_"):
+        # Compatibilité avec d'anciennes données encore éventuellement en session.
         return ASSETS_ELECTRICITY / f"{image_name}.png"
+
     return ASSETS / f"{image_name}.svg"
 
 
@@ -1454,21 +1462,31 @@ def molecule_block(image_name):
 
 
 def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=False):
-    image_name, formula = LEVELS[level]["dominos"][domino_id]
+    level_data = LEVELS[level]
 
     with st.container(border=True):
-        left, right = st.columns([1, 1], vertical_alignment="center")
-
-        if reversed_domino:
-            with left:
-                formula_block(formula)
-            with right:
-                molecule_block(image_name)
+        if level_data.get("theme") == "Électricité":
+            # Les cartes électriques sont désormais des PNG complets :
+            # montage réel + schéma normalisé dans une seule image.
+            image_file = level_data["dominos"][domino_id]
+            st.image(
+                str(ASSETS_ELECTRICITY / image_file),
+                use_container_width=True,
+            )
         else:
-            with left:
-                molecule_block(image_name)
-            with right:
-                formula_block(formula)
+            image_name, formula = level_data["dominos"][domino_id]
+            left, right = st.columns([1, 1], vertical_alignment="center")
+
+            if reversed_domino:
+                with left:
+                    formula_block(formula)
+                with right:
+                    molecule_block(image_name)
+            else:
+                with left:
+                    molecule_block(image_name)
+                with right:
+                    formula_block(formula)
 
         if clickable:
             return st.button(
@@ -1524,7 +1542,10 @@ def show_chain_snake(level, chain, per_row=4):
                 show_domino(
                     level,
                     domino_id,
-                    reversed_domino=not going_right,
+                    reversed_domino=(
+                        not going_right
+                        and LEVELS[level].get("theme") != "Électricité"
+                    ),
                 )
 
         if start + per_row < len(chain):
@@ -1566,8 +1587,8 @@ def domino_game(level, suffix="free", challenge=None, student=None):
 
     if LEVELS[level].get("theme") == "Électricité":
         st.info(
-            "Observe l'extrémité libre du dernier domino posé et choisis, "
-            "parmi tes cartes, celle dont le montage ou le schéma correspond."
+            "Observe le schéma situé à l'extrémité du dernier domino posé et choisis "
+            "le domino dont le montage réel correspond."
         )
     else:
         st.info(
@@ -1685,9 +1706,7 @@ def domino_game(level, suffix="free", challenge=None, student=None):
                 go("home")
 
         else:
-            theme = LEVELS[level].get("theme", "Molécules")
-            theme_levels = levels_for_theme(theme)
-            current_index = theme_levels.index(level)
+            current_index = LEVEL_NAMES.index(level)
 
             st.markdown("### Que veux-tu faire maintenant ?")
 
@@ -1696,20 +1715,20 @@ def domino_game(level, suffix="free", challenge=None, student=None):
             with left:
                 if st.button(
                     "🔄 Rejouer le même niveau",
-                    key=f"replay_{theme}_{level}",
+                    key=f"replay_{level}",
                     use_container_width=True,
                 ):
                     init_game(level, suffix)
                     st.rerun()
 
             with right:
-                if current_index < len(theme_levels) - 1:
-                    next_level = theme_levels[current_index + 1]
+                if current_index < len(LEVEL_NAMES) - 1:
+                    next_level = LEVEL_NAMES[current_index + 1]
 
                     if st.button(
                         f"➡️ Passer au niveau suivant : "
                         f"{LEVELS[next_level]['emoji']} {next_level}",
-                        key=f"next_{theme}_{level}",
+                        key=f"next_{level}",
                         type="primary",
                         use_container_width=True,
                     ):
@@ -1717,14 +1736,13 @@ def domino_game(level, suffix="free", challenge=None, student=None):
                         init_game(next_level, suffix)
                         st.rerun()
                 else:
-                    first = theme_levels[0]
                     if st.button(
-                        f"🏆 Recommencer depuis le niveau "
-                        f"{LEVELS[first]['emoji']} {first}",
-                        key=f"restart_all_{theme}",
+                        "🏆 Recommencer depuis le niveau Facile",
+                        key="restart_all",
                         type="primary",
                         use_container_width=True,
                     ):
+                        first = LEVEL_NAMES[0]
                         st.session_state.selected_level = first
                         init_game(first, suffix)
                         st.rerun()
@@ -2270,35 +2288,50 @@ def page_free_level():
         unsafe_allow_html=True,
     )
 
-    cols = st.columns(max(1, len(theme_levels)))
+    if theme == "Électricité":
+        # Six niveaux : affichage sur deux rangées de trois pour garder
+        # de grandes cartes lisibles sur Chromebook et ordinateur.
+        for row_start in range(0, len(theme_levels), 3):
+            row_levels = theme_levels[row_start:row_start + 3]
+            cols = st.columns(3)
 
-    for i, level in enumerate(theme_levels):
-        with cols[i]:
-            icon = LEVELS[level]["emoji"]
-            colors = ["card-green", "card-orange", "card-pink", "card-purple"]
-            color = "card-purple" if theme == "Électricité" else colors[i % len(colors)]
+            for i, level in enumerate(row_levels):
+                with cols[i]:
+                    nav_card(
+                        LEVELS[level]["emoji"],
+                        level,
+                        "Montage réel ↔ schéma électrique normalisé.",
+                        "card-orange",
+                    )
+                    if st.button(
+                        f"Jouer — {level}",
+                        key=f"level_{theme}_{level}",
+                        use_container_width=True,
+                    ):
+                        st.session_state.selected_level = level
+                        init_game(level, "free")
+                        go("free_game")
+    else:
+        cols = st.columns(max(1, len(theme_levels)))
 
-            description = (
-                "Circuits en série : montage réel ↔ schéma normalisé."
-                if theme == "Électricité"
-                else "Lancez une nouvelle partie de dominos molécules."
-            )
+        for i, level in enumerate(theme_levels):
+            with cols[i]:
+                colors = ["card-green", "card-orange", "card-pink", "card-purple"]
+                nav_card(
+                    LEVELS[level]["emoji"],
+                    level,
+                    "Lancez une nouvelle partie de dominos molécules.",
+                    colors[i % len(colors)],
+                )
 
-            nav_card(
-                icon,
-                level,
-                description,
-                color,
-            )
-
-            if st.button(
-                f"Jouer — {level}",
-                key=f"level_{theme}_{level}",
-                use_container_width=True,
-            ):
-                st.session_state.selected_level = level
-                init_game(level, "free")
-                go("free_game")
+                if st.button(
+                    f"Jouer — {level}",
+                    key=f"level_{theme}_{level}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_level = level
+                    init_game(level, "free")
+                    go("free_game")
 
 
 def page_free_game():
@@ -3492,3 +3525,4 @@ st.markdown(
     '</div>',
     unsafe_allow_html=True,
 )
+
