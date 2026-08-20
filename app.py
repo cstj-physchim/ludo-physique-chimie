@@ -1503,9 +1503,13 @@ def molecule_block(image_name):
 
 
 def glassware_block(image_name):
+    """
+    Affiche une illustration de verrerie sur un canevas blanc homogène.
+    Les PNG sont préparés à la même taille afin d'éviter tout recadrage.
+    """
     st.image(
         str(ASSETS_GLASSWARE / f"{image_name}.png"),
-        width=240,
+        use_container_width=True,
     )
 
 
@@ -2475,7 +2479,7 @@ def page_free_level():
             with cols[i]:
                 descriptions = {
                     "Verrerie — Essentiel": "8 matériels courants à reconnaître.",
-                    "Verrerie — Complet": "12 matériels de laboratoire à reconnaître.",
+                    "Verrerie — Complet": "13 matériels de laboratoire à reconnaître.",
                 }
                 nav_card(
                     LEVELS[level]["emoji"],
