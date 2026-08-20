@@ -435,10 +435,13 @@ def join_collab_team(student, challenge, team_code):
     if not team:
         return None, None, "Code d'équipe inconnu."
 
-    if team.get("status") != "lobby":
+    if team.get("status") not in ("lobby", "waiting"):
         return None, None, "Cette équipe a déjà commencé sa partie."
 
-    if len(team.get("members", [])) >= int(team.get("target_size", 4)):
+    if (
+        team.get("status") == "lobby"
+        and len(team.get("members", [])) >= int(team.get("target_size", 4))
+    ):
         return None, None, "Cette équipe est déjà complète."
 
     team["members"].append(
@@ -452,7 +455,11 @@ def join_collab_team(student, challenge, team_code):
         }
     )
 
-    if len(team["members"]) >= int(team["target_size"]):
+    if team.get("status") == "waiting" and team.get("game"):
+        # Une équipe réduite à un seul élève reprend dès qu'un camarade la rejoint.
+        if len(team["members"]) >= 2:
+            team["status"] = "playing"
+    elif len(team["members"]) >= int(team["target_size"]):
         team = init_collab_game(team, challenge)
 
     teams[team_code] = team
@@ -468,6 +475,81 @@ def save_collab_team(team):
     teams = get_collab_teams(team["teacher_id"], team["challenge_code"])
     teams[str(team["code"])] = team
     save_collab_teams(team["teacher_id"], team["challenge_code"], teams)
+
+
+def leave_collab_team(student, challenge, team_code):
+    """
+    Retire proprement un élève d'une équipe collaborative en cours.
+
+    - S'il reste au moins 2 élèves, la partie continue et la rotation est recalée.
+    - S'il ne reste qu'un élève, la partie est mise en attente d'un remplaçant.
+    - Si l'équipe devient vide, elle est supprimée.
+    - Une équipe déjà terminée n'est pas modifiée afin de conserver son résultat.
+    """
+    teacher_id = challenge["_teacher_id"]
+    challenge_code = str(challenge["code"])
+    team_code = str(team_code)
+
+    teams = get_collab_teams(teacher_id, challenge_code)
+    team = teams.get(team_code)
+
+    if not team:
+        return
+
+    if team.get("status") == "finished":
+        return
+
+    members = team.get("members", [])
+    leaving_index = next(
+        (
+            index
+            for index, member in enumerate(members)
+            if member["id"] == student["id"]
+        ),
+        None,
+    )
+
+    if leaving_index is None:
+        return
+
+    game = team.get("game")
+    old_active_index = None
+
+    if game and members:
+        old_active_index = int(game.get("turn_index", 0)) % len(members)
+
+        proposal = game.get("proposal")
+        if proposal and proposal.get("student_id") == student["id"]:
+            game["proposal"] = None
+
+    members.pop(leaving_index)
+    team["members"] = members
+
+    if not members:
+        teams.pop(team_code, None)
+        save_collab_teams(teacher_id, challenge_code, teams)
+        return
+
+    if game:
+        if len(members) == 1:
+            game["turn_index"] = 0
+            game["proposal"] = None
+            team["status"] = "waiting"
+        else:
+            # Si l'élève qui partait avait la main, le joueur qui suivait
+            # prend immédiatement le relais (même position dans la liste raccourcie).
+            if old_active_index == leaving_index:
+                new_index = leaving_index % len(members)
+            elif leaving_index < old_active_index:
+                new_index = old_active_index - 1
+            else:
+                new_index = old_active_index
+
+            game["turn_index"] = new_index % len(members)
+            team["status"] = "playing"
+
+    teams[team_code] = team
+    save_collab_teams(teacher_id, challenge_code, teams)
 
 
 # ============================================================
@@ -1629,6 +1711,22 @@ def collaborative_domino_fragment(student, challenge, team_code):
         )
         return
 
+    if team.get("status") == "waiting":
+        st.warning(
+            "⚠️ Un membre de l'équipe a quitté la partie. "
+            "Il ne reste qu'un élève : la partie est temporairement en pause."
+        )
+        st.markdown(
+            f"<div style='text-align:center;font-size:3rem;font-weight:800;"
+            f"letter-spacing:.35rem;padding:.6rem'>{team_code}</div>",
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            "Un autre élève peut rejoindre cette équipe avec ce code. "
+            "La partie reprendra automatiquement sans perdre la progression."
+        )
+        return
+
     game = team.get("game")
     if not game:
         st.warning("La partie n'est pas encore initialisée.")
@@ -1831,8 +1929,15 @@ def collaborative_challenge_page(student, challenge):
         use_container_width=True,
         key="leave_collab_challenge",
     ):
+        leave_collab_team(
+            student,
+            challenge,
+            team_code,
+        )
+
         for key in ["collab_team_code", "active_challenge", "challenge_student"]:
             st.session_state.pop(key, None)
+
         st.query_params.clear()
         go("home")
 
