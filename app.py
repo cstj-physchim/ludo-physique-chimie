@@ -1585,13 +1585,13 @@ def teacher_header(title):
     st.markdown(
         f"""
         <div class="teacher-band">
-            <div class="teacher-band-title">👨‍🏫 Espace professeur — {title}</div>
+            <div class="teacher-band-title">👨‍🏫 {current_teacher_name()} — {title}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    c1, c2 = st.columns([1, 5])
+    c1, c2, c3 = st.columns([1.3, 1.1, 4.6])
 
     with c1:
         if st.button("← Tableau de bord", use_container_width=True):
@@ -1599,6 +1599,10 @@ def teacher_header(title):
             st.rerun()
 
     with c2:
+        if st.button("🏠 Accueil", use_container_width=True):
+            go("home")
+
+    with c3:
         if st.button("Déconnexion", use_container_width=False):
             for key in ["teacher_authenticated", "teacher_id", "teacher_name", "teacher_section"]:
                 st.session_state.pop(key, None)
@@ -1607,6 +1611,15 @@ def teacher_header(title):
 
 def teacher_dashboard():
     hero()
+
+    top_home, top_spacer = st.columns([1.3, 5.7])
+    with top_home:
+        if st.button(
+            "🏠 Retour à l'accueil",
+            use_container_width=True,
+            key="teacher_home_button",
+        ):
+            go("home")
 
     st.markdown(
         f"""
