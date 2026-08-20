@@ -1504,7 +1504,7 @@ def molecule_block(image_name):
 
 def glassware_block(image_name):
     st.image(
-        str(ASSETS_GLASSWARE / f"{image_name}.svg"),
+        str(ASSETS_GLASSWARE / f"{image_name}.png"),
         width=240,
     )
 
