@@ -1,5 +1,6 @@
 import json
 import random
+import textwrap
 import secrets
 import time
 from datetime import datetime
@@ -1591,7 +1592,7 @@ def ion_domino_html(left_side, right_side):
         return '<div class="ion-name">' + side + '</div>'
 
     st.markdown(
-        f"""
+        textwrap.dedent(f"""
         <style>
         .ion-domino {{
             display:grid;
@@ -1641,7 +1642,7 @@ def ion_domino_html(left_side, right_side):
             <div>{render_side(left_side)}</div>
             <div>{render_side(right_side)}</div>
         </div>
-        """,
+        """).strip(),
         unsafe_allow_html=True,
     )
 
@@ -1699,7 +1700,7 @@ def ion_composition_domino_html(left_side, right_side):
         return side
 
     st.markdown(
-        f"""
+        textwrap.dedent(f"""
         <style>
         .ion-comp-domino {{
             display:grid;
@@ -1779,7 +1780,7 @@ def ion_composition_domino_html(left_side, right_side):
             <div>{render(left_side)}</div>
             <div>{render(right_side)}</div>
         </div>
-        """,
+        """).strip(),
         unsafe_allow_html=True,
     )
 
@@ -1834,7 +1835,7 @@ def ion_blue_domino_html(left_side, right_side):
         return side
 
     st.markdown(
-        f"""
+        textwrap.dedent(f"""
         <style>
         .ion-blue-domino {{
             display:grid;
@@ -1911,7 +1912,7 @@ def ion_blue_domino_html(left_side, right_side):
             <div>{render(left_side)}</div>
             <div>{render(right_side)}</div>
         </div>
-        """,
+        """).strip(),
         unsafe_allow_html=True,
     )
 
