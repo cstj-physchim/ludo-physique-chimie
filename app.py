@@ -443,6 +443,7 @@ def init_collab_game(team, challenge):
         "chain": [start],
         "remaining": remaining,
         "errors": 0,
+        "error_details": [],
         "started": time.time(),
         "turn_index": 0,
         "proposal": None,
@@ -1379,6 +1380,7 @@ def save_collab_result(team, challenge):
             "level": challenge["level"],
             "attempt": 1,
             "errors": int(game["errors"]),
+            "error_details": game.get("error_details", []),
             "time_seconds": elapsed,
             "finished_at": datetime.now().isoformat(timespec="seconds"),
         }
@@ -1735,6 +1737,7 @@ def collab_validate_proposal(team, challenge):
     domino_id = proposal["domino_id"]
     expected = next_expected(challenge["level"], game["chain"])
     active_index = int(game["turn_index"]) % len(team["members"])
+    active = team["members"][active_index]
 
     team["members"][active_index]["turns"] = (
         int(team["members"][active_index].get("turns", 0)) + 1
@@ -1748,6 +1751,18 @@ def collab_validate_proposal(team, challenge):
             game["remaining"].remove(domino_id)
     else:
         game["errors"] += 1
+        # L'erreur reste collective pour le score de l'équipe, mais on conserve
+        # l'élève dont c'était le tour au moment de la validation afin de fournir
+        # au professeur un détail factuel sans transformer le score en évaluation individuelle.
+        game.setdefault("error_details", []).append(
+            {
+                "student_id": active["id"],
+                "first_name": active["first_name"],
+                "last_initial": active["last_initial"],
+                "domino_id": domino_id,
+                "validated_at": datetime.now().isoformat(timespec="seconds"),
+            }
+        )
 
     game["proposal"] = None
     game["turn_index"] = (active_index + 1) % len(team["members"])
@@ -3349,6 +3364,14 @@ def teacher_results():
                 "Thème": r.get("theme", "Molécules"),
                 "Niveau": r["level"],
                 "Erreurs": r["errors"],
+                "Détail erreurs": (
+                    ", ".join(
+                        f"{detail.get('first_name', '')} {detail.get('last_initial', '')}."
+                        for detail in r.get("error_details", [])
+                    )
+                    if r.get("result_type") == "team" and r.get("error_details")
+                    else ""
+                ),
                 "Temps": f"{r['time_seconds'] // 60}:{r['time_seconds'] % 60:02d}",
                 "Tentative": r.get("attempt", 1),
                 "Badge": "🎯 Sans faute" if r["errors"] == 0 else "",
