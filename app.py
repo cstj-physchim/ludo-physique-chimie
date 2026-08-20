@@ -435,13 +435,10 @@ def join_collab_team(student, challenge, team_code):
     if not team:
         return None, None, "Code d'équipe inconnu."
 
-    if team.get("status") not in ("lobby", "waiting"):
+    if team.get("status") != "lobby":
         return None, None, "Cette équipe a déjà commencé sa partie."
 
-    if (
-        team.get("status") == "lobby"
-        and len(team.get("members", [])) >= int(team.get("target_size", 4))
-    ):
+    if len(team.get("members", [])) >= int(team.get("target_size", 4)):
         return None, None, "Cette équipe est déjà complète."
 
     team["members"].append(
@@ -455,11 +452,7 @@ def join_collab_team(student, challenge, team_code):
         }
     )
 
-    if team.get("status") == "waiting" and team.get("game"):
-        # Une équipe réduite à un seul élève reprend dès qu'un camarade la rejoint.
-        if len(team["members"]) >= 2:
-            team["status"] = "playing"
-    elif len(team["members"]) >= int(team["target_size"]):
+    if len(team["members"]) >= int(team["target_size"]):
         team = init_collab_game(team, challenge)
 
     teams[team_code] = team
@@ -481,10 +474,10 @@ def leave_collab_team(student, challenge, team_code):
     """
     Retire proprement un élève d'une équipe collaborative en cours.
 
-    - S'il reste au moins 2 élèves, la partie continue et la rotation est recalée.
-    - S'il ne reste qu'un élève, la partie est mise en attente d'un remplaçant.
-    - Si l'équipe devient vide, elle est supprimée.
-    - Une équipe déjà terminée n'est pas modifiée afin de conserver son résultat.
+    - La partie continue avec tous les élèves restants, même s'il n'en reste qu'un.
+    - La rotation est recalée pour ne jamais attendre un élève parti.
+    - Le départ est enregistré afin que le professeur puisse le voir.
+    - Si l'équipe devient vide, son état est conservé comme équipe abandonnée.
     """
     teacher_id = challenge["_teacher_id"]
     challenge_code = str(challenge["code"])
@@ -522,31 +515,44 @@ def leave_collab_team(student, challenge, team_code):
         if proposal and proposal.get("student_id") == student["id"]:
             game["proposal"] = None
 
+    leaving_member = members[leaving_index]
+
+    team.setdefault("departures", []).append(
+        {
+            "id": leaving_member["id"],
+            "first_name": leaving_member["first_name"],
+            "last_initial": leaving_member["last_initial"],
+            "left_at": time.time(),
+            "left_at_text": datetime.now().isoformat(timespec="seconds"),
+            "reason": "quit_button",
+        }
+    )
+
     members.pop(leaving_index)
     team["members"] = members
 
     if not members:
-        teams.pop(team_code, None)
+        team["status"] = "abandoned"
+        if game:
+            game["proposal"] = None
+        teams[team_code] = team
         save_collab_teams(teacher_id, challenge_code, teams)
         return
 
     if game:
-        if len(members) == 1:
-            game["turn_index"] = 0
-            game["proposal"] = None
-            team["status"] = "waiting"
+        # Si l'élève qui partait avait la main, le joueur suivant
+        # prend immédiatement le relais. Cela fonctionne aussi s'il
+        # ne reste qu'un seul élève : son index devient 0.
+        if old_active_index == leaving_index:
+            new_index = leaving_index % len(members)
+        elif leaving_index < old_active_index:
+            new_index = old_active_index - 1
         else:
-            # Si l'élève qui partait avait la main, le joueur qui suivait
-            # prend immédiatement le relais (même position dans la liste raccourcie).
-            if old_active_index == leaving_index:
-                new_index = leaving_index % len(members)
-            elif leaving_index < old_active_index:
-                new_index = old_active_index - 1
-            else:
-                new_index = old_active_index
+            new_index = old_active_index
 
-            game["turn_index"] = new_index % len(members)
-            team["status"] = "playing"
+        game["turn_index"] = new_index % len(members)
+        game["proposal"] = None
+        team["status"] = "playing"
 
     teams[team_code] = team
     save_collab_teams(teacher_id, challenge_code, teams)
@@ -1278,6 +1284,7 @@ def save_collab_result(team, challenge):
                 }
                 for m in team["members"]
             ],
+            "team_departures": team.get("departures", []),
             "first_name": f"Équipe {team['code']}",
             "last_initial": "",
             "class_name": team["class_name"],
@@ -1696,6 +1703,15 @@ def collaborative_domino_fragment(student, challenge, team_code):
         )
     )
 
+    departures = team.get("departures", [])
+    if departures:
+        latest_departure = departures[-1]
+        st.warning(
+            f"⚠️ {latest_departure['first_name']} "
+            f"{latest_departure['last_initial']}. a quitté l'équipe. "
+            "La partie continue avec les élèves restants."
+        )
+
     if team.get("status") == "lobby":
         st.info(
             "En attente des autres membres. "
@@ -1708,22 +1724,6 @@ def collaborative_domino_fragment(student, challenge, team_code):
         )
         st.caption(
             "La partie démarre automatiquement quand l'équipe est complète."
-        )
-        return
-
-    if team.get("status") == "waiting":
-        st.warning(
-            "⚠️ Un membre de l'équipe a quitté la partie. "
-            "Il ne reste qu'un élève : la partie est temporairement en pause."
-        )
-        st.markdown(
-            f"<div style='text-align:center;font-size:3rem;font-weight:800;"
-            f"letter-spacing:.35rem;padding:.6rem'>{team_code}</div>",
-            unsafe_allow_html=True,
-        )
-        st.caption(
-            "Un autre élève peut rejoindre cette équipe avec ce code. "
-            "La partie reprendra automatiquement sans perdre la progression."
         )
         return
 
@@ -1752,6 +1752,16 @@ def collaborative_domino_fragment(student, challenge, team_code):
                 f"• {m['first_name']} {m['last_initial']}. "
                 f"— {m.get('turns', 0)} tour(s)"
             )
+
+        departures = team.get("departures", [])
+        if departures:
+            st.markdown("### Élèves ayant quitté la partie")
+            for departure in departures:
+                st.write(
+                    f"• {departure['first_name']} "
+                    f"{departure['last_initial']}."
+                )
+
         st.info("Le résultat de l'équipe a été envoyé à l'espace professeur.")
         return
 
@@ -3145,13 +3155,23 @@ def teacher_challenges():
             rows = []
             for team_code, team in teams.items():
                 game = team.get("game") or {}
+                departures = team.get("departures", [])
+                departed_names = ", ".join(
+                    f"{d['first_name']} {d['last_initial']}."
+                    for d in departures
+                )
+
                 rows.append(
                     {
                         "Défi": challenge["code"],
                         "Équipe": team_code,
-                        "Élèves": len(team.get("members", [])),
-                        "Attendus": team.get("target_size", challenge.get("team_size", 4)),
+                        "Élèves présents": len(team.get("members", [])),
+                        "Attendus au départ": team.get(
+                            "target_size",
+                            challenge.get("team_size", 4),
+                        ),
                         "État": team.get("status", "lobby"),
+                        "Élèves ayant quitté": departed_names or "—",
                         "Dominos": len(game.get("chain", [])) if game else 0,
                         "Erreurs": game.get("errors", 0) if game else 0,
                     }
@@ -3221,10 +3241,15 @@ def teacher_results():
                 f"{m['first_name']} {m['last_initial']}."
                 for m in r.get("team_members", [])
             )
+            departed_text = ", ".join(
+                f"{d['first_name']} {d['last_initial']}."
+                for d in r.get("team_departures", [])
+            )
             participant = f"Équipe {r.get('team_code', '')}"
             mode = "👥 Collaboratif"
         else:
             members_text = ""
+            departed_text = ""
             participant = f"{r['first_name']} {r['last_initial']}."
             mode = "👤 Individuel"
 
@@ -3232,7 +3257,8 @@ def teacher_results():
             {
                 "Rang": rank,
                 "Participant": participant,
-                "Membres": members_text,
+                "Membres à la fin": members_text,
+                "Ont quitté": departed_text,
                 "Mode": mode,
                 "Classe": r["class_name"],
                 "Défi": r["challenge_code"],
