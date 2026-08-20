@@ -1703,11 +1703,13 @@ def ion_blue_domino_html(left_side, right_side, is_available=False):
 
     # Différence visuelle entre la chaîne déjà construite et les cartes à jouer.
     if is_available:
+        # Domino encore disponible : bleu clair.
         bg = "linear-gradient(135deg,#d9ecff,#b8dcfb)"
         border = "#17476d"
     else:
-        bg = "linear-gradient(135deg,#a9d1f5,#7fb9ea)"
-        border = "#0d3554"
+        # Domino déjà placé dans la chaîne : jaune clair, immédiatement identifiable.
+        bg = "linear-gradient(135deg,#fff3b0,#ffd966)"
+        border = "#8a6500"
 
     html = (
         '<style>'
