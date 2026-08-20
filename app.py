@@ -1572,8 +1572,7 @@ def ion_name_block(name):
 
 
 def ion_domino_html(left_side, right_side):
-    """Construit un domino rose à coins arrondis, proche du modèle papier."""
-    def render_side(side):
+    def render(side):
         if side.startswith("ion:"):
             spec = side[4:]
             formula, charge = spec.rsplit(":", 1)
@@ -1581,341 +1580,118 @@ def ion_domino_html(left_side, right_side):
             sign = "+" if charge_num > 0 else "−"
             n = abs(charge_num)
             charge_html = f"<sup>{'' if n == 1 else n}{sign}</sup>" if charge_num else ""
-            return (
-                '<div class="ion-formula">'
-                + _chem_formula_html(formula)
-                + charge_html
-                + '</div>'
-            )
+            return '<div class="ion-formula">' + _chem_formula_html(formula) + charge_html + '</div>'
         if side.startswith("ionname:"):
             return '<div class="ion-name">' + side[8:] + '</div>'
-        return '<div class="ion-name">' + side + '</div>'
-
-    st.markdown(
-        textwrap.dedent(f"""
-        <style>
-        .ion-domino {{
-            display:grid;
-            grid-template-columns: 42% 58%;
-            min-height:132px;
-            background:#f7c3c3;
-            border:4px solid #111;
-            border-radius:22px;
-            overflow:hidden;
-            box-shadow:0 1px 2px rgba(0,0,0,.08);
-        }}
-        .ion-domino > div {{
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:10px;
-        }}
-        .ion-domino > div + div {{
-            border-left:3px solid #111;
-        }}
-        .ion-formula {{
-            font-family:Arial,Helvetica,sans-serif;
-            font-size:2.2rem;
-            font-weight:900;
-            line-height:1;
-            color:#111;
-        }}
-        .ion-formula sub {{
-            font-size:.55em;
-            vertical-align:-0.25em;
-        }}
-        .ion-formula sup {{
-            font-size:.55em;
-            vertical-align:.72em;
-            margin-left:1px;
-        }}
-        .ion-name {{
-            font-family:Arial,Helvetica,sans-serif;
-            font-size:1.15rem;
-            font-weight:700;
-            text-align:center;
-            line-height:1.2;
-            color:#111;
-        }}
-        </style>
-        <div class="ion-domino">
-            <div>{render_side(left_side)}</div>
-            <div>{render_side(right_side)}</div>
-        </div>
-        """).strip(),
-        unsafe_allow_html=True,
+        return '<div class="ion-name">' + str(side) + '</div>' 
+    html = (
+        '<style>.ion-domino{display:grid;grid-template-columns:42% 58%;min-height:132px;background:#f7c3c3;border:4px solid #111;border-radius:22px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.08)}.ion-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-domino>div+div{border-left:3px solid #111}.ion-formula{font-family:Arial,Helvetica,sans-serif;font-size:2.2rem;font-weight:900;line-height:1;color:#111}.ion-formula sub{font-size:.55em;vertical-align:-.25em}.ion-formula sup{font-size:.55em;vertical-align:.72em;margin-left:1px}.ion-name{font-family:Arial,Helvetica,sans-serif;font-size:1.15rem;font-weight:700;text-align:center;line-height:1.2;color:#111}</style>'
+        '<div class="ion-domino">'
+        '<div>' + render(left_side) + '</div>'
+        '<div>' + render(right_side) + '</div>'
+        '</div>'
     )
-
-
+    st.markdown(html, unsafe_allow_html=True)
 
 def _nuclide_html(spec):
-    """
-    spec: A:Z:Symbole:charge
-    Exemple 9:4:Be:+2
-    """
+    """spec: A:Z:Symbole:charge"""
     mass, atomic, symbol, charge = spec.split(":")
     charge_num = int(charge)
-
     if charge_num == 0:
         charge_html = ""
     else:
         sign = "+" if charge_num > 0 else "−"
         n = abs(charge_num)
         charge_html = f"{'' if n == 1 else n}{sign}"
-
-    return f"""
-    <div class="nuclide-wrap">
-        <span class="nuclide-mass">{mass}</span>
-        <span class="nuclide-atomic">{atomic}</span>
-        <span class="nuclide-symbol">{symbol}</span>
-        <span class="nuclide-charge">{charge_html}</span>
-    </div>
-    """
-
+    return (
+        f'<div class="nuclide-wrap">'
+        f'<span class="nuclide-mass">{mass}</span>'
+        f'<span class="nuclide-atomic">{atomic}</span>'
+        f'<span class="nuclide-symbol">{symbol}</span>'
+        f'<span class="nuclide-charge">{charge_html}</span>'
+        f'</div>'
+    )
 
 def _composition_html(spec):
     p, n, e = spec.split(":")
-    return f"""
-    <div class="composition-wrap">
-        <div class="composition-title">Composé de :</div>
-        <ul>
-            <li>{p} proton{"s" if p != "1" else ""}</li>
-            <li>{n} neutron{"s" if n != "1" else ""}</li>
-            <li>{e} électron{"s" if e != "1" else ""}</li>
-        </ul>
-    </div>
-    """
-
+    ps = "s" if p != "1" else ""
+    ns = "s" if n != "1" else ""
+    es = "s" if e != "1" else ""
+    return (
+        f'<div class="composition-wrap">'
+        f'<div class="composition-title">Composé de :</div>'
+        f'<ul>'
+        f'<li>{p} proton{ps}</li>'
+        f'<li>{n} neutron{ns}</li>'
+        f'<li>{e} électron{es}</li>'
+        f'</ul>'
+        f'</div>'
+    )
 
 def ion_composition_domino_html(left_side, right_side):
-    """
-    Domino rose inspiré du modèle fourni :
-    écriture nucléaire à gauche, composition p/n/e à droite.
-    """
     def render(side):
         if side.startswith("nuclide:"):
             return _nuclide_html(side[8:])
         if side.startswith("comp:"):
             return _composition_html(side[5:])
-        return side
-
-    st.markdown(
-        textwrap.dedent(f"""
-        <style>
-        .ion-comp-domino {{
-            display:grid;
-            grid-template-columns: 42% 58%;
-            min-height:142px;
-            background:linear-gradient(135deg,#f9d1d1,#f5bcbc);
-            border:4px solid #111;
-            border-radius:24px;
-            overflow:hidden;
-            box-shadow:0 2px 4px rgba(0,0,0,.10);
-        }}
-        .ion-comp-domino > div {{
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:10px;
-        }}
-        .ion-comp-domino > div + div {{
-            border-left:3px solid #111;
-        }}
-        .nuclide-wrap {{
-            position:relative;
-            width:120px;
-            height:92px;
-            font-family:Arial,Helvetica,sans-serif;
-            color:#111;
-        }}
-        .nuclide-symbol {{
-            position:absolute;
-            left:44px;
-            top:19px;
-            font-size:3.15rem;
-            line-height:1;
-            font-weight:900;
-        }}
-        .nuclide-mass {{
-            position:absolute;
-            left:12px;
-            top:5px;
-            font-size:1.25rem;
-            font-weight:800;
-        }}
-        .nuclide-atomic {{
-            position:absolute;
-            left:12px;
-            bottom:4px;
-            font-size:1.25rem;
-            font-weight:800;
-        }}
-        .nuclide-charge {{
-            position:absolute;
-            left:88px;
-            top:2px;
-            font-size:1.35rem;
-            font-weight:900;
-        }}
-        .composition-wrap {{
-            font-family:Arial,Helvetica,sans-serif;
-            color:#111;
-            text-align:left;
-            width:100%;
-            padding-left:8px;
-        }}
-        .composition-title {{
-            font-size:1.05rem;
-            font-weight:700;
-            margin-bottom:4px;
-        }}
-        .composition-wrap ul {{
-            margin:0;
-            padding-left:1.25rem;
-            font-size:1.03rem;
-            line-height:1.35;
-        }}
-        </style>
-        <div class="ion-comp-domino">
-            <div>{render(left_side)}</div>
-            <div>{render(right_side)}</div>
-        </div>
-        """).strip(),
-        unsafe_allow_html=True,
+        return str(side)
+    html = (
+        '<style>.ion-comp-domino{display:grid;grid-template-columns:42% 58%;min-height:142px;background:linear-gradient(135deg,#f9d1d1,#f5bcbc);border:4px solid #111;border-radius:24px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.10)}.ion-comp-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-comp-domino>div+div{border-left:3px solid #111}.nuclide-wrap{position:relative;width:120px;height:92px;font-family:Arial,Helvetica,sans-serif;color:#111}.nuclide-symbol{position:absolute;left:44px;top:19px;font-size:3.15rem;line-height:1;font-weight:900}.nuclide-mass{position:absolute;left:12px;top:5px;font-size:1.25rem;font-weight:800}.nuclide-atomic{position:absolute;left:12px;bottom:4px;font-size:1.25rem;font-weight:800}.nuclide-charge{position:absolute;left:88px;top:2px;font-size:1.35rem;font-weight:900}.composition-wrap{font-family:Arial,Helvetica,sans-serif;color:#111;text-align:left;width:100%;padding-left:8px}.composition-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}.composition-wrap ul{margin:0;padding-left:1.25rem;font-size:1.03rem;line-height:1.35}</style>'
+        '<div class="ion-comp-domino">'
+        '<div>' + render(left_side) + '</div>'
+        '<div>' + render(right_side) + '</div>'
+        '</div>'
     )
-
-
+    st.markdown(html, unsafe_allow_html=True)
 
 def _species_html(spec):
-    """
-    spec : symbole:charge:Z
-    Ex : Be:+2:4
-    """
+    """spec : symbole:charge:Z"""
     symbol, charge, atomic = spec.split(":")
     charge_num = int(charge)
-
     if charge_num == 0:
         charge_html = ""
     else:
         sign = "+" if charge_num > 0 else "−"
         n = abs(charge_num)
         charge_html = f"{'' if n == 1 else n}{sign}"
-
     symbol_html = _chem_formula_html(symbol)
-
-    return f"""
-    <div class="blue-species">
-        <span class="blue-z">{atomic}</span>
-        <span class="blue-symbol">{symbol_html}</span>
-        <span class="blue-charge">{charge_html}</span>
-    </div>
-    """
-
+    return (
+        f'<div class="blue-species">'
+        f'<span class="blue-z">{atomic}</span>'
+        f'<span class="blue-symbol">{symbol_html}</span>'
+        f'<span class="blue-charge">{charge_html}</span>'
+        f'</div>'
+    )
 
 def _pe_html(spec):
     p, e = spec.split(":")
-    return f"""
-    <div class="blue-comp">
-        <div class="blue-comp-title">Composé de :</div>
-        <ul>
-            <li>{p} proton{"s" if p != "1" else ""}</li>
-            <li>{e} électron{"s" if e != "1" else ""}</li>
-        </ul>
-    </div>
-    """
-
+    ps = "s" if p != "1" else ""
+    es = "s" if e != "1" else ""
+    return (
+        f'<div class="blue-comp">'
+        f'<div class="blue-comp-title">Composé de :</div>'
+        f'<ul>'
+        f'<li>{p} proton{ps}</li>'
+        f'<li>{e} électron{es}</li>'
+        f'</ul>'
+        f'</div>'
+    )
 
 def ion_blue_domino_html(left_side, right_side):
-    """Domino bleu, inspiré des fiches fournies."""
     def render(side):
         if side.startswith("species:"):
             return _species_html(side[8:])
         if side.startswith("pe:"):
             return _pe_html(side[3:])
-        return side
-
-    st.markdown(
-        textwrap.dedent(f"""
-        <style>
-        .ion-blue-domino {{
-            display:grid;
-            grid-template-columns: 42% 58%;
-            min-height:138px;
-            background:linear-gradient(135deg,#cfe8ff,#9fcef7);
-            border:4px solid #0d2740;
-            border-radius:24px;
-            overflow:hidden;
-            box-shadow:0 2px 5px rgba(0,0,0,.10);
-        }}
-        .ion-blue-domino > div {{
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:10px;
-        }}
-        .ion-blue-domino > div + div {{
-            border-left:3px solid #0d2740;
-        }}
-        .blue-species {{
-            position:relative;
-            width:120px;
-            height:88px;
-            font-family:Arial,Helvetica,sans-serif;
-            color:#0a1620;
-        }}
-        .blue-z {{
-            position:absolute;
-            left:12px;
-            bottom:5px;
-            font-size:1.28rem;
-            font-weight:800;
-        }}
-        .blue-symbol {{
-            position:absolute;
-            left:43px;
-            top:18px;
-            font-size:3rem;
-            line-height:1;
-            font-weight:900;
-        }}
-        .blue-symbol sub {{
-            font-size:.52em;
-            vertical-align:-0.22em;
-        }}
-        .blue-charge {{
-            position:absolute;
-            left:91px;
-            top:3px;
-            font-size:1.35rem;
-            font-weight:900;
-        }}
-        .blue-comp {{
-            font-family:Arial,Helvetica,sans-serif;
-            color:#0a1620;
-            text-align:left;
-            width:100%;
-            padding-left:8px;
-        }}
-        .blue-comp-title {{
-            font-size:1.05rem;
-            font-weight:700;
-            margin-bottom:4px;
-        }}
-        .blue-comp ul {{
-            margin:0;
-            padding-left:1.3rem;
-            font-size:1.04rem;
-            line-height:1.42;
-        }}
-        </style>
-        <div class="ion-blue-domino">
-            <div>{render(left_side)}</div>
-            <div>{render(right_side)}</div>
-        </div>
-        """).strip(),
-        unsafe_allow_html=True,
+        return str(side)
+    html = (
+        '<style>.ion-blue-domino{display:grid;grid-template-columns:42% 58%;min-height:138px;background:linear-gradient(135deg,#cfe8ff,#9fcef7);border:4px solid #0d2740;border-radius:24px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.10)}.ion-blue-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-blue-domino>div+div{border-left:3px solid #0d2740}.blue-species{position:relative;width:120px;height:88px;font-family:Arial,Helvetica,sans-serif;color:#0a1620}.blue-z{position:absolute;left:12px;bottom:5px;font-size:1.28rem;font-weight:800}.blue-symbol{position:absolute;left:43px;top:18px;font-size:3rem;line-height:1;font-weight:900}.blue-symbol sub{font-size:.52em;vertical-align:-.22em}.blue-charge{position:absolute;left:91px;top:3px;font-size:1.35rem;font-weight:900}.blue-comp{font-family:Arial,Helvetica,sans-serif;color:#0a1620;text-align:left;width:100%;padding-left:8px}.blue-comp-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}.blue-comp ul{margin:0;padding-left:1.3rem;font-size:1.04rem;line-height:1.42}</style>'
+        '<div class="ion-blue-domino">'
+        '<div>' + render(left_side) + '</div>'
+        '<div>' + render(right_side) + '</div>'
+        '</div>'
     )
-
+    st.markdown(html, unsafe_allow_html=True)
 
 def molecule_block(image_name):
     st.image(
