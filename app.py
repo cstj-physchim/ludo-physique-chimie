@@ -1688,7 +1688,16 @@ def collaborative_domino_fragment(student, challenge, team_code):
             f"### 🤔 Proposition de {proposer['first_name']} "
             f"{proposer['last_initial']}."
         )
-        show_domino(challenge["level"], proposed_id, clickable=False)
+
+        proposal_left, proposal_center, proposal_right = st.columns(3)
+
+        with proposal_center:
+            show_domino(
+                challenge["level"],
+                proposed_id,
+                clickable=False,
+            )
+
         st.warning(
             "Discutez ensemble avant de valider. "
             "La réponse n'a pas encore été vérifiée."
