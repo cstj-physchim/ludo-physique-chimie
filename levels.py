@@ -146,6 +146,43 @@ LEVELS = {
         },
     },
 
+    "Verrerie — Essentiel": {
+        "emoji": "🧪",
+        "theme": "Verrerie",
+        "variant": "verrerie",
+        "order": ["A1","A2","A3","A4","A5","A6","A7","A8"],
+        "dominos": {
+            "A1": ("glass:becher", "text:Éprouvette graduée"),
+            "A2": ("glass:eprouvette_graduee", "text:Erlenmeyer"),
+            "A3": ("glass:erlenmeyer", "text:Fiole jaugée"),
+            "A4": ("glass:fiole_jaugee", "text:Pipette graduée"),
+            "A5": ("glass:pipette_graduee", "text:Balance"),
+            "A6": ("glass:balance", "text:Tubes à essai"),
+            "A7": ("glass:tubes_essai", "text:Coupelle"),
+            "A8": ("glass:coupelle", "text:Bécher"),
+        },
+    },
+    "Verrerie — Complet": {
+        "emoji": "🔬",
+        "theme": "Verrerie",
+        "variant": "verrerie",
+        "order": ["A1","A2","A3","A4","A5","A6","A7","A8","A9","A10","A11","A12"],
+        "dominos": {
+            "A1": ("glass:becher", "text:Éprouvette graduée"),
+            "A2": ("glass:eprouvette_graduee", "text:Erlenmeyer"),
+            "A3": ("glass:erlenmeyer", "text:Fiole jaugée"),
+            "A4": ("glass:fiole_jaugee", "text:Pipette graduée"),
+            "A5": ("glass:pipette_graduee", "text:Balance"),
+            "A6": ("glass:balance", "text:Tubes à essai"),
+            "A7": ("glass:tubes_essai", "text:Coupelle"),
+            "A8": ("glass:coupelle", "text:Ballon rond"),
+            "A9": ("glass:ballon_rond", "text:Cristallisoir"),
+            "A10": ("glass:cristallisoir", "text:Verre à pied"),
+            "A11": ("glass:verre_a_pied", "text:Bouchon"),
+            "A12": ("glass:bouchon", "text:Bécher"),
+        },
+    },
+
     "Violet": {
         "emoji": "🟣",
         "theme": "Électricité",
@@ -216,6 +253,7 @@ LEVELS = {
 
 MOLECULE_LEVEL_NAMES = ["Facile", "Moyen", "Difficile", "Très difficile", "Facile + textes", "Moyen + textes", "Difficile + textes", "Très difficile + textes"]
 ELECTRICITY_LEVEL_NAMES = ["Violet", "Jaune", "Vert", "Bleu", "Orange", "Rouge"]
+GLASSWARE_LEVEL_NAMES = ["Verrerie — Essentiel", "Verrerie — Complet"]
 
 # Compatibilité avec le code plus ancien
 LEVEL_NAMES = MOLECULE_LEVEL_NAMES

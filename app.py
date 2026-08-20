@@ -17,7 +17,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from upstash_redis import Redis
 
-from levels import LEVELS, LEVEL_NAMES, MOLECULE_LEVEL_NAMES, ELECTRICITY_LEVEL_NAMES
+from levels import LEVELS, LEVEL_NAMES, MOLECULE_LEVEL_NAMES, ELECTRICITY_LEVEL_NAMES, GLASSWARE_LEVEL_NAMES
 
 
 # ============================================================
@@ -32,6 +32,7 @@ st.set_page_config(
 
 ASSETS = Path("assets/molecules")
 ASSETS_ELECTRICITY = Path("assets/electricity")
+ASSETS_GLASSWARE = Path("assets/glassware")
 
 redis = Redis(
     url=st.secrets["UPSTASH_REDIS_REST_URL"],
@@ -1482,6 +1483,8 @@ def domino_side_block(side):
     """Affiche une moitié de domino enrichi."""
     if isinstance(side, str) and side.startswith("img:"):
         molecule_block(side[4:])
+    elif isinstance(side, str) and side.startswith("glass:"):
+        glassware_block(side[6:])
     elif isinstance(side, str) and side.startswith("formula:"):
         formula_block(side[8:])
     elif isinstance(side, str) and side.startswith("text:"):
@@ -1496,6 +1499,14 @@ def molecule_block(image_name):
         width=240,
     )
 
+
+
+
+def glassware_block(image_name):
+    st.image(
+        str(ASSETS_GLASSWARE / f"{image_name}.svg"),
+        width=240,
+    )
 
 
 def electric_domino_image(image_path, reversed_domino=False):
@@ -1575,7 +1586,7 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
                 use_container_width=True,
             )
 
-        elif level_data.get("variant") == "textes":
+        elif level_data.get("variant") in ("textes", "verrerie"):
             left_side, right_side = level_data["dominos"][domino_id]
             left, right = st.columns([1, 1], vertical_alignment="center")
 
@@ -1703,6 +1714,11 @@ def domino_game(level, suffix="free", challenge=None, student=None):
         st.info(
             "Observe le schéma situé à l'extrémité du dernier domino posé et choisis "
             "le domino dont le montage réel correspond."
+        )
+    elif LEVELS[level].get("theme") == "Verrerie":
+        st.info(
+            "Observe le nom du matériel à l'extrémité de la chaîne puis choisis "
+            "le domino qui porte son illustration."
         )
     elif LEVELS[level].get("variant") == "textes":
         st.info(
@@ -2214,6 +2230,8 @@ def collaborative_challenge_page(student, challenge):
 def levels_for_theme(theme):
     if theme == "Électricité":
         return ELECTRICITY_LEVEL_NAMES
+    if theme == "Verrerie":
+        return GLASSWARE_LEVEL_NAMES
     return MOLECULE_LEVEL_NAMES
 
 
@@ -2226,6 +2244,10 @@ def game_credit(theme):
     elif theme == "Molécules":
         st.caption(
             "Adaptation numérique du jeu de Stéphane Bois et Hervé Abbes — licence CC BY-NC-SA."
+        )
+    elif theme == "Verrerie":
+        st.caption(
+            "Illustrations de matériel de laboratoire créées pour la Ludothèque Physique-Chimie."
         )
 
 
@@ -2345,7 +2367,7 @@ def page_free_theme():
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
 
     with c1:
         nav_card(
@@ -2364,6 +2386,21 @@ def page_free_theme():
 
     with c2:
         nav_card(
+            "🧪",
+            "Verrerie",
+            "Reconnaître le matériel de laboratoire à partir de son illustration.",
+            "card-cyan",
+        )
+        if st.button(
+            "Choisir Verrerie",
+            key="theme_glassware",
+            use_container_width=True,
+        ):
+            st.session_state.selected_theme = "Verrerie"
+            go("free_level")
+
+    with c3:
+        nav_card(
             "➕➖",
             "Ions",
             "Reconnaître les ions et leurs formules.",
@@ -2377,7 +2414,7 @@ def page_free_theme():
             disabled=True,
         )
 
-    with c3:
+    with c4:
         nav_card(
             "⚡",
             "Électricité",
@@ -2431,6 +2468,29 @@ def page_free_level():
                         st.session_state.selected_level = level
                         init_game(level, "free")
                         go("free_game")
+
+    elif theme == "Verrerie":
+        cols = st.columns(2)
+        for i, level in enumerate(theme_levels):
+            with cols[i]:
+                descriptions = {
+                    "Verrerie — Essentiel": "8 matériels courants à reconnaître.",
+                    "Verrerie — Complet": "12 matériels de laboratoire à reconnaître.",
+                }
+                nav_card(
+                    LEVELS[level]["emoji"],
+                    level.replace("Verrerie — ", ""),
+                    descriptions.get(level, "Reconnaître le matériel de laboratoire."),
+                    "card-cyan",
+                )
+                if st.button(
+                    f"Jouer — {level.replace('Verrerie — ', '')}",
+                    key=f"level_{theme}_{level}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_level = level
+                    init_game(level, "free")
+                    go("free_game")
 
     else:
         classic = [x for x in theme_levels if "textes" not in x]
@@ -2583,7 +2643,7 @@ def page_challenge():
                     st.error("Ce défi n'est pas destiné à votre classe.")
                 elif attempts_used(student, found) >= int(found["max_attempts"]):
                     st.error("Toutes les tentatives autorisées ont déjà été utilisées.")
-                elif found.get("activity", "Dominos") != "Dominos" or found.get("theme", "Molécules") not in ("Molécules", "Électricité"):
+                elif found.get("activity", "Dominos") != "Dominos" or found.get("theme", "Molécules") not in ("Molécules", "Verrerie", "Électricité"):
                     st.error("Cette activité n'est pas encore disponible dans cette version.")
                 else:
                     st.session_state.active_challenge = found
@@ -3290,7 +3350,7 @@ def teacher_challenges():
         with c3:
             theme = st.selectbox(
                 "Thème",
-                ["Molécules", "Électricité"],
+                ["Molécules", "Verrerie", "Électricité"],
                 key="challenge_theme",
             )
 
