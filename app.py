@@ -2820,8 +2820,8 @@ def teacher_challenges():
         with size_col:
             team_size = st.selectbox(
                 "Élèves par équipe",
-                [3, 4],
-                index=1,
+                [2, 3, 4],
+                index=2,
                 key="challenge_team_size",
                 disabled=challenge_mode != "Collaboratif",
             )
