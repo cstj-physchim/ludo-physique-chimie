@@ -65,6 +65,18 @@ def get_teacher_accounts():
 def current_teacher_name():
     return st.session_state.get("teacher_name", "Professeur")
 
+
+def clear_teacher_session():
+    for key in [
+        "teacher_authenticated",
+        "teacher_id",
+        "teacher_name",
+        "teacher_section",
+        "teacher_password",
+        "teacher_account_select",
+    ]:
+        st.session_state.pop(key, None)
+
 APP_PUBLIC_URL = st.secrets.get(
     "APP_PUBLIC_URL",
     "https://ludo-physique-chimie.streamlit.app",
@@ -1591,7 +1603,7 @@ def teacher_header(title):
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns([1.3, 1.1, 4.6])
+    c1, c2, c3, c4 = st.columns([1.3, 1.1, 1.5, 3.1])
 
     with c1:
         if st.button("← Tableau de bord", use_container_width=True):
@@ -1603,22 +1615,47 @@ def teacher_header(title):
             go("home")
 
     with c3:
+        if st.button("🔄 Changer de professeur", use_container_width=True):
+            clear_teacher_session()
+            st.session_state.page = "teacher"
+            st.rerun()
+
+    with c4:
         if st.button("Déconnexion", use_container_width=False):
-            for key in ["teacher_authenticated", "teacher_id", "teacher_name", "teacher_section"]:
-                st.session_state.pop(key, None)
+            clear_teacher_session()
             go("home")
 
 
 def teacher_dashboard():
     hero()
 
-    top_home, top_spacer = st.columns([1.3, 5.7])
-    with top_home:
+    nav1, nav2, nav3, nav4 = st.columns([1.3, 1.7, 1.2, 2.8])
+
+    with nav1:
         if st.button(
             "🏠 Retour à l'accueil",
             use_container_width=True,
             key="teacher_home_button",
         ):
+            go("home")
+
+    with nav2:
+        if st.button(
+            "🔄 Changer de professeur",
+            use_container_width=True,
+            key="teacher_change_button",
+        ):
+            clear_teacher_session()
+            st.session_state.page = "teacher"
+            st.rerun()
+
+    with nav3:
+        if st.button(
+            "Déconnexion",
+            use_container_width=True,
+            key="teacher_logout_button",
+        ):
+            clear_teacher_session()
             go("home")
 
     st.markdown(
