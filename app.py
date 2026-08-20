@@ -1132,8 +1132,8 @@ def save_result(student, challenge, errors, elapsed):
     previous = [
         r
         for r in results
-        if r["student_id"] == student["id"]
-        and str(r["challenge_code"]) == str(challenge["code"])
+        if r.get("student_id") == student["id"]
+        and str(r.get("challenge_code", "")) == str(challenge["code"])
     ]
 
     attempt = len(previous) + 1
@@ -1169,8 +1169,8 @@ def attempts_used(student, challenge):
     results = redis_read_json(teacher_key("results", teacher_id), [])
     return len([
         r for r in results
-        if r["student_id"] == student["id"]
-        and str(r["challenge_code"]) == str(challenge["code"])
+        if r.get("student_id") == student["id"]
+        and str(r.get("challenge_code", "")) == str(challenge["code"])
     ])
 
 
