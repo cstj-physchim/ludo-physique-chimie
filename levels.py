@@ -184,6 +184,51 @@ LEVELS = {
         },
     },
 
+    "Ions — Essentiel": {
+        "emoji": "➕➖",
+        "theme": "Ions",
+        "variant": "ions",
+        "order": ["A1","A2","A3","A4","A5","A6","A7","A8","A9","A10"],
+        "dominos": {
+            "A1": ("ion:Na:+1", "ionname:Ion magnésium"),
+            "A2": ("ion:Mg:+2", "ionname:Ion potassium"),
+            "A3": ("ion:K:+1", "ionname:Ion fer II"),
+            "A4": ("ion:Fe:+2", "ionname:Ion fer III"),
+            "A5": ("ion:Fe:+3", "ionname:Ion cuivre II"),
+            "A6": ("ion:Cu:+2", "ionname:Ion chlorure"),
+            "A7": ("ion:Cl:-1", "ionname:Ion hydroxyde"),
+            "A8": ("ion:OH:-1", "ionname:Ion nitrate"),
+            "A9": ("ion:NO3:-1", "ionname:Ion sulfate"),
+            "A10": ("ion:SO4:-2", "ionname:Ion sodium"),
+        },
+    },
+    "Ions — Complet": {
+        "emoji": "⚛️",
+        "theme": "Ions",
+        "variant": "ions",
+        "order": ["A1","A2","A3","A4","A5","A6","A7","A8","A9","A10","A11","A12","A13","A14","A15","A16","A17","A18"],
+        "dominos": {
+            "A1": ("ion:Na:+1", "ionname:Ion magnésium"),
+            "A2": ("ion:Mg:+2", "ionname:Ion potassium"),
+            "A3": ("ion:K:+1", "ionname:Ion fer II"),
+            "A4": ("ion:Fe:+2", "ionname:Ion fer III"),
+            "A5": ("ion:Fe:+3", "ionname:Ion cuivre II"),
+            "A6": ("ion:Cu:+2", "ionname:Ion argent"),
+            "A7": ("ion:Ag:+1", "ionname:Ion zinc"),
+            "A8": ("ion:Zn:+2", "ionname:Ion hydrogène"),
+            "A9": ("ion:H:+1", "ionname:Ion ammonium"),
+            "A10": ("ion:NH4:+1", "ionname:Ion oxonium"),
+            "A11": ("ion:H3O:+1", "ionname:Ion chlorure"),
+            "A12": ("ion:Cl:-1", "ionname:Ion iodure"),
+            "A13": ("ion:I:-1", "ionname:Ion hydroxyde"),
+            "A14": ("ion:OH:-1", "ionname:Ion permanganate"),
+            "A15": ("ion:MnO4:-1", "ionname:Ion nitrate"),
+            "A16": ("ion:NO3:-1", "ionname:Ion sulfate"),
+            "A17": ("ion:SO4:-2", "ionname:Ion dichromate"),
+            "A18": ("ion:Cr2O7:-2", "ionname:Ion sodium"),
+        },
+    },
+
     "Violet": {
         "emoji": "🟣",
         "theme": "Électricité",
@@ -255,6 +300,7 @@ LEVELS = {
 MOLECULE_LEVEL_NAMES = ["Facile", "Moyen", "Difficile", "Très difficile", "Facile + textes", "Moyen + textes", "Difficile + textes", "Très difficile + textes"]
 ELECTRICITY_LEVEL_NAMES = ["Violet", "Jaune", "Vert", "Bleu", "Orange", "Rouge"]
 GLASSWARE_LEVEL_NAMES = ["Verrerie — Essentiel", "Verrerie — Complet"]
+ION_LEVEL_NAMES = ["Ions — Essentiel", "Ions — Complet"]
 
 # Compatibilité avec le code plus ancien
 LEVEL_NAMES = MOLECULE_LEVEL_NAMES

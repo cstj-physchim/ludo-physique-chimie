@@ -17,7 +17,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from upstash_redis import Redis
 
-from levels import LEVELS, LEVEL_NAMES, MOLECULE_LEVEL_NAMES, ELECTRICITY_LEVEL_NAMES, GLASSWARE_LEVEL_NAMES
+from levels import LEVELS, LEVEL_NAMES, MOLECULE_LEVEL_NAMES, ELECTRICITY_LEVEL_NAMES, GLASSWARE_LEVEL_NAMES, ION_LEVEL_NAMES
 
 
 # ============================================================
@@ -1485,12 +1485,165 @@ def domino_side_block(side):
         molecule_block(side[4:])
     elif isinstance(side, str) and side.startswith("glass:"):
         glassware_block(side[6:])
+    elif isinstance(side, str) and side.startswith("ion:"):
+        ion_formula_block(side[4:])
+    elif isinstance(side, str) and side.startswith("ionname:"):
+        ion_name_block(side[8:])
     elif isinstance(side, str) and side.startswith("formula:"):
         formula_block(side[8:])
     elif isinstance(side, str) and side.startswith("text:"):
         text_block(side[5:])
     else:
         formula_block(str(side))
+
+
+
+def _chem_formula_html(raw):
+    """Transforme une formule simple (NH4, Cr2O7...) en HTML avec indices."""
+    import re
+    parts = re.split(r'(\\d+)', str(raw))
+    out = []
+    for part in parts:
+        if part.isdigit():
+            out.append(f"<sub>{part}</sub>")
+        else:
+            out.append(part)
+    return "".join(out)
+
+
+def ion_formula_block(spec):
+    """
+    spec attendu : 'Na:+1', 'SO4:-2', etc.
+    Affiche une formule d'ion au centre, comme sur les cartes papier.
+    """
+    formula, charge = spec.rsplit(":", 1)
+    charge_num = int(charge)
+    if charge_num == 0:
+        charge_html = ""
+    else:
+        sign = "+" if charge_num > 0 else "−"
+        n = abs(charge_num)
+        charge_html = f"<sup>{'' if n == 1 else n}{sign}</sup>"
+
+    formula_html = _chem_formula_html(formula)
+
+    st.markdown(
+        f"""
+        <div style="
+            min-height:118px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-family:Arial,Helvetica,sans-serif;
+            font-size:2.35rem;
+            font-weight:800;
+            color:#111;
+            line-height:1;
+        ">
+            {formula_html}{charge_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def ion_name_block(name):
+    st.markdown(
+        f"""
+        <div style="
+            min-height:118px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            text-align:center;
+            font-family:Arial,Helvetica,sans-serif;
+            font-size:1.22rem;
+            font-weight:700;
+            color:#111;
+            line-height:1.22;
+            padding:8px 12px;
+        ">
+            {name}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def ion_domino_html(left_side, right_side):
+    """Construit un domino rose à coins arrondis, proche du modèle papier."""
+    def render_side(side):
+        if side.startswith("ion:"):
+            spec = side[4:]
+            formula, charge = spec.rsplit(":", 1)
+            charge_num = int(charge)
+            sign = "+" if charge_num > 0 else "−"
+            n = abs(charge_num)
+            charge_html = f"<sup>{'' if n == 1 else n}{sign}</sup>" if charge_num else ""
+            return (
+                '<div class="ion-formula">'
+                + _chem_formula_html(formula)
+                + charge_html
+                + '</div>'
+            )
+        if side.startswith("ionname:"):
+            return '<div class="ion-name">' + side[8:] + '</div>'
+        return '<div class="ion-name">' + side + '</div>'
+
+    st.markdown(
+        f"""
+        <style>
+        .ion-domino {{
+            display:grid;
+            grid-template-columns: 42% 58%;
+            min-height:132px;
+            background:#f7c3c3;
+            border:4px solid #111;
+            border-radius:22px;
+            overflow:hidden;
+            box-shadow:0 1px 2px rgba(0,0,0,.08);
+        }}
+        .ion-domino > div {{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:10px;
+        }}
+        .ion-domino > div + div {{
+            border-left:3px solid #111;
+        }}
+        .ion-formula {{
+            font-family:Arial,Helvetica,sans-serif;
+            font-size:2.2rem;
+            font-weight:900;
+            line-height:1;
+            color:#111;
+        }}
+        .ion-formula sub {{
+            font-size:.55em;
+            vertical-align:-0.25em;
+        }}
+        .ion-formula sup {{
+            font-size:.55em;
+            vertical-align:.72em;
+            margin-left:1px;
+        }}
+        .ion-name {{
+            font-family:Arial,Helvetica,sans-serif;
+            font-size:1.15rem;
+            font-weight:700;
+            text-align:center;
+            line-height:1.2;
+            color:#111;
+        }}
+        </style>
+        <div class="ion-domino">
+            <div>{render_side(left_side)}</div>
+            <div>{render_side(right_side)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def molecule_block(image_name):
@@ -1589,6 +1742,12 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
                 electric_img,
                 use_container_width=True,
             )
+
+        elif level_data.get("variant") == "ions":
+            left_side, right_side = level_data["dominos"][domino_id]
+            if reversed_domino:
+                left_side, right_side = right_side, left_side
+            ion_domino_html(left_side, right_side)
 
         elif level_data.get("variant") in ("textes", "verrerie"):
             left_side, right_side = level_data["dominos"][domino_id]
@@ -1723,6 +1882,11 @@ def domino_game(level, suffix="free", challenge=None, student=None):
         st.info(
             "Observe le nom du matériel à l'extrémité de la chaîne puis choisis "
             "le domino qui porte son illustration."
+        )
+    elif LEVELS[level].get("theme") == "Ions":
+        st.info(
+            "Observe le nom ou la formule de l'ion à l'extrémité de la chaîne, "
+            "puis choisis le domino qui présente l'information correspondante."
         )
     elif LEVELS[level].get("variant") == "textes":
         st.info(
@@ -2236,6 +2400,8 @@ def levels_for_theme(theme):
         return ELECTRICITY_LEVEL_NAMES
     if theme == "Verrerie":
         return GLASSWARE_LEVEL_NAMES
+    if theme == "Ions":
+        return ION_LEVEL_NAMES
     return MOLECULE_LEVEL_NAMES
 
 
@@ -2252,6 +2418,10 @@ def game_credit(theme):
     elif theme == "Verrerie":
         st.caption(
             "Illustrations de matériel de laboratoire créées pour la Ludothèque Physique-Chimie."
+        )
+    elif theme == "Ions":
+        st.caption(
+            "Dominos construits à partir de la liste d'ions utilisée en cours."
         )
 
 
@@ -2407,16 +2577,16 @@ def page_free_theme():
         nav_card(
             "➕➖",
             "Ions",
-            "Reconnaître les ions et leurs formules.",
+            "Associer la formule d'un ion à son nom.",
             "card-green",
-            coming_soon=True,
         )
-        st.button(
-            "Bientôt disponible",
+        if st.button(
+            "Choisir Ions",
             key="theme_ions",
             use_container_width=True,
-            disabled=True,
-        )
+        ):
+            st.session_state.selected_theme = "Ions"
+            go("free_level")
 
     with c4:
         nav_card(
@@ -2489,6 +2659,29 @@ def page_free_level():
                 )
                 if st.button(
                     f"Jouer — {level.replace('Verrerie — ', '')}",
+                    key=f"level_{theme}_{level}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_level = level
+                    init_game(level, "free")
+                    go("free_game")
+
+    elif theme == "Ions":
+        cols = st.columns(2)
+        for i, level in enumerate(theme_levels):
+            with cols[i]:
+                descriptions = {
+                    "Ions — Essentiel": "10 ions usuels : formule ↔ nom.",
+                    "Ions — Complet": "Les 18 ions de la liste : formule ↔ nom.",
+                }
+                nav_card(
+                    LEVELS[level]["emoji"],
+                    level.replace("Ions — ", ""),
+                    descriptions.get(level, "Associer formules et noms des ions."),
+                    "card-green",
+                )
+                if st.button(
+                    f"Jouer — {level.replace('Ions — ', '')}",
                     key=f"level_{theme}_{level}",
                     use_container_width=True,
                 ):
@@ -2647,7 +2840,7 @@ def page_challenge():
                     st.error("Ce défi n'est pas destiné à votre classe.")
                 elif attempts_used(student, found) >= int(found["max_attempts"]):
                     st.error("Toutes les tentatives autorisées ont déjà été utilisées.")
-                elif found.get("activity", "Dominos") != "Dominos" or found.get("theme", "Molécules") not in ("Molécules", "Verrerie", "Électricité"):
+                elif found.get("activity", "Dominos") != "Dominos" or found.get("theme", "Molécules") not in ("Molécules", "Verrerie", "Ions", "Électricité"):
                     st.error("Cette activité n'est pas encore disponible dans cette version.")
                 else:
                     st.session_state.active_challenge = found
@@ -3354,7 +3547,7 @@ def teacher_challenges():
         with c3:
             theme = st.selectbox(
                 "Thème",
-                ["Molécules", "Verrerie", "Électricité"],
+                ["Molécules", "Verrerie", "Ions", "Électricité"],
                 key="challenge_theme",
             )
 
