@@ -2960,29 +2960,33 @@ def page_free_level():
                     go("free_game")
 
     elif theme == "Ions":
-        cols = st.columns(2)
-        for i, level in enumerate(theme_levels):
-            with cols[i]:
-                descriptions = {
-                    "Ions — Essentiel": "10 ions usuels : formule ↔ nom.",
-                    "Ions — Complet": "Les 18 ions de la liste : formule ↔ nom.",
-                    "Ions — Composition": "Écriture nucléaire ↔ protons, neutrons et électrons.",
-                    "Ions — Charges et électrons": "18 dominos bleus : atome/ion ↔ protons et électrons.",
-                }
-                nav_card(
-                    LEVELS[level]["emoji"],
-                    level.replace("Ions — ", ""),
-                    descriptions.get(level, "Associer formules et noms des ions."),
-                    "card-green",
-                )
-                if st.button(
-                    f"Jouer — {level.replace('Ions — ', '')}",
-                    key=f"level_{theme}_{level}",
-                    use_container_width=True,
-                ):
-                    st.session_state.selected_level = level
-                    init_game(level, "free")
-                    go("free_game")
+        descriptions = {
+            "Ions — Essentiel": "10 ions usuels : formule ↔ nom.",
+            "Ions — Complet": "Les 18 ions de la liste : formule ↔ nom.",
+            "Ions — Composition": "Écriture nucléaire ↔ protons, neutrons et électrons.",
+            "Ions — Charges et électrons": "18 dominos bleus : atome/ion ↔ protons et électrons.",
+        }
+
+        for row_start in range(0, len(theme_levels), 2):
+            row_levels = theme_levels[row_start:row_start + 2]
+            cols = st.columns(2)
+
+            for i, level in enumerate(row_levels):
+                with cols[i]:
+                    nav_card(
+                        LEVELS[level]["emoji"],
+                        level.replace("Ions — ", ""),
+                        descriptions.get(level, "Associer les représentations des ions."),
+                        "card-green",
+                    )
+                    if st.button(
+                        f"Jouer — {level.replace('Ions — ', '')}",
+                        key=f"level_{theme}_{level}",
+                        use_container_width=True,
+                    ):
+                        st.session_state.selected_level = level
+                        init_game(level, "free")
+                        go("free_game")
 
     else:
         classic = [x for x in theme_levels if "textes" not in x]
