@@ -365,6 +365,74 @@ def find_student_team(teams, student_id):
     return None, None
 
 
+def detach_student_from_active_teams(student, challenge):
+    """
+    Lorsqu'un élève entre à nouveau volontairement dans un défi collaboratif,
+    on le retire des anciennes équipes encore actives de ce même défi.
+
+    Les équipes terminées sont conservées intactes comme historique.
+    """
+    teacher_id = challenge["_teacher_id"]
+    challenge_code = str(challenge["code"])
+    teams = get_collab_teams(teacher_id, challenge_code)
+    changed = False
+
+    for team_code, team in list(teams.items()):
+        if team.get("status") in ("finished", "abandoned"):
+            continue
+
+        members = team.get("members", [])
+        leaving_index = next(
+            (
+                index
+                for index, member in enumerate(members)
+                if member["id"] == student["id"]
+            ),
+            None,
+        )
+
+        if leaving_index is None:
+            continue
+
+        game = team.get("game")
+        old_active_index = None
+
+        if game and members:
+            old_active_index = int(game.get("turn_index", 0)) % len(members)
+
+            proposal = game.get("proposal")
+            if proposal and proposal.get("student_id") == student["id"]:
+                game["proposal"] = None
+
+        members.pop(leaving_index)
+        team["members"] = members
+
+        # Ici ce n'est pas un "abandon en cours de jeu" :
+        # l'élève démarre volontairement une nouvelle participation.
+        # On ne l'ajoute donc pas à la liste "Élèves ayant quitté".
+        if not members:
+            team["status"] = "abandoned"
+            if game:
+                game["proposal"] = None
+        elif game:
+            if old_active_index == leaving_index:
+                new_index = leaving_index % len(members)
+            elif leaving_index < old_active_index:
+                new_index = old_active_index - 1
+            else:
+                new_index = old_active_index
+
+            game["turn_index"] = new_index % len(members)
+            game["proposal"] = None
+            team["status"] = "playing"
+
+        teams[team_code] = team
+        changed = True
+
+    if changed:
+        save_collab_teams(teacher_id, challenge_code, teams)
+
+
 def init_collab_game(team, challenge):
     order = LEVELS[challenge["level"]]["order"]
     start = random.choice(order)
@@ -387,11 +455,10 @@ def init_collab_game(team, challenge):
 def create_collab_team(student, challenge):
     teacher_id = challenge["_teacher_id"]
     challenge_code = str(challenge["code"])
-    teams = get_collab_teams(teacher_id, challenge_code)
 
-    existing_code, existing_team = find_student_team(teams, student["id"])
-    if existing_team:
-        return existing_code, existing_team, None
+    # Une nouvelle entrée dans le défi = nouvelle constitution volontaire d'équipe.
+    detach_student_from_active_teams(student, challenge)
+    teams = get_collab_teams(teacher_id, challenge_code)
 
     code = generate_team_code(teams)
     member = {
@@ -425,11 +492,10 @@ def join_collab_team(student, challenge, team_code):
     teacher_id = challenge["_teacher_id"]
     challenge_code = str(challenge["code"])
     team_code = team_code.strip()
-    teams = get_collab_teams(teacher_id, challenge_code)
 
-    existing_code, existing_team = find_student_team(teams, student["id"])
-    if existing_team:
-        return existing_code, existing_team, None
+    # L'élève choisit explicitement une équipe pour cette nouvelle participation.
+    detach_student_from_active_teams(student, challenge)
+    teams = get_collab_teams(teacher_id, challenge_code)
 
     team = teams.get(team_code)
     if not team:
@@ -1872,17 +1938,14 @@ def collaborative_challenge_page(student, challenge):
     team_code = st.session_state.get("collab_team_code")
 
     if not team_code:
-        teams = get_collab_teams(challenge["_teacher_id"], challenge["code"])
-        existing_code, existing_team = find_student_team(teams, student["id"])
-
-        if existing_team:
-            st.session_state.collab_team_code = existing_code
-            st.rerun()
-
         st.markdown("## 👥 Mode collaboratif")
         st.write(
             f"Équipes de **{challenge.get('team_size', 4)} élèves**. "
             "Chaque élève utilise son propre Chromebook."
+        )
+        st.info(
+            "Pour cette partie, créez une nouvelle équipe ou saisissez le code "
+            "de l'équipe que vous souhaitez rejoindre."
         )
 
         left, right = st.columns(2)
