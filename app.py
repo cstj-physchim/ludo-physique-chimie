@@ -1,3 +1,4 @@
+import re
 import json
 import random
 import textwrap
@@ -1571,7 +1572,7 @@ def ion_name_block(name):
     )
 
 
-def ion_domino_html(left_side, right_side):
+def ion_domino_html(left_side, right_side, is_available=False):
     def render(side):
         if side.startswith("ion:"):
             spec = side[4:]
@@ -1584,9 +1585,16 @@ def ion_domino_html(left_side, right_side):
         if side.startswith("ionname:"):
             return '<div class="ion-name">' + side[8:] + '</div>'
         return '<div class="ion-name">' + str(side) + '</div>' 
+    if is_available:
+        bg = "linear-gradient(135deg,#d9ecff,#b8dcfb)"
+        border = "#17476d"
+    else:
+        bg = "linear-gradient(135deg,#fff3b0,#ffd966)"
+        border = "#8a6500"
+
     html = (
-        '<style>.ion-domino{display:grid;grid-template-columns:42% 58%;min-height:132px;background:#f7c3c3;border:4px solid #111;border-radius:22px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.08)}.ion-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-domino>div+div{border-left:3px solid #111}.ion-formula{font-family:Arial,Helvetica,sans-serif;font-size:2.2rem;font-weight:900;line-height:1;color:#111}.ion-formula sub{font-size:.55em;vertical-align:-.25em}.ion-formula sup{font-size:.55em;vertical-align:.72em;margin-left:1px}.ion-name{font-family:Arial,Helvetica,sans-serif;font-size:1.15rem;font-weight:700;text-align:center;line-height:1.2;color:#111}</style>'
-        '<div class="ion-domino">'
+        '<style>.ion-domino{display:grid;grid-template-columns:42% 58%;min-height:132px;background:var(--ion-bg);border:4px solid var(--ion-border);border-radius:22px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.08)}.ion-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-domino>div+div{border-left:3px solid var(--ion-border)}.ion-formula{font-family:Arial,Helvetica,sans-serif;font-size:2.2rem;font-weight:900;line-height:1;color:#111}.ion-formula sub{font-size:.55em;vertical-align:-.25em}.ion-formula sup{font-size:.55em;vertical-align:.72em;margin-left:1px}.ion-name{font-family:Arial,Helvetica,sans-serif;font-size:1.15rem;font-weight:700;text-align:center;line-height:1.2;color:#111}</style>'
+        f'<div class="ion-domino" style="--ion-bg:{bg};--ion-border:{border}">'
         '<div>' + render(left_side) + '</div>'
         '<div>' + render(right_side) + '</div>'
         '</div>'
@@ -1634,16 +1642,23 @@ def _composition_html(spec):
         f'</div>'
     )
 
-def ion_composition_domino_html(left_side, right_side):
+def ion_composition_domino_html(left_side, right_side, is_available=False):
     def render(side):
         if side.startswith("nuclide:"):
             return _nuclide_html(side[8:])
         if side.startswith("comp:"):
             return _composition_html(side[5:])
         return str(side)
+    if is_available:
+        bg = "linear-gradient(135deg,#d9ecff,#b8dcfb)"
+        border = "#17476d"
+    else:
+        bg = "linear-gradient(135deg,#fff3b0,#ffd966)"
+        border = "#8a6500"
+
     html = (
-        '<style>.ion-comp-domino{display:grid;grid-template-columns:42% 58%;min-height:142px;background:linear-gradient(135deg,#d9ecff,#acd4f7);border:4px solid #163a59;border-radius:24px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.10)}.ion-comp-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-comp-domino>div+div{border-left:3px solid #163a59}.nuclide-wrap{display:grid;grid-template-columns:34px 68px;align-items:center;width:104px;height:92px;font-family:Arial,Helvetica,sans-serif;color:#0a1620}.nuclide-left{height:72px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-right:4px}.nuclide-mass,.nuclide-atomic{font-size:1.22rem;font-weight:800;line-height:1}.nuclide-symbol-box{position:relative;width:68px;height:72px;display:flex;align-items:center;justify-content:center}.nuclide-symbol{font-size:3.05rem;line-height:1;font-weight:900}.nuclide-charge{position:absolute;right:0px;top:-2px;font-size:1.15rem;font-weight:900;line-height:1}.composition-wrap{font-family:Arial,Helvetica,sans-serif;color:#0a1620;text-align:left;width:100%;padding-left:8px}.composition-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}.composition-wrap ul{margin:0;padding-left:1.25rem;font-size:1.03rem;line-height:1.35}</style>'
-        '<div class="ion-comp-domino">'
+        '<style>.ion-comp-domino{display:grid;grid-template-columns:42% 58%;min-height:142px;background:var(--ion-bg);border:4px solid var(--ion-border);border-radius:24px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.10)}.ion-comp-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-comp-domino>div+div{border-left:3px solid var(--ion-border)}.nuclide-wrap{display:grid;grid-template-columns:34px 68px;align-items:center;width:104px;height:92px;font-family:Arial,Helvetica,sans-serif;color:#0a1620}.nuclide-left{height:72px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-right:4px}.nuclide-mass,.nuclide-atomic{font-size:1.22rem;font-weight:800;line-height:1}.nuclide-symbol-box{position:relative;width:68px;height:72px;display:flex;align-items:center;justify-content:center}.nuclide-symbol{font-size:3.05rem;line-height:1;font-weight:900}.nuclide-charge{position:absolute;right:0px;top:-2px;font-size:1.15rem;font-weight:900;line-height:1}.composition-wrap{font-family:Arial,Helvetica,sans-serif;color:#0a1620;text-align:left;width:100%;padding-left:8px}.composition-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}.composition-wrap ul{margin:0;padding-left:1.25rem;font-size:1.03rem;line-height:1.35}</style>'
+        f'<div class="ion-comp-domino" style="--ion-bg:{bg};--ion-border:{border}">'
         '<div>' + render(left_side) + '</div>'
         '<div>' + render(right_side) + '</div>'
         '</div>'
@@ -1824,7 +1839,23 @@ def electric_domino_image(image_path, reversed_domino=False):
 def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=False):
     level_data = LEVELS[level]
 
-    with st.container(border=True):
+    border_state = "available" if clickable else "placed"
+    safe_level = re.sub(r"[^A-Za-z0-9_-]+", "_", str(level))
+    safe_domino = re.sub(r"[^A-Za-z0-9_-]+", "_", str(domino_id))
+    container_key = f"domino_{border_state}_{safe_level}_{safe_domino}_{key or 'chain'}"
+
+    # Les dominos HTML colorés gèrent eux-mêmes leur état.
+    colored_variant = level_data.get("variant") in ("ions", "ion_comp", "ion_blue")
+
+    if not colored_variant:
+        border_color = "#111111" if clickable else "#d62828"
+        st.markdown(
+            f"<style>.st-key-{container_key}{{border:3px solid {border_color} !important;"
+            f"border-radius:18px !important;padding:8px !important;}}</style>",
+            unsafe_allow_html=True,
+        )
+
+    with st.container(border=not colored_variant, key=container_key):
         if level_data.get("theme") == "Électricité":
             image_file = level_data["dominos"][domino_id]
             electric_img = electric_domino_image(
@@ -1840,13 +1871,13 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
             left_side, right_side = level_data["dominos"][domino_id]
             if reversed_domino:
                 left_side, right_side = right_side, left_side
-            ion_domino_html(left_side, right_side)
+            ion_domino_html(left_side, right_side, is_available=clickable)
 
         elif level_data.get("variant") == "ion_comp":
             left_side, right_side = level_data["dominos"][domino_id]
             if reversed_domino:
                 left_side, right_side = right_side, left_side
-            ion_composition_domino_html(left_side, right_side)
+            ion_composition_domino_html(left_side, right_side, is_available=clickable)
 
         elif level_data.get("variant") == "ion_blue":
             left_side, right_side = level_data["dominos"][domino_id]
