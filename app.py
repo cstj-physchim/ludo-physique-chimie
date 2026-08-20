@@ -340,6 +340,142 @@ def redis_write_json(key, value):
 
 
 # ============================================================
+# COLLABORATION — OUTILS UPSTASH
+# ============================================================
+
+def collab_teams_key(teacher_id, challenge_code):
+    return f"ludo:teacher:{teacher_id}:challenge:{challenge_code}:teams"
+
+
+def get_collab_teams(teacher_id, challenge_code):
+    return redis_read_json(collab_teams_key(teacher_id, challenge_code), {})
+
+
+def save_collab_teams(teacher_id, challenge_code, teams):
+    redis_write_json(collab_teams_key(teacher_id, challenge_code), teams)
+
+
+def generate_team_code(teams):
+    for _ in range(200):
+        code = str(random.randint(100, 999))
+        if code not in teams:
+            return code
+    raise RuntimeError("Impossible de générer un code d'équipe unique.")
+
+
+def find_student_team(teams, student_id):
+    for team_code, team in teams.items():
+        if any(m["id"] == student_id for m in team.get("members", [])):
+            return team_code, team
+    return None, None
+
+
+def init_collab_game(team, challenge):
+    order = LEVELS[challenge["level"]]["order"]
+    start = random.choice(order)
+    remaining = [x for x in order if x != start]
+    random.shuffle(remaining)
+
+    team["game"] = {
+        "chain": [start],
+        "remaining": remaining,
+        "errors": 0,
+        "started": time.time(),
+        "turn_index": 0,
+        "proposal": None,
+        "finished_at": None,
+    }
+    team["status"] = "playing"
+    return team
+
+
+def create_collab_team(student, challenge):
+    teacher_id = challenge["_teacher_id"]
+    challenge_code = str(challenge["code"])
+    teams = get_collab_teams(teacher_id, challenge_code)
+
+    existing_code, existing_team = find_student_team(teams, student["id"])
+    if existing_team:
+        return existing_code, existing_team, None
+
+    code = generate_team_code(teams)
+    member = {
+        "id": student["id"],
+        "first_name": student["first_name"],
+        "last_initial": student["last_initial"],
+        "class_name": student["class_name"],
+        "joined_at": time.time(),
+        "turns": 0,
+    }
+
+    team = {
+        "code": code,
+        "challenge_code": challenge_code,
+        "teacher_id": teacher_id,
+        "class_name": challenge["class_name"],
+        "members": [member],
+        "target_size": int(challenge.get("team_size", 4)),
+        "status": "lobby",
+        "created_at": time.time(),
+        "game": None,
+        "result_saved": False,
+    }
+
+    teams[code] = team
+    save_collab_teams(teacher_id, challenge_code, teams)
+    return code, team, None
+
+
+def join_collab_team(student, challenge, team_code):
+    teacher_id = challenge["_teacher_id"]
+    challenge_code = str(challenge["code"])
+    team_code = team_code.strip()
+    teams = get_collab_teams(teacher_id, challenge_code)
+
+    existing_code, existing_team = find_student_team(teams, student["id"])
+    if existing_team:
+        return existing_code, existing_team, None
+
+    team = teams.get(team_code)
+    if not team:
+        return None, None, "Code d'équipe inconnu."
+
+    if team.get("status") != "lobby":
+        return None, None, "Cette équipe a déjà commencé sa partie."
+
+    if len(team.get("members", [])) >= int(team.get("target_size", 4)):
+        return None, None, "Cette équipe est déjà complète."
+
+    team["members"].append(
+        {
+            "id": student["id"],
+            "first_name": student["first_name"],
+            "last_initial": student["last_initial"],
+            "class_name": student["class_name"],
+            "joined_at": time.time(),
+            "turns": 0,
+        }
+    )
+
+    if len(team["members"]) >= int(team["target_size"]):
+        team = init_collab_game(team, challenge)
+
+    teams[team_code] = team
+    save_collab_teams(teacher_id, challenge_code, teams)
+    return team_code, team, None
+
+
+def get_collab_team(teacher_id, challenge_code, team_code):
+    return get_collab_teams(teacher_id, str(challenge_code)).get(str(team_code))
+
+
+def save_collab_team(team):
+    teams = get_collab_teams(team["teacher_id"], team["challenge_code"])
+    teams[str(team["code"])] = team
+    save_collab_teams(team["teacher_id"], team["challenge_code"], teams)
+
+
+# ============================================================
 # CLASSES
 # ============================================================
 
@@ -620,10 +756,13 @@ def delete_class(class_name):
 
 
 def reset_database():
-    """
-    Réinitialisation complète des données pédagogiques.
-    Les clés Upstash sont conservées mais remises à des listes vides.
-    """
+    """Réinitialisation complète des données du professeur connecté."""
+    teacher_id = st.session_state.get("teacher_id")
+    challenges = redis_read_json(teacher_key("challenges"), [])
+
+    for challenge in challenges:
+        redis.delete(collab_teams_key(teacher_id, challenge["code"]))
+
     redis_write_json(teacher_key("classes"), [])
     redis_write_json(teacher_key("students"), [])
     redis_write_json(teacher_key("challenges"), [])
@@ -817,9 +956,10 @@ def create_challenge(
     max_attempts,
     duration_minutes=55,
     no_time_limit=False,
+    mode="Individuel",
+    team_size=4,
 ):
     challenges = get_challenges()
-
     created_ts = time.time()
 
     if no_time_limit:
@@ -842,11 +982,12 @@ def create_challenge(
         "created_ts": created_ts,
         "duration_minutes": stored_duration,
         "expires_at": expires_at,
+        "mode": mode,
+        "team_size": int(team_size) if mode == "Collaboratif" else None,
     }
 
     challenges.append(challenge)
     save_challenges(challenges)
-
     return challenge
 
 
@@ -1005,6 +1146,49 @@ def attempts_used(student, challenge):
         if r["student_id"] == student["id"]
         and str(r["challenge_code"]) == str(challenge["code"])
     ])
+
+
+def save_collab_result(team, challenge):
+    if team.get("result_saved"):
+        return False
+
+    teacher_id = team["teacher_id"]
+    results = redis_read_json(teacher_key("results", teacher_id), [])
+    game = team["game"]
+    elapsed = int((game.get("finished_at") or time.time()) - game["started"])
+
+    results.append(
+        {
+            "result_type": "team",
+            "team_code": team["code"],
+            "team_members": [
+                {
+                    "id": m["id"],
+                    "first_name": m["first_name"],
+                    "last_initial": m["last_initial"],
+                    "turns": m.get("turns", 0),
+                }
+                for m in team["members"]
+            ],
+            "first_name": f"Équipe {team['code']}",
+            "last_initial": "",
+            "class_name": team["class_name"],
+            "challenge_code": challenge["code"],
+            "game": challenge["game"],
+            "activity": challenge.get("activity", "Dominos"),
+            "theme": challenge.get("theme", "Molécules"),
+            "level": challenge["level"],
+            "attempt": 1,
+            "errors": int(game["errors"]),
+            "time_seconds": elapsed,
+            "finished_at": datetime.now().isoformat(timespec="seconds"),
+        }
+    )
+
+    redis_write_json(teacher_key("results", teacher_id), results)
+    team["result_saved"] = True
+    save_collab_team(team)
+    return True
 
 
 # ============================================================
@@ -1324,6 +1508,300 @@ def domino_game(level, suffix="free", challenge=None, student=None):
                         st.rerun()
 
 
+
+# ============================================================
+# DOMINOS — MODE COLLABORATIF
+# ============================================================
+
+def collab_set_proposal(team, domino_id, student_id):
+    team["game"]["proposal"] = {
+        "domino_id": domino_id,
+        "student_id": student_id,
+        "proposed_at": time.time(),
+    }
+    save_collab_team(team)
+
+
+def collab_cancel_proposal(team):
+    team["game"]["proposal"] = None
+    save_collab_team(team)
+
+
+def collab_validate_proposal(team, challenge):
+    game = team["game"]
+    proposal = game.get("proposal")
+    if not proposal:
+        return None
+
+    domino_id = proposal["domino_id"]
+    expected = next_expected(challenge["level"], game["chain"])
+    active_index = int(game["turn_index"]) % len(team["members"])
+
+    team["members"][active_index]["turns"] = (
+        int(team["members"][active_index].get("turns", 0)) + 1
+    )
+
+    correct = domino_id == expected
+
+    if correct:
+        game["chain"].append(domino_id)
+        if domino_id in game["remaining"]:
+            game["remaining"].remove(domino_id)
+    else:
+        game["errors"] += 1
+
+    game["proposal"] = None
+    game["turn_index"] = (active_index + 1) % len(team["members"])
+
+    if not game["remaining"]:
+        game["finished_at"] = time.time()
+        team["status"] = "finished"
+
+    save_collab_team(team)
+
+    if team["status"] == "finished":
+        save_collab_result(team, challenge)
+
+    return correct
+
+
+@st.fragment(run_every=2)
+def collaborative_domino_fragment(student, challenge, team_code):
+    team = get_collab_team(
+        challenge["_teacher_id"],
+        challenge["code"],
+        team_code,
+    )
+
+    if not team:
+        st.error("Cette équipe n'existe plus.")
+        return
+
+    members = team.get("members", [])
+    target = int(team.get("target_size", challenge.get("team_size", 4)))
+
+    st.markdown(f"### 👥 Équipe {team_code} — {len(members)}/{target}")
+    st.write(
+        " • ".join(
+            f"**{m['first_name']} {m['last_initial']}.**"
+            for m in members
+        )
+    )
+
+    if team.get("status") == "lobby":
+        st.info(
+            "En attente des autres membres. "
+            "Communiquez le code d'équipe à vos camarades."
+        )
+        st.markdown(
+            f"<div style='text-align:center;font-size:3rem;font-weight:800;"
+            f"letter-spacing:.35rem;padding:.6rem'>{team_code}</div>",
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            "La partie démarre automatiquement quand l'équipe est complète."
+        )
+        return
+
+    game = team.get("game")
+    if not game:
+        st.warning("La partie n'est pas encore initialisée.")
+        return
+
+    if team.get("status") == "finished":
+        elapsed = int((game.get("finished_at") or time.time()) - game["started"])
+        st.success("🎉 Partie collaborative terminée !")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("Erreurs", game["errors"])
+        with c2:
+            st.metric("Temps", f"{elapsed // 60} min {elapsed % 60:02d} s")
+        with c3:
+            st.metric(
+                "Dominos",
+                f"{len(game['chain'])}/{len(LEVELS[challenge['level']]['order'])}",
+            )
+
+        st.markdown("### Participation")
+        for m in members:
+            st.write(
+                f"• {m['first_name']} {m['last_initial']}. "
+                f"— {m.get('turns', 0)} tour(s)"
+            )
+        st.info("Le résultat de l'équipe a été envoyé à l'espace professeur.")
+        return
+
+    active_index = int(game["turn_index"]) % len(members)
+    active = members[active_index]
+    is_active = active["id"] == student["id"]
+
+    if is_active:
+        st.success(
+            f"🎯 **À toi de jouer, {student['first_name']} !** "
+            "Discute avec ton équipe avant de proposer."
+        )
+    else:
+        st.info(
+            f"👀 **C'est à {active['first_name']} {active['last_initial']}. de jouer.** "
+            "Aidez-vous oralement."
+        )
+
+    st.markdown("### Chaîne construite")
+    show_chain_snake(challenge["level"], game["chain"], per_row=4)
+
+    proposal = game.get("proposal")
+
+    if proposal:
+        proposed_id = proposal["domino_id"]
+        proposer = next(
+            (m for m in members if m["id"] == proposal["student_id"]),
+            active,
+        )
+
+        st.markdown(
+            f"### 🤔 Proposition de {proposer['first_name']} "
+            f"{proposer['last_initial']}."
+        )
+        show_domino(challenge["level"], proposed_id, clickable=False)
+        st.warning(
+            "Discutez ensemble avant de valider. "
+            "La réponse n'a pas encore été vérifiée."
+        )
+
+        if is_active:
+            a, b = st.columns(2)
+            with a:
+                if st.button(
+                    "✅ Valider notre choix",
+                    key=f"collab_validate_{team_code}_{proposed_id}",
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    correct = collab_validate_proposal(team, challenge)
+                    st.toast("✅ Bonne association !" if correct else "❌ Mauvais domino.")
+                    st.rerun(scope="fragment")
+            with b:
+                if st.button(
+                    "🔄 Changer de domino",
+                    key=f"collab_cancel_{team_code}_{proposed_id}",
+                    use_container_width=True,
+                ):
+                    collab_cancel_proposal(team)
+                    st.rerun(scope="fragment")
+        else:
+            st.caption(
+                "Seul l'élève dont c'est le tour peut valider ou changer la proposition."
+            )
+        return
+
+    st.markdown("### Dominos disponibles")
+    clicked = None
+    remaining = game.get("remaining", [])
+
+    for row_start in range(0, len(remaining), 3):
+        row = remaining[row_start:row_start + 3]
+        cols = st.columns(3)
+        for i, did in enumerate(row):
+            with cols[i]:
+                if is_active:
+                    if show_domino(
+                        challenge["level"],
+                        did,
+                        key=f"collab_pick_{team_code}_{did}",
+                        clickable=True,
+                        reversed_domino=False,
+                    ):
+                        clicked = did
+                else:
+                    show_domino(
+                        challenge["level"],
+                        did,
+                        clickable=False,
+                        reversed_domino=False,
+                    )
+
+    if clicked and is_active:
+        collab_set_proposal(team, clicked, student["id"])
+        st.rerun(scope="fragment")
+
+
+def collaborative_challenge_page(student, challenge):
+    team_code = st.session_state.get("collab_team_code")
+
+    if not team_code:
+        teams = get_collab_teams(challenge["_teacher_id"], challenge["code"])
+        existing_code, existing_team = find_student_team(teams, student["id"])
+
+        if existing_team:
+            st.session_state.collab_team_code = existing_code
+            st.rerun()
+
+        st.markdown("## 👥 Mode collaboratif")
+        st.write(
+            f"Équipes de **{challenge.get('team_size', 4)} élèves**. "
+            "Chaque élève utilise son propre Chromebook."
+        )
+
+        left, right = st.columns(2)
+
+        with left:
+            st.markdown("### Créer une équipe")
+            st.write(
+                "Le premier élève de la table crée l'équipe "
+                "et communique le code à ses camarades."
+            )
+            if st.button(
+                "➕ Créer mon équipe",
+                type="primary",
+                use_container_width=True,
+                key="create_collab_team_button",
+            ):
+                code, team, error = create_collab_team(student, challenge)
+                if error:
+                    st.error(error)
+                else:
+                    st.session_state.collab_team_code = code
+                    st.rerun()
+
+        with right:
+            st.markdown("### Rejoindre une équipe")
+            join_code = st.text_input(
+                "Code équipe",
+                max_chars=3,
+                placeholder="Ex. 427",
+                key="join_team_code",
+            )
+            if st.button(
+                "👥 Rejoindre l'équipe",
+                use_container_width=True,
+                key="join_collab_team_button",
+            ):
+                code, team, error = join_collab_team(
+                    student,
+                    challenge,
+                    join_code,
+                )
+                if error:
+                    st.error(error)
+                else:
+                    st.session_state.collab_team_code = code
+                    st.rerun()
+        return
+
+    collaborative_domino_fragment(student, challenge, team_code)
+
+    st.markdown("---")
+    if st.button(
+        "🚪 Quitter le défi collaboratif",
+        use_container_width=True,
+        key="leave_collab_challenge",
+    ):
+        for key in ["collab_team_code", "active_challenge", "challenge_student"]:
+            st.session_state.pop(key, None)
+        st.query_params.clear()
+        go("home")
+
+
 # ============================================================
 # NAVIGATION ÉLÈVE
 # ============================================================
@@ -1635,8 +2113,13 @@ def page_challenge():
                     st.error("Cette activité n'est pas encore disponible dans cette version.")
                 else:
                     st.session_state.active_challenge = found
-                    suffix = f"challenge_{found['code']}_{student['id']}"
-                    init_game(found["level"], suffix)
+
+                    if found.get("mode", "Individuel") == "Collaboratif":
+                        st.session_state.pop("collab_team_code", None)
+                    else:
+                        suffix = f"challenge_{found['code']}_{student['id']}"
+                        init_game(found["level"], suffix)
+
                     st.rerun()
 
         with c2:
@@ -1668,6 +2151,10 @@ def page_challenge():
         f"**Tentatives autorisées :** {challenge['max_attempts']}  ·  "
         f"**{timing_text}**"
     )
+
+    if challenge.get("mode", "Individuel") == "Collaboratif":
+        collaborative_challenge_page(student, challenge)
+        return
 
     suffix = f"challenge_{challenge['code']}_{student['id']}"
 
@@ -2316,6 +2803,29 @@ def teacher_challenges():
                 key="challenge_no_time_limit",
             )
 
+        mode_col, size_col, mode_spacer = st.columns([2, 2, 8])
+
+        with mode_col:
+            challenge_mode = st.selectbox(
+                "Mode",
+                ["Individuel", "Collaboratif"],
+                key="challenge_mode",
+                format_func=lambda x: (
+                    "👤 Individuel"
+                    if x == "Individuel"
+                    else "👥 Collaboratif"
+                ),
+            )
+
+        with size_col:
+            team_size = st.selectbox(
+                "Élèves par équipe",
+                [3, 4],
+                index=1,
+                key="challenge_team_size",
+                disabled=challenge_mode != "Collaboratif",
+            )
+
         if st.button(
             "🏆 Créer le défi",
             type="primary",
@@ -2329,6 +2839,8 @@ def teacher_challenges():
                 max_attempts,
                 duration_minutes=duration_minutes,
                 no_time_limit=no_time_limit,
+                mode=challenge_mode,
+                team_size=team_size,
             )
 
             if challenge.get("duration_minutes") is None:
@@ -2336,8 +2848,14 @@ def teacher_challenges():
             else:
                 timing_text = f"pour {challenge['duration_minutes']} min"
 
+            mode_text = (
+                "collaboratif"
+                if challenge.get("mode") == "Collaboratif"
+                else "individuel"
+            )
+
             st.success(
-                f"Défi créé — code **{challenge['code']}** "
+                f"Défi **{mode_text}** créé — code **{challenge['code']}** "
                 f"pour **{challenge['class_name']}**, {timing_text}."
             )
             st.rerun()
@@ -2381,9 +2899,17 @@ def teacher_challenges():
                 )
 
             with c4:
-                st.write(
-                    f"**Tentatives :** {challenge['max_attempts']}"
-                )
+                mode = challenge.get("mode", "Individuel")
+                st.write(f"**Mode :** {mode}")
+
+                if mode == "Collaboratif":
+                    st.write(
+                        f"**Équipe :** {challenge.get('team_size', 4)} élèves"
+                    )
+                else:
+                    st.write(
+                        f"**Tentatives :** {challenge['max_attempts']}"
+                    )
 
             with c5:
                 duration = challenge.get("duration_minutes")
@@ -2407,6 +2933,46 @@ def teacher_challenges():
                     ):
                         close_challenge(challenge["code"])
                         st.rerun()
+
+    collaborative_open = [
+        c for c in challenges
+        if c.get("status") == "open"
+        and c.get("mode") == "Collaboratif"
+    ]
+
+    if collaborative_open:
+        st.markdown("---")
+        st.subheader("👥 Équipes collaboratives en cours")
+
+        for challenge in collaborative_open:
+            teams = get_collab_teams(
+                st.session_state["teacher_id"],
+                challenge["code"],
+            )
+
+            if not teams:
+                st.caption(
+                    f"Défi {challenge['code']} : aucune équipe créée pour le moment."
+                )
+                continue
+
+            rows = []
+            for team_code, team in teams.items():
+                game = team.get("game") or {}
+                rows.append(
+                    {
+                        "Défi": challenge["code"],
+                        "Équipe": team_code,
+                        "Élèves": len(team.get("members", [])),
+                        "Attendus": team.get("target_size", challenge.get("team_size", 4)),
+                        "État": team.get("status", "lobby"),
+                        "Dominos": len(game.get("chain", [])) if game else 0,
+                        "Erreurs": game.get("errors", 0) if game else 0,
+                    }
+                )
+
+            if rows:
+                st.dataframe(rows, use_container_width=True, hide_index=True)
 
 
 def teacher_results():
@@ -2464,10 +3030,24 @@ def teacher_results():
     table = []
 
     for rank, r in enumerate(filtered, start=1):
+        if r.get("result_type") == "team":
+            members_text = ", ".join(
+                f"{m['first_name']} {m['last_initial']}."
+                for m in r.get("team_members", [])
+            )
+            participant = f"Équipe {r.get('team_code', '')}"
+            mode = "👥 Collaboratif"
+        else:
+            members_text = ""
+            participant = f"{r['first_name']} {r['last_initial']}."
+            mode = "👤 Individuel"
+
         table.append(
             {
                 "Rang": rank,
-                "Élève": f"{r['first_name']} {r['last_initial']}.",
+                "Participant": participant,
+                "Membres": members_text,
+                "Mode": mode,
                 "Classe": r["class_name"],
                 "Défi": r["challenge_code"],
                 "Activité": r.get("activity", "Dominos"),
@@ -2475,7 +3055,7 @@ def teacher_results():
                 "Niveau": r["level"],
                 "Erreurs": r["errors"],
                 "Temps": f"{r['time_seconds'] // 60}:{r['time_seconds'] % 60:02d}",
-                "Tentative": r["attempt"],
+                "Tentative": r.get("attempt", 1),
                 "Badge": "🎯 Sans faute" if r["errors"] == 0 else "",
             }
         )
