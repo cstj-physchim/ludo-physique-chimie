@@ -1,6 +1,7 @@
 LEVELS = {
     "Facile": {
         "emoji": "🟢",
+        "theme": "Molécules",
         "order": ["A1","A6","A11","A10","A8","A9","A12","A7","A3","A14","A2","A13","A5","A4"],
         "dominos": {
             "A1": ("h2","O₂"), "A6": ("o2","2 C"), "A11": ("2c","CH₄"), "A10": ("ch4","N₂"),
@@ -11,6 +12,7 @@ LEVELS = {
     },
     "Moyen": {
         "emoji": "🟡",
+        "theme": "Molécules",
         "order": ["A1","A4","A12","A2","A9","A8","A3","A7","A13","A5","A11","A14","A6","A10"],
         "dominos": {
             "A1": ("4h2","2 CO₂"), "A4": ("2co2","2 CH₄"), "A12": ("2ch4","2 O + 2 H₂"),
@@ -22,6 +24,7 @@ LEVELS = {
     },
     "Difficile": {
         "emoji": "🟠",
+        "theme": "Molécules",
         "order": ["A1","A7","A11","A10","A3","A8","A5","A2","A4","A6","A12","A9","A14","A13"],
         "dominos": {
             "A1": ("2cl2","C₂H₆O"), "A7": ("c2h6o","2 NH₃ + O₂"),
@@ -35,6 +38,7 @@ LEVELS = {
     },
     "Très difficile": {
         "emoji": "🔴",
+        "theme": "Molécules",
         "order": ["A1","A3","A9","A7","A12","A8","A6","A11","A2","A5","A13","A14","A10","A4"],
         "dominos": {
             "A1": ("2h_plus_2c_plus_o_plus_o3_plus_h2","C + 2 H₂O + CO₂"),
@@ -53,6 +57,33 @@ LEVELS = {
             "A4": ("2c_plus_3o_plus_h2o_plus_2h","2 H + 2 C + O + O₃ + H₂"),
         },
     },
+    "Violet": {
+        "emoji": "🟣",
+        "theme": "Électricité",
+        "order": ["A1","A15","A4","A5","A6","A12","A16","A9","A8","A10","A11","A7","A2","A13","A14","A3"],
+        "dominos": {
+            "A1": ("elec_violet_A1_montage", "img:elec_violet_A1_schema"),
+            "A15": ("elec_violet_A15_montage", "img:elec_violet_A15_schema"),
+            "A4": ("elec_violet_A4_montage", "img:elec_violet_A4_schema"),
+            "A5": ("elec_violet_A5_montage", "img:elec_violet_A5_schema"),
+            "A6": ("elec_violet_A6_montage", "img:elec_violet_A6_schema"),
+            "A12": ("elec_violet_A12_montage", "img:elec_violet_A12_schema"),
+            "A16": ("elec_violet_A16_montage", "img:elec_violet_A16_schema"),
+            "A9": ("elec_violet_A9_montage", "img:elec_violet_A9_schema"),
+            "A8": ("elec_violet_A8_montage", "img:elec_violet_A8_schema"),
+            "A10": ("elec_violet_A10_montage", "img:elec_violet_A10_schema"),
+            "A11": ("elec_violet_A11_montage", "img:elec_violet_A11_schema"),
+            "A7": ("elec_violet_A7_montage", "img:elec_violet_A7_schema"),
+            "A2": ("elec_violet_A2_montage", "img:elec_violet_A2_schema"),
+            "A13": ("elec_violet_A13_montage", "img:elec_violet_A13_schema"),
+            "A14": ("elec_violet_A14_montage", "img:elec_violet_A14_schema"),
+            "A3": ("elec_violet_A3_montage", "img:elec_violet_A3_schema"),
+        },
+    },
 }
 
-LEVEL_NAMES = list(LEVELS.keys())
+MOLECULE_LEVEL_NAMES = ["Facile", "Moyen", "Difficile", "Très difficile"]
+ELECTRICITY_LEVEL_NAMES = ["Violet"]
+
+# Compatibilité avec le code plus ancien
+LEVEL_NAMES = MOLECULE_LEVEL_NAMES

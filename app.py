@@ -15,7 +15,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from upstash_redis import Redis
 
-from levels import LEVELS, LEVEL_NAMES
+from levels import LEVELS, LEVEL_NAMES, MOLECULE_LEVEL_NAMES, ELECTRICITY_LEVEL_NAMES
 
 
 # ============================================================
@@ -29,6 +29,7 @@ st.set_page_config(
 )
 
 ASSETS = Path("assets/molecules")
+ASSETS_ELECTRICITY = Path("assets/electricity")
 
 redis = Redis(
     url=st.secrets["UPSTASH_REDIS_REST_URL"],
@@ -482,7 +483,6 @@ def create_collab_team(student, challenge):
         "created_at": time.time(),
         "game": None,
         "result_saved": False,
-        "movements": [],
     }
 
     teams[code] = team
@@ -511,9 +511,14 @@ def join_collab_team(student, challenge, team_code):
     if len(team.get("members", [])) >= target_size:
         return None, None, "Cette équipe est déjà complète."
 
-    # On conserve l'historique des départs, même si l'élève revient ensuite.
-    # Si la partie a déjà commencé, cette arrivée est enregistrée comme mouvement.
-    joining_during_game = team.get("status") == "playing"
+    # Si l'élève avait quitté cette équipe auparavant, on retire son départ
+    # de la liste active des départs puisqu'il revient dans la partie.
+    previous_departures = team.get("departures", [])
+    team["departures"] = [
+        departure
+        for departure in previous_departures
+        if departure.get("id") != student["id"]
+    ]
 
     team["members"].append(
         {
@@ -525,23 +530,6 @@ def join_collab_team(student, challenge, team_code):
             "turns": 0,
         }
     )
-
-    if joining_during_game:
-        had_left_before = any(
-            departure.get("id") == student["id"]
-            for departure in team.get("departures", [])
-        )
-
-        team.setdefault("movements", []).append(
-            {
-                "type": "return" if had_left_before else "join",
-                "id": student["id"],
-                "first_name": student["first_name"],
-                "last_initial": student["last_initial"],
-                "at": time.time(),
-                "at_text": datetime.now().isoformat(timespec="seconds"),
-            }
-        )
 
     if team.get("status") == "lobby":
         if len(team["members"]) >= target_size:
@@ -615,25 +603,14 @@ def leave_collab_team(student, challenge, team_code):
 
     leaving_member = members[leaving_index]
 
-    departure_event = {
-        "id": leaving_member["id"],
-        "first_name": leaving_member["first_name"],
-        "last_initial": leaving_member["last_initial"],
-        "left_at": time.time(),
-        "left_at_text": datetime.now().isoformat(timespec="seconds"),
-        "reason": "quit_button",
-    }
-
-    team.setdefault("departures", []).append(departure_event)
-
-    team.setdefault("movements", []).append(
+    team.setdefault("departures", []).append(
         {
-            "type": "leave",
             "id": leaving_member["id"],
             "first_name": leaving_member["first_name"],
             "last_initial": leaving_member["last_initial"],
-            "at": departure_event["left_at"],
-            "at_text": departure_event["left_at_text"],
+            "left_at": time.time(),
+            "left_at_text": datetime.now().isoformat(timespec="seconds"),
+            "reason": "quit_button",
         }
     )
 
@@ -1394,7 +1371,6 @@ def save_collab_result(team, challenge):
                 for m in team["members"]
             ],
             "team_departures": team.get("departures", []),
-            "team_movements": team.get("movements", []),
             "first_name": f"Équipe {team['code']}",
             "last_initial": "",
             "class_name": team["class_name"],
@@ -1415,32 +1391,6 @@ def save_collab_result(team, challenge):
     team["result_saved"] = True
     save_collab_team(team)
     return True
-
-
-def format_team_movements(movements):
-    """Retourne un résumé chronologique et lisible des mouvements d'une équipe."""
-    labels = []
-
-    for movement in movements:
-        name = (
-            f"{movement.get('first_name', '')} "
-            f"{movement.get('last_initial', '')}."
-        ).strip()
-
-        movement_type = movement.get("type")
-
-        if movement_type == "leave":
-            action = "a quitté l'équipe"
-        elif movement_type == "return":
-            action = "est revenu(e) dans l'équipe"
-        elif movement_type == "join":
-            action = "a rejoint l'équipe en cours de partie"
-        else:
-            action = "mouvement enregistré"
-
-        labels.append(f"{name} {action}")
-
-    return " ; ".join(labels)
 
 
 # ============================================================
@@ -1466,7 +1416,18 @@ def init_game(level, suffix="free"):
     }
 
 
+def asset_path(image_name):
+    if str(image_name).startswith("elec_"):
+        return ASSETS_ELECTRICITY / f"{image_name}.png"
+    return ASSETS / f"{image_name}.svg"
+
+
 def formula_block(formula):
+    if isinstance(formula, str) and formula.startswith("img:"):
+        image_name = formula[4:]
+        st.image(str(asset_path(image_name)), width=240)
+        return
+
     st.markdown(
         f"""
         <div style="
@@ -1487,7 +1448,7 @@ def formula_block(formula):
 
 def molecule_block(image_name):
     st.image(
-        str(ASSETS / f"{image_name}.svg"),
+        str(asset_path(image_name)),
         width=240,
     )
 
@@ -1903,22 +1864,14 @@ def collaborative_domino_fragment(student, challenge, team_code):
                 f"— {m.get('turns', 0)} tour(s)"
             )
 
-        movements = team.get("movements", [])
-        if movements:
-            st.markdown("### Mouvements dans l'équipe")
-            for movement in movements:
-                name = (
-                    f"{movement.get('first_name', '')} "
-                    f"{movement.get('last_initial', '')}."
+        departures = team.get("departures", [])
+        if departures:
+            st.markdown("### Élèves ayant quitté la partie")
+            for departure in departures:
+                st.write(
+                    f"• {departure['first_name']} "
+                    f"{departure['last_initial']}."
                 )
-                if movement.get("type") == "leave":
-                    action = "a quitté l'équipe"
-                elif movement.get("type") == "return":
-                    action = "est revenu(e) dans l'équipe"
-                else:
-                    action = "a rejoint l'équipe en cours de partie"
-
-                st.write(f"• {name} — {action}")
 
         st.info("Le résultat de l'équipe a été envoyé à l'espace professeur.")
         return
@@ -2109,6 +2062,24 @@ def collaborative_challenge_page(student, challenge):
         go("home")
 
 
+def levels_for_theme(theme):
+    if theme == "Électricité":
+        return ELECTRICITY_LEVEL_NAMES
+    return MOLECULE_LEVEL_NAMES
+
+
+def game_credit(theme):
+    if theme == "Électricité":
+        st.caption(
+            "Adaptation numérique du jeu « Schématisation et circuits électriques — "
+            "Jeu de Dominos » de Stéphane Bois et Raphaëlle Darne — licence CC BY-NC-SA."
+        )
+    elif theme == "Molécules":
+        st.caption(
+            "Adaptation numérique du jeu de Stéphane Bois et Hervé Abbes — licence CC BY-NC-SA."
+        )
+
+
 # ============================================================
 # NAVIGATION ÉLÈVE
 # ============================================================
@@ -2239,6 +2210,7 @@ def page_free_theme():
             key="theme_molecules",
             use_container_width=True,
         ):
+            st.session_state.selected_theme = "Molécules"
             go("free_level")
 
     with c2:
@@ -2260,24 +2232,27 @@ def page_free_theme():
         nav_card(
             "⚡",
             "Électricité",
-            "Associer composants et symboles électriques.",
+            "Passer du montage électrique au schéma normalisé et réciproquement.",
             "card-orange",
-            coming_soon=True,
         )
-        st.button(
-            "Bientôt disponible",
+        if st.button(
+            "Choisir Électricité",
             key="theme_elec",
             use_container_width=True,
-            disabled=True,
-        )
+        ):
+            st.session_state.selected_theme = "Électricité"
+            go("free_level")
 
 
 def page_free_level():
     hero()
     back_button("free_theme")
 
+    theme = st.session_state.get("selected_theme", "Molécules")
+    theme_levels = levels_for_theme(theme)
+
     st.markdown(
-        '<div class="breadcrumb">Accueil › Entraînement libre › Dominos › Molécules › Niveau</div>',
+        f'<div class="breadcrumb">Accueil › Entraînement libre › Dominos › {theme} › Niveau</div>',
         unsafe_allow_html=True,
     )
 
@@ -2286,23 +2261,30 @@ def page_free_level():
         unsafe_allow_html=True,
     )
 
-    cols = st.columns(4)
+    cols = st.columns(max(1, len(theme_levels)))
 
-    for i, level in enumerate(LEVEL_NAMES):
+    for i, level in enumerate(theme_levels):
         with cols[i]:
             icon = LEVELS[level]["emoji"]
-            color = ["card-green", "card-orange", "card-pink", "card-purple"][i]
+            colors = ["card-green", "card-orange", "card-pink", "card-purple"]
+            color = "card-purple" if theme == "Électricité" else colors[i % len(colors)]
+
+            description = (
+                "Circuits en série : montage réel ↔ schéma normalisé."
+                if theme == "Électricité"
+                else "Lancez une nouvelle partie de dominos molécules."
+            )
 
             nav_card(
                 icon,
                 level,
-                "Lancez une nouvelle partie de dominos molécules.",
+                description,
                 color,
             )
 
             if st.button(
                 f"Jouer — {level}",
-                key=f"level_{level}",
+                key=f"level_{theme}_{level}",
                 use_container_width=True,
             ):
                 st.session_state.selected_level = level
@@ -2314,21 +2296,21 @@ def page_free_game():
     hero()
     back_button("free_level")
 
-    level = st.session_state.get(
-        "selected_level",
-        LEVEL_NAMES[0],
-    )
+    theme = st.session_state.get("selected_theme", "Molécules")
+    default_level = levels_for_theme(theme)[0]
+    level = st.session_state.get("selected_level", default_level)
 
     st.markdown(
-        f'<div class="breadcrumb">Accueil › Entraînement libre › Dominos › Molécules › {level}</div>',
+        f'<div class="breadcrumb">Accueil › Entraînement libre › Dominos › {theme} › {level}</div>',
         unsafe_allow_html=True,
     )
 
     st.subheader(
-        f"🁢 Dominos — Molécules · {LEVELS[level]['emoji']} {level}"
+        f"🁢 Dominos — {theme} · {LEVELS[level]['emoji']} {level}"
     )
 
     domino_game(level, suffix="free")
+    game_credit(theme)
 
 
 # ============================================================
@@ -2416,7 +2398,7 @@ def page_challenge():
                     st.error("Ce défi n'est pas destiné à votre classe.")
                 elif attempts_used(student, found) >= int(found["max_attempts"]):
                     st.error("Toutes les tentatives autorisées ont déjà été utilisées.")
-                elif found.get("activity", "Dominos") != "Dominos" or found.get("theme", "Molécules") != "Molécules":
+                elif found.get("activity", "Dominos") != "Dominos" or found.get("theme", "Molécules") not in ("Molécules", "Électricité"):
                     st.error("Cette activité n'est pas encore disponible dans cette version.")
                 else:
                     st.session_state.active_challenge = found
@@ -2458,6 +2440,8 @@ def page_challenge():
         f"**Tentatives autorisées :** {challenge['max_attempts']}  ·  "
         f"**{timing_text}**"
     )
+
+    game_credit(challenge.get("theme", "Molécules"))
 
     if challenge.get("mode", "Individuel") == "Collaboratif":
         collaborative_challenge_page(student, challenge)
@@ -3121,14 +3105,14 @@ def teacher_challenges():
         with c3:
             theme = st.selectbox(
                 "Thème",
-                ["Molécules"],
+                ["Molécules", "Électricité"],
                 key="challenge_theme",
             )
 
         with c4:
             challenge_level = st.selectbox(
                 "Niveau",
-                LEVEL_NAMES,
+                levels_for_theme(theme),
                 key="challenge_level",
                 format_func=lambda x: f"{LEVELS[x]['emoji']} {x}",
             )
@@ -3328,9 +3312,7 @@ def teacher_challenges():
                             challenge.get("team_size", 4),
                         ),
                         "État": team.get("status", "lobby"),
-                        "Mouvements": format_team_movements(
-                            team.get("movements", [])
-                        ) or "—",
+                        "Élèves ayant quitté": departed_names or "—",
                         "Dominos": len(game.get("chain", [])) if game else 0,
                         "Erreurs": game.get("errors", 0) if game else 0,
                     }
@@ -3400,14 +3382,15 @@ def teacher_results():
                 f"{m['first_name']} {m['last_initial']}."
                 for m in r.get("team_members", [])
             )
-            movement_text = format_team_movements(
-                r.get("team_movements", [])
+            departed_text = ", ".join(
+                f"{d['first_name']} {d['last_initial']}."
+                for d in r.get("team_departures", [])
             )
             participant = f"Équipe {r.get('team_code', '')}"
             mode = "👥 Collaboratif"
         else:
             members_text = ""
-            movement_text = ""
+            departed_text = ""
             participant = f"{r['first_name']} {r['last_initial']}."
             mode = "👤 Individuel"
 
@@ -3416,7 +3399,7 @@ def teacher_results():
                 "Rang": rank,
                 "Participant": participant,
                 "Membres à la fin": members_text,
-                "Mouvements équipe": movement_text,
+                "Ont quitté": departed_text,
                 "Mode": mode,
                 "Classe": r["class_name"],
                 "Défi": r["challenge_code"],
@@ -3501,7 +3484,3 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.caption(
-    "Adaptation numérique du jeu de Stéphane Bois et Hervé Abbes "
-    "— licence CC BY-NC-SA."
-)
