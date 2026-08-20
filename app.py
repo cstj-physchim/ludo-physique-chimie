@@ -35,10 +35,35 @@ redis = Redis(
     token=st.secrets["UPSTASH_REDIS_REST_TOKEN"],
 )
 
-CLASSES_KEY = "ludo:classes"
-CHALLENGES_KEY = "ludo:challenges"
-STUDENTS_KEY = "ludo:students"
-RESULTS_KEY = "ludo:results"
+LEGACY_CLASSES_KEY = "ludo:classes"
+LEGACY_CHALLENGES_KEY = "ludo:challenges"
+LEGACY_STUDENTS_KEY = "ludo:students"
+LEGACY_RESULTS_KEY = "ludo:results"
+
+def teacher_key(kind, teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        raise RuntimeError("Aucun professeur connecté.")
+    return f"ludo:teacher:{teacher_id}:{kind}"
+
+def get_teacher_accounts():
+    try:
+        teachers = st.secrets["teachers"]
+    except Exception:
+        return {}
+    accounts = {}
+    for teacher_id in teachers:
+        data = teachers[teacher_id]
+        password = str(data.get("password", ""))
+        if password:
+            accounts[str(teacher_id)] = {
+                "name": str(data.get("name", teacher_id)),
+                "password": password,
+            }
+    return accounts
+
+def current_teacher_name():
+    return st.session_state.get("teacher_name", "Professeur")
 
 APP_PUBLIC_URL = st.secrets.get(
     "APP_PUBLIC_URL",
@@ -294,7 +319,7 @@ def redis_write_json(key, value):
 # ============================================================
 
 def get_classes():
-    return sorted(set(redis_read_json(CLASSES_KEY, [])))
+    return sorted(set(redis_read_json(teacher_key("classes"), [])))
 
 
 def add_class(class_name):
@@ -307,7 +332,7 @@ def add_class(class_name):
         return False
 
     classes.append(class_name)
-    redis_write_json(CLASSES_KEY, sorted(classes))
+    redis_write_json(teacher_key("classes"), sorted(classes))
     return True
 
 
@@ -316,22 +341,23 @@ def add_class(class_name):
 # ============================================================
 
 def get_students():
-    return redis_read_json(STUDENTS_KEY, [])
+    return redis_read_json(teacher_key("students"), [])
 
 
 def save_students(students):
-    redis_write_json(STUDENTS_KEY, students)
+    redis_write_json(teacher_key("students"), students)
 
 
 def generate_student_code():
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    existing = {s["code"] for s in get_students()}
-
+    existing = set()
+    for teacher_id in get_teacher_accounts():
+        for student in redis_read_json(teacher_key("students", teacher_id), []):
+            existing.add(student["code"])
     for _ in range(500):
         code = "".join(secrets.choice(alphabet) for _ in range(4))
         if code not in existing:
             return code
-
     raise RuntimeError("Impossible de générer un code élève unique.")
 
 
@@ -362,21 +388,23 @@ def add_student(first_name, last_initial, class_name):
 
 def find_student_by_code(code):
     code = code.strip().upper()
-
-    for student in get_students():
-        if student.get("active", True) and student["code"] == code:
-            return student
-
+    for teacher_id in get_teacher_accounts():
+        for student in redis_read_json(teacher_key("students", teacher_id), []):
+            if student.get("active", True) and student["code"] == code:
+                found = dict(student)
+                found["_teacher_id"] = teacher_id
+                return found
     return None
 
 
 def find_student_by_id(student_id):
     student_id = str(student_id).strip()
-
-    for student in get_students():
-        if student.get("active", True) and student["id"] == student_id:
-            return student
-
+    for teacher_id in get_teacher_accounts():
+        for student in redis_read_json(teacher_key("students", teacher_id), []):
+            if student.get("active", True) and student["id"] == student_id:
+                found = dict(student)
+                found["_teacher_id"] = teacher_id
+                return found
     return None
 
 
@@ -536,7 +564,7 @@ def delete_class(class_name):
         return False, "Cette classe contient encore des élèves."
 
     classes = [c for c in get_classes() if c != class_name]
-    redis_write_json(CLASSES_KEY, classes)
+    redis_write_json(teacher_key("classes"), classes)
     return True, None
 
 
@@ -545,10 +573,10 @@ def reset_database():
     Réinitialisation complète des données pédagogiques.
     Les clés Upstash sont conservées mais remises à des listes vides.
     """
-    redis_write_json(CLASSES_KEY, [])
-    redis_write_json(STUDENTS_KEY, [])
-    redis_write_json(CHALLENGES_KEY, [])
-    redis_write_json(RESULTS_KEY, [])
+    redis_write_json(teacher_key("classes"), [])
+    redis_write_json(teacher_key("students"), [])
+    redis_write_json(teacher_key("challenges"), [])
+    redis_write_json(teacher_key("results"), [])
 
 
 # ============================================================
@@ -711,21 +739,22 @@ def generate_student_cards_pdf(students):
 # ============================================================
 
 def get_challenges():
-    return redis_read_json(CHALLENGES_KEY, [])
+    return redis_read_json(teacher_key("challenges"), [])
 
 
 def save_challenges(challenges):
-    redis_write_json(CHALLENGES_KEY, challenges)
+    redis_write_json(teacher_key("challenges"), challenges)
 
 
 def generate_challenge_code():
-    existing = {str(c["code"]) for c in get_challenges()}
-
+    existing = set()
+    for teacher_id in get_teacher_accounts():
+        for challenge in redis_read_json(teacher_key("challenges", teacher_id), []):
+            existing.add(str(challenge["code"]))
     for _ in range(100):
         code = str(random.randint(1000, 9999))
         if code not in existing:
             return code
-
     raise RuntimeError("Impossible de générer un code de défi unique.")
 
 
@@ -760,13 +789,13 @@ def close_challenge(code):
     save_challenges(challenges)
 
 
-def find_open_challenge(code):
+def find_open_challenge(code, teacher_id):
     code = code.strip()
-
-    for challenge in get_challenges():
+    for challenge in redis_read_json(teacher_key("challenges", teacher_id), []):
         if str(challenge["code"]) == code and challenge["status"] == "open":
-            return challenge
-
+            found = dict(challenge)
+            found["_teacher_id"] = teacher_id
+            return found
     return None
 
 
@@ -775,11 +804,12 @@ def find_open_challenge(code):
 # ============================================================
 
 def get_results():
-    return redis_read_json(RESULTS_KEY, [])
+    return redis_read_json(teacher_key("results"), [])
 
 
 def save_result(student, challenge, errors, elapsed):
-    results = get_results()
+    teacher_id = challenge.get("_teacher_id") or student.get("_teacher_id")
+    results = redis_read_json(teacher_key("results", teacher_id), [])
 
     previous = [
         r
@@ -811,20 +841,19 @@ def save_result(student, challenge, errors, elapsed):
     }
 
     results.append(result)
-    redis_write_json(RESULTS_KEY, results)
+    redis_write_json(teacher_key("results", teacher_id), results)
 
     return True, result
 
 
 def attempts_used(student, challenge):
-    return len(
-        [
-            r
-            for r in get_results()
-            if r["student_id"] == student["id"]
-            and str(r["challenge_code"]) == str(challenge["code"])
-        ]
-    )
+    teacher_id = challenge.get("_teacher_id") or student.get("_teacher_id")
+    results = redis_read_json(teacher_key("results", teacher_id), [])
+    return len([
+        r for r in results
+        if r["student_id"] == student["id"]
+        and str(r["challenge_code"]) == str(challenge["code"])
+    ])
 
 
 # ============================================================
@@ -1443,7 +1472,7 @@ def page_challenge():
                 type="primary",
                 use_container_width=True,
             ):
-                found = find_open_challenge(used_code)
+                found = find_open_challenge(used_code, student.get("_teacher_id"))
 
                 if not found:
                     st.error("Ce défi n'existe pas ou il est fermé.")
@@ -1490,6 +1519,23 @@ def page_challenge():
     )
 
 
+def migrate_legacy_data_to_current_teacher():
+    pairs = [
+        (LEGACY_CLASSES_KEY, teacher_key("classes")),
+        (LEGACY_STUDENTS_KEY, teacher_key("students")),
+        (LEGACY_CHALLENGES_KEY, teacher_key("challenges")),
+        (LEGACY_RESULTS_KEY, teacher_key("results")),
+    ]
+    migrated = False
+    for old_key, new_key in pairs:
+        old_value = redis.get(old_key)
+        new_value = redis.get(new_key)
+        if old_value is not None and new_value is None:
+            redis.set(new_key, old_value)
+            migrated = True
+    return migrated
+
+
 # ============================================================
 # CONNEXION PROFESSEUR
 # ============================================================
@@ -1500,35 +1546,34 @@ def teacher_login():
 
     hero()
     back_button("home")
-
     st.markdown(
         '<div class="section-title">🔒 Connexion professeur</div>',
         unsafe_allow_html=True,
     )
 
-    password = st.text_input(
-        "Mot de passe",
-        type="password",
-        key="teacher_password",
+    accounts = get_teacher_accounts()
+    if not accounts:
+        st.error("Aucun compte professeur n'est configuré dans les Secrets Streamlit.")
+        return False
+
+    teacher_ids = list(accounts.keys())
+    selected_id = st.selectbox(
+        "Professeur",
+        teacher_ids,
+        format_func=lambda tid: accounts[tid]["name"],
+        key="teacher_account_select",
     )
+    password = st.text_input("Mot de passe", type="password", key="teacher_password")
 
-    if st.button(
-        "Se connecter",
-        type="primary",
-        use_container_width=True,
-        key="teacher_login",
-    ):
-        expected = st.secrets.get("TEACHER_PASSWORD", "")
-
-        if not expected:
-            st.error("Le secret TEACHER_PASSWORD n'est pas configuré.")
-        elif password == expected:
+    if st.button("Se connecter", type="primary", use_container_width=True, key="teacher_login"):
+        if secrets.compare_digest(password, accounts[selected_id]["password"]):
             st.session_state.teacher_authenticated = True
+            st.session_state.teacher_id = selected_id
+            st.session_state.teacher_name = accounts[selected_id]["name"]
             st.session_state.teacher_section = "dashboard"
             st.rerun()
         else:
             st.error("Mot de passe incorrect.")
-
     return False
 
 
@@ -1555,8 +1600,8 @@ def teacher_header(title):
 
     with c2:
         if st.button("Déconnexion", use_container_width=False):
-            st.session_state.teacher_authenticated = False
-            st.session_state.teacher_section = "dashboard"
+            for key in ["teacher_authenticated", "teacher_id", "teacher_name", "teacher_section"]:
+                st.session_state.pop(key, None)
             go("home")
 
 
@@ -1564,10 +1609,10 @@ def teacher_dashboard():
     hero()
 
     st.markdown(
-        """
+        f"""
         <div class="teacher-band">
-            <div class="teacher-band-title">👨‍🏫 Espace professeur</div>
-            <div>Gérez votre Ludothèque depuis ce tableau de bord.</div>
+            <div class="teacher-band-title">👨‍🏫 Espace professeur — {current_teacher_name()}</div>
+            <div>Gérez vos classes, vos élèves, vos défis et vos résultats.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1633,6 +1678,18 @@ def teacher_dashboard():
         '<div class="footer-note">ⓘ Toutes les données sont synchronisées avec Upstash.</div>',
         unsafe_allow_html=True,
     )
+
+    with st.expander("📦 Reprendre les données de l'ancienne base"):
+        st.write(
+            "À utiliser une seule fois pour rattacher à ce compte les données "
+            "créées avant l'ajout des comptes professeurs."
+        )
+        if st.button("Importer l'ancienne base dans mon compte", use_container_width=True):
+            if migrate_legacy_data_to_current_teacher():
+                st.success("Anciennes données rattachées à ce compte professeur.")
+                st.rerun()
+            else:
+                st.info("Aucune donnée ancienne à importer, ou ce compte possède déjà ses données.")
 
     with st.expander("⚠️ Administration et réinitialisation"):
         st.warning(
