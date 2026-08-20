@@ -501,11 +501,22 @@ def join_collab_team(student, challenge, team_code):
     if not team:
         return None, None, "Code d'équipe inconnu."
 
-    if team.get("status") != "lobby":
-        return None, None, "Cette équipe a déjà commencé sa partie."
+    if team.get("status") in ("finished", "abandoned"):
+        return None, None, "Cette équipe n'est plus disponible."
 
-    if len(team.get("members", [])) >= int(team.get("target_size", 4)):
+    target_size = int(team.get("target_size", 4))
+
+    if len(team.get("members", [])) >= target_size:
         return None, None, "Cette équipe est déjà complète."
+
+    # Si l'élève avait quitté cette équipe auparavant, on retire son départ
+    # de la liste active des départs puisqu'il revient dans la partie.
+    previous_departures = team.get("departures", [])
+    team["departures"] = [
+        departure
+        for departure in previous_departures
+        if departure.get("id") != student["id"]
+    ]
 
     team["members"].append(
         {
@@ -518,8 +529,15 @@ def join_collab_team(student, challenge, team_code):
         }
     )
 
-    if len(team["members"]) >= int(team["target_size"]):
-        team = init_collab_game(team, challenge)
+    if team.get("status") == "lobby":
+        if len(team["members"]) >= target_size:
+            team = init_collab_game(team, challenge)
+    elif team.get("status") == "playing":
+        # La partie a déjà commencé : le nouvel élève rejoint simplement
+        # la rotation existante, sans réinitialiser la chaîne ni le score.
+        game = team.get("game")
+        if game and len(team["members"]) == 1:
+            game["turn_index"] = 0
 
     teams[team_code] = team
     save_collab_teams(teacher_id, challenge_code, teams)
@@ -1945,7 +1963,9 @@ def collaborative_challenge_page(student, challenge):
         )
         st.info(
             "Pour cette partie, créez une nouvelle équipe ou saisissez le code "
-            "de l'équipe que vous souhaitez rejoindre."
+            "de l'équipe que vous souhaitez rejoindre. Si une équipe a déjà commencé "
+            "mais qu'une place s'est libérée, un élève peut la rejoindre sans "
+            "réinitialiser la partie."
         )
 
         left, right = st.columns(2)
