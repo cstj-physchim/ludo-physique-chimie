@@ -1456,6 +1456,40 @@ def formula_block(formula):
     )
 
 
+
+def text_block(text):
+    st.markdown(
+        f"""
+        <div style="
+            min-height:115px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:1.05rem;
+            line-height:1.3;
+            text-align:center;
+            font-weight:500;
+            padding:8px 10px;
+        ">
+            {text}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def domino_side_block(side):
+    """Affiche une moitié de domino enrichi."""
+    if isinstance(side, str) and side.startswith("img:"):
+        molecule_block(side[4:])
+    elif isinstance(side, str) and side.startswith("formula:"):
+        formula_block(side[8:])
+    elif isinstance(side, str) and side.startswith("text:"):
+        text_block(side[5:])
+    else:
+        formula_block(str(side))
+
+
 def molecule_block(image_name):
     st.image(
         str(asset_path(image_name)),
@@ -1531,8 +1565,6 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
 
     with st.container(border=True):
         if level_data.get("theme") == "Électricité":
-            # Les cartes électriques sont désormais des PNG complets :
-            # montage réel + schéma normalisé dans une seule image.
             image_file = level_data["dominos"][domino_id]
             electric_img = electric_domino_image(
                 ASSETS_ELECTRICITY / image_file,
@@ -1542,6 +1574,22 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
                 electric_img,
                 use_container_width=True,
             )
+
+        elif level_data.get("variant") == "textes":
+            left_side, right_side = level_data["dominos"][domino_id]
+            left, right = st.columns([1, 1], vertical_alignment="center")
+
+            if reversed_domino:
+                with left:
+                    domino_side_block(right_side)
+                with right:
+                    domino_side_block(left_side)
+            else:
+                with left:
+                    domino_side_block(left_side)
+                with right:
+                    domino_side_block(right_side)
+
         else:
             image_name, formula = level_data["dominos"][domino_id]
             left, right = st.columns([1, 1], vertical_alignment="center")
@@ -1655,6 +1703,11 @@ def domino_game(level, suffix="free", challenge=None, student=None):
         st.info(
             "Observe le schéma situé à l'extrémité du dernier domino posé et choisis "
             "le domino dont le montage réel correspond."
+        )
+    elif LEVELS[level].get("variant") == "textes":
+        st.info(
+            "Observe l'extrémité libre du dernier domino puis cherche la représentation "
+            "équivalente : modèle moléculaire, formule chimique ou description en mots."
         )
     else:
         st.info(
@@ -2358,8 +2411,6 @@ def page_free_level():
     )
 
     if theme == "Électricité":
-        # Six niveaux : affichage sur deux rangées de trois pour garder
-        # de grandes cartes lisibles sur Chromebook et ordinateur.
         for row_start in range(0, len(theme_levels), 3):
             row_levels = theme_levels[row_start:row_start + 3]
             cols = st.columns(3)
@@ -2380,21 +2431,44 @@ def page_free_level():
                         st.session_state.selected_level = level
                         init_game(level, "free")
                         go("free_game")
-    else:
-        cols = st.columns(max(1, len(theme_levels)))
 
-        for i, level in enumerate(theme_levels):
+    else:
+        classic = [x for x in theme_levels if "textes" not in x]
+        enriched = [x for x in theme_levels if "textes" in x]
+
+        st.markdown("### 🧪 Formules ↔ modèles moléculaires")
+        cols = st.columns(4)
+        for i, level in enumerate(classic):
             with cols[i]:
                 colors = ["card-green", "card-orange", "card-pink", "card-purple"]
                 nav_card(
                     LEVELS[level]["emoji"],
                     level,
-                    "Lancez une nouvelle partie de dominos molécules.",
+                    "Associer modèles moléculaires et écritures chimiques.",
                     colors[i % len(colors)],
                 )
-
                 if st.button(
                     f"Jouer — {level}",
+                    key=f"level_{theme}_{level}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_level = level
+                    init_game(level, "free")
+                    go("free_game")
+
+        st.markdown("### 📝 Formules ↔ modèles ↔ descriptions")
+        cols = st.columns(4)
+        for i, level in enumerate(enriched):
+            with cols[i]:
+                colors = ["card-green", "card-orange", "card-pink", "card-purple"]
+                nav_card(
+                    LEVELS[level]["emoji"],
+                    level.replace(" + textes", ""),
+                    "Ajouter le vocabulaire scientifique aux associations.",
+                    colors[i % len(colors)],
+                )
+                if st.button(
+                    f"Jouer — {level.replace(' + textes', '')}",
                     key=f"level_{theme}_{level}",
                     use_container_width=True,
                 ):
