@@ -1597,19 +1597,25 @@ def _nuclide_html(spec):
     """spec: A:Z:Symbole:charge"""
     mass, atomic, symbol, charge = spec.split(":")
     charge_num = int(charge)
+
     if charge_num == 0:
         charge_html = ""
     else:
         sign = "+" if charge_num > 0 else "−"
         n = abs(charge_num)
         charge_html = f"{'' if n == 1 else n}{sign}"
+
     return (
-        f'<div class="nuclide-wrap">'
+        '<div class="nuclide-wrap">'
+        '<div class="nuclide-left">'
         f'<span class="nuclide-mass">{mass}</span>'
         f'<span class="nuclide-atomic">{atomic}</span>'
+        '</div>'
+        '<div class="nuclide-symbol-box">'
         f'<span class="nuclide-symbol">{symbol}</span>'
         f'<span class="nuclide-charge">{charge_html}</span>'
-        f'</div>'
+        '</div>'
+        '</div>'
     )
 
 def _composition_html(spec):
@@ -1636,7 +1642,7 @@ def ion_composition_domino_html(left_side, right_side):
             return _composition_html(side[5:])
         return str(side)
     html = (
-        '<style>.ion-comp-domino{display:grid;grid-template-columns:42% 58%;min-height:142px;background:linear-gradient(135deg,#f9d1d1,#f5bcbc);border:4px solid #111;border-radius:24px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.10)}.ion-comp-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-comp-domino>div+div{border-left:3px solid #111}.nuclide-wrap{position:relative;width:120px;height:92px;font-family:Arial,Helvetica,sans-serif;color:#111}.nuclide-symbol{position:absolute;left:44px;top:19px;font-size:3.15rem;line-height:1;font-weight:900}.nuclide-mass{position:absolute;left:12px;top:5px;font-size:1.25rem;font-weight:800}.nuclide-atomic{position:absolute;left:12px;bottom:4px;font-size:1.25rem;font-weight:800}.nuclide-charge{position:absolute;left:88px;top:2px;font-size:1.35rem;font-weight:900}.composition-wrap{font-family:Arial,Helvetica,sans-serif;color:#111;text-align:left;width:100%;padding-left:8px}.composition-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}.composition-wrap ul{margin:0;padding-left:1.25rem;font-size:1.03rem;line-height:1.35}</style>'
+        '<style>.ion-comp-domino{display:grid;grid-template-columns:42% 58%;min-height:142px;background:linear-gradient(135deg,#d9ecff,#acd4f7);border:4px solid #163a59;border-radius:24px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.10)}.ion-comp-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-comp-domino>div+div{border-left:3px solid #163a59}.nuclide-wrap{display:grid;grid-template-columns:34px 68px;align-items:center;width:104px;height:92px;font-family:Arial,Helvetica,sans-serif;color:#0a1620}.nuclide-left{height:72px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-right:4px}.nuclide-mass,.nuclide-atomic{font-size:1.22rem;font-weight:800;line-height:1}.nuclide-symbol-box{position:relative;width:68px;height:72px;display:flex;align-items:center;justify-content:center}.nuclide-symbol{font-size:3.05rem;line-height:1;font-weight:900}.nuclide-charge{position:absolute;right:0px;top:-2px;font-size:1.15rem;font-weight:900;line-height:1}.composition-wrap{font-family:Arial,Helvetica,sans-serif;color:#0a1620;text-align:left;width:100%;padding-left:8px}.composition-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}.composition-wrap ul{margin:0;padding-left:1.25rem;font-size:1.03rem;line-height:1.35}</style>'
         '<div class="ion-comp-domino">'
         '<div>' + render(left_side) + '</div>'
         '<div>' + render(right_side) + '</div>'
