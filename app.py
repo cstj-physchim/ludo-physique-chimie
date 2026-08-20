@@ -35,11 +35,6 @@ redis = Redis(
     token=st.secrets["UPSTASH_REDIS_REST_TOKEN"],
 )
 
-LEGACY_CLASSES_KEY = "ludo:classes"
-LEGACY_CHALLENGES_KEY = "ludo:challenges"
-LEGACY_STUDENTS_KEY = "ludo:students"
-LEGACY_RESULTS_KEY = "ludo:results"
-
 def teacher_key(kind, teacher_id=None):
     teacher_id = teacher_id or st.session_state.get("teacher_id")
     if not teacher_id:
@@ -755,14 +750,45 @@ def delete_class(class_name):
     return True, None
 
 
-def reset_database():
-    """Réinitialisation complète des données du professeur connecté."""
+def delete_collaborative_team_data():
+    """Supprime les données d'équipes liées aux défis du professeur connecté."""
     teacher_id = st.session_state.get("teacher_id")
     challenges = redis_read_json(teacher_key("challenges"), [])
 
     for challenge in challenges:
-        redis.delete(collab_teams_key(teacher_id, challenge["code"]))
+        redis.delete(
+            collab_teams_key(
+                teacher_id,
+                challenge["code"],
+            )
+        )
 
+
+def reset_challenges():
+    """Supprime tous les défis et les équipes collaboratives associées."""
+    delete_collaborative_team_data()
+    redis_write_json(teacher_key("challenges"), [])
+
+
+def reset_results():
+    """Supprime uniquement les résultats."""
+    redis_write_json(teacher_key("results"), [])
+
+
+def reset_students():
+    """Supprime uniquement les élèves. Les classes sont conservées."""
+    redis_write_json(teacher_key("students"), [])
+
+
+def reset_classes_and_students():
+    """Supprime les classes et les élèves, sans toucher aux défis ni aux résultats."""
+    redis_write_json(teacher_key("classes"), [])
+    redis_write_json(teacher_key("students"), [])
+
+
+def reset_database():
+    """Réinitialisation complète des données du professeur connecté."""
+    delete_collaborative_team_data()
     redis_write_json(teacher_key("classes"), [])
     redis_write_json(teacher_key("students"), [])
     redis_write_json(teacher_key("challenges"), [])
@@ -2166,23 +2192,6 @@ def page_challenge():
     )
 
 
-def migrate_legacy_data_to_current_teacher():
-    pairs = [
-        (LEGACY_CLASSES_KEY, teacher_key("classes")),
-        (LEGACY_STUDENTS_KEY, teacher_key("students")),
-        (LEGACY_CHALLENGES_KEY, teacher_key("challenges")),
-        (LEGACY_RESULTS_KEY, teacher_key("results")),
-    ]
-    migrated = False
-    for old_key, new_key in pairs:
-        old_value = redis.get(old_key)
-        new_value = redis.get(new_key)
-        if old_value is not None and new_value is None:
-            redis.set(new_key, old_value)
-            migrated = True
-    return migrated
-
-
 # ============================================================
 # CONNEXION PROFESSEUR
 # ============================================================
@@ -2364,44 +2373,107 @@ def teacher_dashboard():
         unsafe_allow_html=True,
     )
 
-    with st.expander("📦 Reprendre les données de l'ancienne base"):
-        st.write(
-            "À utiliser une seule fois pour rattacher à ce compte les données "
-            "créées avant l'ajout des comptes professeurs."
-        )
-        if st.button("Importer l'ancienne base dans mon compte", use_container_width=True):
-            if migrate_legacy_data_to_current_teacher():
-                st.success("Anciennes données rattachées à ce compte professeur.")
-                st.rerun()
-            else:
-                st.info("Aucune donnée ancienne à importer, ou ce compte possède déjà ses données.")
-
     with st.expander("⚠️ Administration et réinitialisation"):
         st.warning(
-            "La réinitialisation complète efface les classes, les élèves, "
-            "les défis et tous les résultats. Cette action est irréversible."
+            "Les suppressions effectuées ici concernent uniquement votre espace professeur "
+            "et sont irréversibles."
         )
 
+        reset_choice = st.selectbox(
+            "Que voulez-vous réinitialiser ?",
+            [
+                "Défis",
+                "Résultats",
+                "Élèves",
+                "Classes et élèves",
+                "Toutes les données",
+            ],
+            key="reset_choice",
+        )
+
+        reset_config = {
+            "Défis": {
+                "phrase": "SUPPRIMER LES DEFIS",
+                "button": "🗑️ Supprimer tous les défis",
+                "message": (
+                    "Les défis seront supprimés, ainsi que les équipes collaboratives "
+                    "qui leur sont associées. Les classes, élèves et résultats passés "
+                    "seront conservés."
+                ),
+                "success": "Tous les défis ont été supprimés.",
+            },
+            "Résultats": {
+                "phrase": "SUPPRIMER LES RESULTATS",
+                "button": "🗑️ Supprimer tous les résultats",
+                "message": (
+                    "Tous les résultats enregistrés seront supprimés. "
+                    "Les classes, élèves et défis seront conservés."
+                ),
+                "success": "Tous les résultats ont été supprimés.",
+            },
+            "Élèves": {
+                "phrase": "SUPPRIMER LES ELEVES",
+                "button": "🗑️ Supprimer tous les élèves",
+                "message": (
+                    "Tous les élèves seront supprimés, mais les classes resteront disponibles. "
+                    "Les résultats déjà enregistrés sont conservés comme historique."
+                ),
+                "success": "Tous les élèves ont été supprimés.",
+            },
+            "Classes et élèves": {
+                "phrase": "SUPPRIMER CLASSES ET ELEVES",
+                "button": "🗑️ Supprimer les classes et les élèves",
+                "message": (
+                    "Toutes les classes et tous les élèves seront supprimés. "
+                    "Les défis et les résultats déjà enregistrés seront conservés."
+                ),
+                "success": "Toutes les classes et tous les élèves ont été supprimés.",
+            },
+            "Toutes les données": {
+                "phrase": "REINITIALISER TOUT",
+                "button": "🗑️ Réinitialiser tout mon espace",
+                "message": (
+                    "Les classes, élèves, défis, équipes collaboratives et résultats "
+                    "seront définitivement supprimés."
+                ),
+                "success": "Votre espace professeur a été entièrement réinitialisé.",
+            },
+        }
+
+        config = reset_config[reset_choice]
+
+        st.info(config["message"])
+
         reset_confirmation = st.text_input(
-            "Pour confirmer, saisissez exactement : REINITIALISER",
-            key="reset_database_confirmation",
+            f"Pour confirmer, saisissez exactement : {config['phrase']}",
+            key="reset_confirmation",
         )
 
         if st.button(
-            "🗑️ Réinitialiser toute la base de données",
-            disabled=reset_confirmation != "REINITIALISER",
+            config["button"],
+            disabled=reset_confirmation != config["phrase"],
             use_container_width=True,
-            key="reset_database_button",
+            key="reset_action_button",
         ):
-            reset_database()
+            if reset_choice == "Défis":
+                reset_challenges()
+            elif reset_choice == "Résultats":
+                reset_results()
+            elif reset_choice == "Élèves":
+                reset_students()
+            elif reset_choice == "Classes et élèves":
+                reset_classes_and_students()
+            else:
+                reset_database()
 
             for session_key in [
                 "challenge_student",
                 "active_challenge",
+                "collab_team_code",
             ]:
                 st.session_state.pop(session_key, None)
 
-            st.success("Base de données réinitialisée.")
+            st.success(config["success"])
             st.rerun()
 
 
