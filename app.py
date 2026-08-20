@@ -1654,19 +1654,24 @@ def _species_html(spec):
     """spec : symbole:charge:Z"""
     symbol, charge, atomic = spec.split(":")
     charge_num = int(charge)
+
     if charge_num == 0:
         charge_html = ""
     else:
         sign = "+" if charge_num > 0 else "−"
         n = abs(charge_num)
         charge_html = f"{'' if n == 1 else n}{sign}"
+
     symbol_html = _chem_formula_html(symbol)
+
     return (
-        f'<div class="blue-species">'
+        '<div class="blue-species">'
         f'<span class="blue-z">{atomic}</span>'
+        '<div class="blue-symbol-group">'
         f'<span class="blue-symbol">{symbol_html}</span>'
-        f'<span class="blue-charge">{charge_html}</span>'
-        f'</div>'
+        f'<span class="blue-charge-inline">{charge_html}</span>'
+        '</div>'
+        '</div>'
     )
 
 def _pe_html(spec):
@@ -1691,7 +1696,7 @@ def ion_blue_domino_html(left_side, right_side):
             return _pe_html(side[3:])
         return str(side)
     html = (
-        '<style>.ion-blue-domino{display:grid;grid-template-columns:42% 58%;min-height:138px;background:linear-gradient(135deg,#cfe8ff,#9fcef7);border:4px solid #0d2740;border-radius:24px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.10)}.ion-blue-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-blue-domino>div+div{border-left:3px solid #0d2740}.blue-species{position:relative;width:120px;height:88px;font-family:Arial,Helvetica,sans-serif;color:#0a1620}.blue-z{position:absolute;left:12px;bottom:5px;font-size:1.28rem;font-weight:800}.blue-symbol{position:absolute;left:43px;top:18px;font-size:3rem;line-height:1;font-weight:900}.blue-symbol sub{font-size:.52em;vertical-align:-.22em}.blue-charge{position:absolute;left:91px;top:3px;font-size:1.35rem;font-weight:900}.blue-comp{font-family:Arial,Helvetica,sans-serif;color:#0a1620;text-align:left;width:100%;padding-left:8px}.blue-comp-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}.blue-comp ul{margin:0;padding-left:1.3rem;font-size:1.04rem;line-height:1.42}</style>'
+        '<style>.ion-blue-domino{display:grid;grid-template-columns:42% 58%;min-height:138px;background:linear-gradient(135deg,#cfe8ff,#9fcef7);border:4px solid #0d2740;border-radius:24px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.10)}.ion-blue-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-blue-domino>div+div{border-left:3px solid #0d2740}.blue-species{position:relative;width:120px;height:88px;font-family:Arial,Helvetica,sans-serif;color:#0a1620;display:flex;align-items:center;justify-content:center}.blue-z{position:absolute;left:10px;bottom:6px;font-size:1.28rem;font-weight:800;line-height:1}.blue-symbol-group{display:inline-flex;align-items:flex-start;justify-content:center;max-width:92px;margin-left:10px}.blue-symbol{font-size:3rem;line-height:1;font-weight:900;white-space:nowrap}.blue-symbol sub{font-size:.52em;vertical-align:-.22em}.blue-charge-inline{font-size:1.12rem;font-weight:900;line-height:1;margin-left:2px;margin-top:-7px;white-space:nowrap}.blue-comp{font-family:Arial,Helvetica,sans-serif;color:#0a1620;text-align:left;width:100%;padding-left:8px}.blue-comp-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}.blue-comp ul{margin:0;padding-left:1.3rem;font-size:1.04rem;line-height:1.42}</style>'
         '<div class="ion-blue-domino">'
         '<div>' + render(left_side) + '</div>'
         '<div>' + render(right_side) + '</div>'
