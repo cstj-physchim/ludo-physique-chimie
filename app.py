@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 import qrcode
+from PIL import Image
+
 import streamlit as st
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -1461,6 +1463,69 @@ def molecule_block(image_name):
     )
 
 
+
+def electric_domino_image(image_path, reversed_domino=False):
+    """
+    Charge une carte électrique complète.
+    Si reversed_domino=True, coupe dans la gouttière blanche située entre
+    le grand rectangle (montage) et le carré (schéma), puis échange les
+    deux cadres SANS retourner leur contenu en miroir.
+    """
+    img = Image.open(image_path).convert("RGB")
+
+    if not reversed_domino:
+        return img
+
+    w, h = img.size
+    px = img.load()
+
+    # On cherche la gouttière blanche verticale dans la zone centrale.
+    # Une colonne de gouttière contient très peu de pixels sombres,
+    # contrairement aux bordures verticales noires des deux cadres.
+    x0 = int(w * 0.45)
+    x1 = int(w * 0.72)
+
+    dark_counts = []
+    for x in range(x0, x1):
+        dark = 0
+        for y in range(2, h - 2):
+            r, g, b = px[x, y]
+            if r < 235 or g < 235 or b < 235:
+                dark += 1
+        dark_counts.append((dark, x))
+
+    min_dark = min(v for v, _ in dark_counts)
+    candidates = [x for v, x in dark_counts if v <= min_dark + max(2, int(h * 0.01))]
+
+    # Regroupe les colonnes blanches contiguës et choisit la gouttière
+    # la plus proche de la séparation attendue entre rectangle et carré.
+    groups = []
+    for x in candidates:
+        if not groups or x > groups[-1][-1] + 1:
+            groups.append([x])
+        else:
+            groups[-1].append(x)
+
+    expected = int(w * 0.66)
+    group = min(groups, key=lambda g: abs(((g[0] + g[-1]) / 2) - expected))
+    cut = int((group[0] + group[-1]) / 2)
+
+    # On enlève seulement la gouttière autour du point de coupe.
+    # Les bordures noires des deux cadres restent dans leurs blocs.
+    gap = max(2, int(w * 0.006))
+    left = img.crop((0, 0, max(1, cut - gap), h))
+    right = img.crop((min(w - 1, cut + gap), 0, w, h))
+
+    # Recompose : carré/schéma à gauche, rectangle/montage à droite.
+    spacer = Image.new("RGB", (gap * 2, h), "white")
+    out = Image.new("RGB", (right.width + spacer.width + left.width, h), "white")
+    out.paste(right, (0, 0))
+    out.paste(spacer, (right.width, 0))
+    out.paste(left, (right.width + spacer.width, 0))
+
+    return out
+
+
 def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=False):
     level_data = LEVELS[level]
 
@@ -1469,8 +1534,12 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
             # Les cartes électriques sont désormais des PNG complets :
             # montage réel + schéma normalisé dans une seule image.
             image_file = level_data["dominos"][domino_id]
+            electric_img = electric_domino_image(
+                ASSETS_ELECTRICITY / image_file,
+                reversed_domino=reversed_domino,
+            )
             st.image(
-                str(ASSETS_ELECTRICITY / image_file),
+                electric_img,
                 use_container_width=True,
             )
         else:
@@ -1542,10 +1611,7 @@ def show_chain_snake(level, chain, per_row=4):
                 show_domino(
                     level,
                     domino_id,
-                    reversed_domino=(
-                        not going_right
-                        and LEVELS[level].get("theme") != "Électricité"
-                    ),
+                    reversed_domino=not going_right,
                 )
 
         if start + per_row < len(chain):
