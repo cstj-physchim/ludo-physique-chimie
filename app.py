@@ -1688,16 +1688,49 @@ def _pe_html(spec):
         f'</div>'
     )
 
-def ion_blue_domino_html(left_side, right_side):
+def ion_blue_domino_html(left_side, right_side, is_available=False):
+    """Domino bleu avec largeur adaptée au type de contenu de chaque moitié."""
     def render(side):
         if side.startswith("species:"):
             return _species_html(side[8:])
         if side.startswith("pe:"):
             return _pe_html(side[3:])
         return str(side)
+
+    # La composition a besoin de plus de largeur que l'écriture chimique.
+    left_is_comp = left_side.startswith("pe:")
+    grid_cols = "58% 42%" if left_is_comp else "42% 58%"
+
+    # Différence visuelle entre la chaîne déjà construite et les cartes à jouer.
+    if is_available:
+        bg = "linear-gradient(135deg,#d9ecff,#b8dcfb)"
+        border = "#17476d"
+    else:
+        bg = "linear-gradient(135deg,#a9d1f5,#7fb9ea)"
+        border = "#0d3554"
+
     html = (
-        '<style>.ion-blue-domino{display:grid;grid-template-columns:42% 58%;min-height:138px;background:linear-gradient(135deg,#cfe8ff,#9fcef7);border:4px solid #0d2740;border-radius:24px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.10)}.ion-blue-domino>div{display:flex;align-items:center;justify-content:center;padding:10px}.ion-blue-domino>div+div{border-left:3px solid #0d2740}.blue-species{width:100%;height:88px;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;color:#0a1620}.chem-notation{display:inline-flex;align-items:baseline;justify-content:center;white-space:nowrap}.chem-z{font-size:1.18rem;font-weight:800;line-height:1;position:relative;top:.48em;margin-right:2px}.chem-symbol{font-size:2.75rem;line-height:1;font-weight:900;white-space:nowrap}.chem-symbol sub{font-size:.52em;vertical-align:-.22em}.chem-charge{font-size:1.05rem;font-weight:900;line-height:1;position:relative;top:-1.0em;margin-left:2px}.blue-comp{font-family:Arial,Helvetica,sans-serif;color:#0a1620;text-align:left;width:100%;padding-left:8px}.blue-comp-title{font-size:1.02rem;font-weight:700;margin-bottom:4px;white-space:nowrap}.blue-comp ul{margin:0;padding-left:1.3rem;font-size:.98rem;line-height:1.38}.blue-comp li{white-space:nowrap}</style>'
-        '<div class="ion-blue-domino">'
+        '<style>'
+        '.ion-blue-domino{display:grid;min-height:138px;border:4px solid var(--ion-border);'
+        'border-radius:24px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.10);'
+        'background:var(--ion-bg)}'
+        '.ion-blue-domino>div{display:flex;align-items:center;justify-content:center;padding:10px;min-width:0}'
+        '.ion-blue-domino>div+div{border-left:3px solid var(--ion-border)}'
+        '.blue-species{width:100%;height:88px;display:flex;align-items:center;justify-content:center;'
+        'font-family:Arial,Helvetica,sans-serif;color:#0a1620}'
+        '.chem-notation{display:inline-flex;align-items:baseline;justify-content:center;white-space:nowrap}'
+        '.chem-z{font-size:1.18rem;font-weight:800;line-height:1;position:relative;top:.48em;margin-right:2px}'
+        '.chem-symbol{font-size:2.75rem;line-height:1;font-weight:900;white-space:nowrap}'
+        '.chem-symbol sub{font-size:.52em;vertical-align:-.22em}'
+        '.chem-charge{font-size:1.05rem;font-weight:900;line-height:1;position:relative;top:-1em;margin-left:2px}'
+        '.blue-comp{font-family:Arial,Helvetica,sans-serif;color:#0a1620;text-align:left;width:100%;'
+        'padding-left:8px;box-sizing:border-box}'
+        '.blue-comp-title{font-size:1.02rem;font-weight:700;margin-bottom:4px;white-space:nowrap}'
+        '.blue-comp ul{margin:0;padding-left:1.3rem;font-size:.98rem;line-height:1.38}'
+        '.blue-comp li{white-space:nowrap}'
+        '</style>'
+        f'<div class="ion-blue-domino" style="grid-template-columns:{grid_cols};'
+        f'--ion-bg:{bg};--ion-border:{border}">'
         '<div>' + render(left_side) + '</div>'
         '<div>' + render(right_side) + '</div>'
         '</div>'
@@ -1817,7 +1850,11 @@ def show_domino(level, domino_id, key=None, clickable=False, reversed_domino=Fal
             left_side, right_side = level_data["dominos"][domino_id]
             if reversed_domino:
                 left_side, right_side = right_side, left_side
-            ion_blue_domino_html(left_side, right_side)
+            ion_blue_domino_html(
+                left_side,
+                right_side,
+                is_available=clickable,
+            )
 
         elif level_data.get("variant") in ("textes", "verrerie"):
             left_side, right_side = level_data["dominos"][domino_id]
