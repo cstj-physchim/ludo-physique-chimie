@@ -1772,7 +1772,9 @@ def domino_game(level, suffix="free", challenge=None, student=None):
                 go("home")
 
         else:
-            current_index = LEVEL_NAMES.index(level)
+            theme = LEVELS[level].get("theme", "Molécules")
+            theme_levels = levels_for_theme(theme)
+            current_index = theme_levels.index(level)
 
             st.markdown("### Que veux-tu faire maintenant ?")
 
@@ -1781,20 +1783,20 @@ def domino_game(level, suffix="free", challenge=None, student=None):
             with left:
                 if st.button(
                     "🔄 Rejouer le même niveau",
-                    key=f"replay_{level}",
+                    key=f"replay_{theme}_{level}",
                     use_container_width=True,
                 ):
                     init_game(level, suffix)
                     st.rerun()
 
             with right:
-                if current_index < len(LEVEL_NAMES) - 1:
-                    next_level = LEVEL_NAMES[current_index + 1]
+                if current_index < len(theme_levels) - 1:
+                    next_level = theme_levels[current_index + 1]
 
                     if st.button(
                         f"➡️ Passer au niveau suivant : "
                         f"{LEVELS[next_level]['emoji']} {next_level}",
-                        key=f"next_{level}",
+                        key=f"next_{theme}_{level}",
                         type="primary",
                         use_container_width=True,
                     ):
@@ -1802,13 +1804,14 @@ def domino_game(level, suffix="free", challenge=None, student=None):
                         init_game(next_level, suffix)
                         st.rerun()
                 else:
+                    first = theme_levels[0]
                     if st.button(
-                        "🏆 Recommencer depuis le niveau Facile",
-                        key="restart_all",
+                        f"🏆 Recommencer depuis le niveau "
+                        f"{LEVELS[first]['emoji']} {first}",
+                        key=f"restart_all_{theme}",
                         type="primary",
                         use_container_width=True,
                     ):
-                        first = LEVEL_NAMES[0]
                         st.session_state.selected_level = first
                         init_game(first, suffix)
                         st.rerun()
