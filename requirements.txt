@@ -2,3 +2,5 @@ streamlit
 upstash-redis
 pandas
 openpyxl
+qrcode[pil]
+Pillow
