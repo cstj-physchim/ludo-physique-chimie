@@ -2582,405 +2582,190 @@ def game_credit(theme):
 # ============================================================
 
 def page_home():
-    """Accueil modernisé — apparence uniquement, navigation inchangée."""
+    """Accueil modernisé avec fond commun — navigation inchangée."""
+
+    bg_path = Path("assets/background_ludotheque.png")
+    if not bg_path.exists():
+        st.error("Le fond assets/background_ludotheque.png est introuvable.")
+        return
+
+    bg_b64 = base64.b64encode(bg_path.read_bytes()).decode("utf-8")
 
     st.markdown(
-        """
+        f"""
         <style>
-        [data-testid="stAppViewContainer"] {
+        [data-testid="stAppViewContainer"] {{
             background:
-                radial-gradient(circle at 8% 8%, rgba(0, 225, 255, .22), transparent 17%),
-                radial-gradient(circle at 92% 92%, rgba(135, 38, 255, .25), transparent 22%),
-                linear-gradient(145deg, #061a42 0%, #082054 48%, #071743 100%) !important;
+                linear-gradient(rgba(3,18,50,.05), rgba(3,18,50,.10)),
+                url("data:image/png;base64,{bg_b64}") center center / cover no-repeat fixed !important;
             overflow-x: hidden !important;
-        }
+        }}
 
-        .stApp {
+        .stApp {{
             background: transparent !important;
-        }
+        }}
 
-        .block-container {
+        .block-container {{
             max-width: 1500px !important;
-            padding-top: 0.75rem !important;
-            padding-bottom: 1rem !important;
-        }
+            padding-top: 0.65rem !important;
+            padding-bottom: 1.1rem !important;
+        }}
 
-        /* Décor scientifique */
-        .home-bg-decor {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-
-        .home-bg-decor::before {
-            content: "⚛";
-            position: absolute;
-            left: 5.5%;
-            top: 14%;
-            font-size: 7rem;
-            color: rgba(0, 185, 255, .16);
-            transform: rotate(-12deg);
-        }
-
-        .home-bg-decor::after {
-            content: "⌬";
-            position: absolute;
-            right: 7%;
-            top: 11%;
-            font-size: 6rem;
-            color: rgba(44, 120, 255, .17);
-            transform: rotate(12deg);
-        }
-
-
-        /* Grandes vagues organiques avec fondus et dégradés progressifs */
-        .home-wave {
-            position: fixed;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-
-        .home-wave.wave-top-left {
-            width: 650px;
-            height: 405px;
-            left: -205px;
-            top: -150px;
-            border-radius: 42% 58% 63% 37% / 55% 44% 56% 45%;
-            background:
-                radial-gradient(circle at 76% 78%,
-                    rgba(17, 205, 255, .98) 0%,
-                    rgba(16, 220, 220, .98) 20%,
-                    rgba(45, 226, 180, .94) 38%,
-                    rgba(105, 232, 128, .88) 55%,
-                    rgba(176, 236, 80, .72) 70%,
-                    rgba(204, 242, 89, .42) 82%,
-                    rgba(204, 242, 89, .12) 92%,
-                    rgba(204, 242, 89, 0) 100%);
-            box-shadow:
-                100px 110px 150px rgba(31, 218, 211, .10),
-                inset -35px -28px 80px rgba(0, 111, 255, .14);
-            transform: rotate(-7deg);
-        }
-
-        .home-wave.wave-top-left::before {
-            content:"";
-            position:absolute;
-            inset: 32px 22px 26px 76px;
-            border-radius: 48% 52% 58% 42% / 48% 55% 45% 52%;
-            background:
-                linear-gradient(135deg,
-                    rgba(255,255,255,.20) 0%,
-                    rgba(255,255,255,.08) 24%,
-                    rgba(36,202,226,.08) 52%,
-                    rgba(36,202,226,0) 100%);
-            filter: blur(10px);
-        }
-
-        .home-wave.wave-top-left::after {
-            content:"";
-            position:absolute;
-            width: 360px;
-            height: 220px;
-            right: 10px;
-            bottom: 4px;
-            border-radius: 50%;
-            background:
-                radial-gradient(circle,
-                    rgba(15, 200, 255, .20) 0%,
-                    rgba(15, 200, 255, .10) 38%,
-                    rgba(15, 200, 255, 0) 72%);
-            filter: blur(18px);
-        }
-
-        .home-wave.wave-bottom-right {
-            width: 780px;
-            height: 500px;
-            right: -270px;
-            bottom: -205px;
-            border-radius: 61% 39% 35% 65% / 44% 58% 42% 56%;
-            background:
-                radial-gradient(circle at 24% 22%,
-                    rgba(88, 91, 255, .98) 0%,
-                    rgba(112, 73, 255, .98) 20%,
-                    rgba(145, 54, 246, .94) 38%,
-                    rgba(183, 37, 231, .88) 56%,
-                    rgba(216, 36, 213, .72) 70%,
-                    rgba(241, 45, 202, .44) 82%,
-                    rgba(248, 60, 205, .14) 92%,
-                    rgba(248, 60, 205, 0) 100%);
-            box-shadow:
-                -100px -90px 155px rgba(105, 70, 255, .11),
-                inset 36px 28px 85px rgba(255, 134, 255, .10);
-            transform: rotate(8deg);
-        }
-
-        .home-wave.wave-bottom-right::before {
-            content:"";
-            position:absolute;
-            inset: 42px 92px 68px 26px;
-            border-radius: 55% 45% 40% 60% / 44% 56% 44% 56%;
-            background:
-                linear-gradient(315deg,
-                    rgba(255,255,255,.13) 0%,
-                    rgba(255,255,255,.05) 24%,
-                    rgba(109,58,224,.10) 55%,
-                    rgba(109,58,224,0) 100%);
-            filter: blur(12px);
-        }
-
-        .home-wave.wave-bottom-right::after {
-            content:"";
-            position:absolute;
-            width: 420px;
-            height: 260px;
-            left: 22px;
-            top: 8px;
-            border-radius: 50%;
-            background:
-                radial-gradient(circle,
-                    rgba(176, 79, 255, .22) 0%,
-                    rgba(176, 79, 255, .11) 40%,
-                    rgba(176, 79, 255, 0) 74%);
-            filter: blur(20px);
-        }
-
-
-        .wave-dash {
-            position: fixed;
-            pointer-events: none;
-            z-index: 1;
-            border: 2px dashed rgba(255,255,255,.62);
-            opacity: .72;
-        }
-
-        .wave-dash.top-left {
-            width: 330px;
-            height: 205px;
-            left: -65px;
-            top: -22px;
-            border-left-color: transparent;
-            border-bottom-color: transparent;
-            border-radius: 50%;
-            transform: rotate(-18deg);
-        }
-
-        .wave-dash.bottom-right {
-            width: 390px;
-            height: 230px;
-            right: -80px;
-            bottom: -52px;
-            border-right-color: transparent;
-            border-top-color: transparent;
-            border-radius: 50%;
-            transform: rotate(-12deg);
-        }
-
-        .home-dot {
-            position:absolute;
-            width:10px;height:10px;
-            border:2px solid #13d7ee;
-            border-radius:50%;
-            opacity:.8;
-        }
-
-        .home-dot.d1 { left:3%; top:6%; }
-        .home-dot.d2 { right:5%; top:19%; }
-        .home-dot.d3 { left:2.5%; bottom:20%; }
-        .home-dot.d4 { right:2.5%; bottom:14%; border-color:#7b61ff; }
-
-        .home-plus {
-            position:absolute;
-            color:#11d7ec;
-            font-size:2rem;
-            font-weight:300;
-            opacity:.9;
-        }
-
-        .home-plus.p1 { left:2.8%; top:35%; }
-        .home-plus.p2 { right:5.5%; top:33%; }
-        .home-plus.p3 { left:4%; bottom:8%; }
-        .home-plus.p4 { right:3%; bottom:28%; color:#7e5cff; }
-
-        /* En-tête */
-        .home-modern-head {
-            position: relative;
-            z-index: 2;
+        .home-modern-head {{
             text-align: center;
             color: white;
-            padding: .1rem 0 .9rem 0;
-        }
+            padding: .05rem 0 .85rem 0;
+        }}
 
-        .home-modern-icon {
-            font-size: 3.1rem;
+        .home-modern-icon {{
+            font-size: 3rem;
             line-height: 1;
-            margin-bottom: .25rem;
-            filter: drop-shadow(0 6px 14px rgba(0,215,255,.26));
-        }
+            margin-bottom: .2rem;
+            filter: drop-shadow(0 6px 14px rgba(0,215,255,.28));
+        }}
 
-        .home-modern-title {
-            font-size: clamp(2.6rem, 4.1vw, 4rem);
+        .home-modern-title {{
+            font-size: clamp(2.55rem, 4vw, 3.95rem);
             line-height: 1.02;
             font-weight: 900;
             letter-spacing: -0.04em;
             margin: 0;
-            text-shadow: 0 6px 20px rgba(0,0,0,.28);
-        }
+            text-shadow: 0 6px 20px rgba(0,0,0,.30);
+        }}
 
-        .home-modern-subtitle {
-            font-size: clamp(1.1rem, 1.6vw, 1.55rem);
-            margin-top: .45rem;
+        .home-modern-subtitle {{
+            font-size: clamp(1.08rem, 1.55vw, 1.45rem);
+            margin-top: .4rem;
             color: rgba(255,255,255,.96);
-        }
+        }}
 
-        .home-modern-line {
-            width: 150px;
+        .home-modern-line {{
+            width: 145px;
             height: 4px;
-            margin: .75rem auto 0 auto;
+            margin: .7rem auto 0 auto;
             border-radius: 999px;
             background: linear-gradient(90deg,#00d9ff,#36e4d2);
             box-shadow: 0 0 15px rgba(0,217,255,.35);
-        }
+        }}
 
-        /* Cartes */
         .st-key-home_card_free,
         .st-key-home_card_challenge,
-        .st-key-home_card_teacher {
-            position: relative !important;
-            z-index: 2 !important;
+        .st-key-home_card_teacher {{
             border-radius: 24px !important;
             padding: 0 !important;
             overflow: hidden !important;
             background: rgba(255,255,255,.985) !important;
-            box-shadow: 0 18px 40px rgba(0,0,0,.23) !important;
-            border: 1px solid rgba(255,255,255,.78) !important;
-        }
+            box-shadow: 0 18px 40px rgba(0,0,0,.24) !important;
+            border: 1px solid rgba(255,255,255,.80) !important;
+        }}
 
-        .st-key-home_card_free { border-top: 6px solid #1f91ff !important; }
-        .st-key-home_card_challenge { border-top: 6px solid #21c65b !important; }
-        .st-key-home_card_teacher { border-top: 6px solid #8b5cf6 !important; }
+        .st-key-home_card_free {{ border-top: 6px solid #1f91ff !important; }}
+        .st-key-home_card_challenge {{ border-top: 6px solid #21c65b !important; }}
+        .st-key-home_card_teacher {{ border-top: 6px solid #8b5cf6 !important; }}
 
-        .modern-home-card {
-            min-height: 430px;
-            padding: 1.1rem 1.35rem .65rem 1.35rem;
+        .modern-home-card {{
+            min-height: 420px;
+            padding: 1.05rem 1.35rem .6rem 1.35rem;
             text-align: center;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             align-items: center;
-        }
+        }}
 
-        .modern-card-visual {
+        .modern-card-visual {{
             width: 205px;
-            height: 185px;
+            height: 180px;
             border-radius: 44% 56% 50% 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: .05rem auto .9rem auto;
-            font-size: 6.2rem;
+            margin: .05rem auto .8rem auto;
+            font-size: 6rem;
             line-height: 1;
             position: relative;
             overflow: visible;
-        }
+        }}
 
-        .modern-card-visual::before,
-        .modern-card-visual::after {
-            content:"";
-            position:absolute;
-            border-radius:50%;
-            width:13px;height:13px;
-            opacity:.75;
-        }
-
-        .visual-free {
+        .visual-free {{
             background:
-                radial-gradient(circle at 50% 50%, rgba(205,233,255,.95), rgba(232,246,255,.72) 55%, rgba(255,255,255,0) 72%);
-            filter: drop-shadow(0 7px 14px rgba(25,110,225,.12));
-        }
-        .visual-free::before { left:18px; top:20px; border:2px solid #7cc7ff; }
-        .visual-free::after { right:18px; bottom:22px; background:#74d1ff; }
+                radial-gradient(circle at 50% 50%, rgba(205,233,255,.96), rgba(232,246,255,.74) 55%, rgba(255,255,255,0) 72%);
+            filter: drop-shadow(0 7px 14px rgba(25,110,225,.13));
+        }}
 
-        .visual-challenge {
+        .visual-challenge {{
             background:
-                radial-gradient(circle at 50% 50%, rgba(217,249,226,.98), rgba(235,255,240,.74) 55%, rgba(255,255,255,0) 72%);
-            filter: drop-shadow(0 7px 14px rgba(22,163,74,.12));
-        }
-        .visual-challenge::before { left:20px; top:24px; border:2px solid #72db98; }
-        .visual-challenge::after { right:20px; bottom:20px; background:#64d58d; }
+                radial-gradient(circle at 50% 50%, rgba(217,249,226,.98), rgba(235,255,240,.76) 55%, rgba(255,255,255,0) 72%);
+            filter: drop-shadow(0 7px 14px rgba(22,163,74,.13));
+        }}
 
-        .visual-teacher {
+        .visual-teacher {{
             background:
-                radial-gradient(circle at 50% 50%, rgba(234,225,255,.98), rgba(246,241,255,.76) 55%, rgba(255,255,255,0) 72%);
-            filter: drop-shadow(0 7px 14px rgba(109,40,217,.12));
-        }
-        .visual-teacher::before { left:18px; top:24px; border:2px solid #b79bff; }
-        .visual-teacher::after { right:20px; bottom:18px; background:#a88bff; }
+                radial-gradient(circle at 50% 50%, rgba(234,225,255,.98), rgba(246,241,255,.78) 55%, rgba(255,255,255,0) 72%);
+            filter: drop-shadow(0 7px 14px rgba(109,40,217,.13));
+        }}
 
         .visual-free .v-main,
         .visual-challenge .v-main,
-        .visual-teacher .v-main {
+        .visual-teacher .v-main {{
             position: relative;
             z-index:2;
             transform: translateY(2px);
-        }
+        }}
 
         .visual-free .v-mini,
         .visual-challenge .v-mini,
-        .visual-teacher .v-mini {
+        .visual-teacher .v-mini {{
             position:absolute;
-            font-size:1.9rem;
+            font-size:1.85rem;
             opacity:.82;
             filter:none;
-        }
+        }}
 
-        .visual-free .m1 { left:14px; top:54px; }
-        .visual-free .m2 { right:8px; bottom:35px; }
-        .visual-free .m3 { right:32px; top:18px; }
+        .visual-free .m1 {{ left:14px; top:54px; }}
+        .visual-free .m2 {{ right:8px; bottom:35px; }}
+        .visual-free .m3 {{ right:32px; top:18px; }}
 
-        .visual-challenge .m1 { left:14px; top:62px; }
-        .visual-challenge .m2 { right:12px; top:42px; }
-        .visual-challenge .m3 { right:24px; bottom:28px; }
+        .visual-challenge .m1 {{ left:14px; top:62px; }}
+        .visual-challenge .m2 {{ right:12px; top:42px; }}
+        .visual-challenge .m3 {{ right:24px; bottom:28px; }}
 
-        .visual-teacher .m1 { left:10px; bottom:30px; }
-        .visual-teacher .m2 { right:12px; top:42px; }
-        .visual-teacher .m3 { right:28px; bottom:24px; }
+        .visual-teacher .m1 {{ left:10px; bottom:30px; }}
+        .visual-teacher .m2 {{ right:12px; top:42px; }}
+        .visual-teacher .m3 {{ right:28px; bottom:24px; }}
 
-        .modern-card-title {
+        .modern-card-title {{
             color: #0b2b63;
-            font-size: 1.75rem;
+            font-size: 1.72rem;
             font-weight: 900;
             line-height: 1.08;
             margin: .05rem 0 .55rem 0;
             letter-spacing: -0.03em;
-        }
+        }}
 
-        .modern-card-text {
+        .modern-card-text {{
             color: #334b70;
             font-size: 1.02rem;
             line-height: 1.42;
             max-width: 300px;
             min-height: 66px;
             margin: 0 auto .6rem auto;
-        }
+        }}
 
-        .modern-card-mini-line {
+        .modern-card-mini-line {{
             width: 34px;
             height: 3px;
             border-radius: 999px;
             margin: .2rem auto 0 auto;
-        }
+        }}
 
-        .mini-blue { background:#1f91ff; }
-        .mini-green { background:#21c65b; }
-        .mini-purple { background:#8b5cf6; }
+        .mini-blue {{ background:#1f91ff; }}
+        .mini-green {{ background:#21c65b; }}
+        .mini-purple {{ background:#8b5cf6; }}
 
-        /* Boutons : fonctionnement inchangé */
         .st-key-home_card_free div[data-testid="stButton"] > button,
         .st-key-home_card_challenge div[data-testid="stButton"] > button,
-        .st-key-home_card_teacher div[data-testid="stButton"] > button {
+        .st-key-home_card_teacher div[data-testid="stButton"] > button {{
             width: calc(100% - 2rem) !important;
             margin: .1rem 1rem 1rem 1rem !important;
             min-height: 3.45rem !important;
@@ -2988,73 +2773,70 @@ def page_home():
             font-size: 1.08rem !important;
             font-weight: 850 !important;
             box-shadow: none !important;
-        }
+        }}
 
-        .st-key-home_card_free div[data-testid="stButton"] > button {
+        .st-key-home_card_free div[data-testid="stButton"] > button {{
             background: linear-gradient(90deg,#e2f1ff,#cfe8ff) !important;
             color: #0876ea !important;
             border: 1px solid #c6e1ff !important;
-        }
+        }}
 
-        .st-key-home_card_challenge div[data-testid="stButton"] > button {
+        .st-key-home_card_challenge div[data-testid="stButton"] > button {{
             background: linear-gradient(90deg,#e1f9e8,#ccf1d8) !important;
             color: #10a044 !important;
             border: 1px solid #c5ebd0 !important;
-        }
+        }}
 
-        .st-key-home_card_teacher div[data-testid="stButton"] > button {
+        .st-key-home_card_teacher div[data-testid="stButton"] > button {{
             background: linear-gradient(90deg,#f0eaff,#e1d5ff) !important;
             color: #6d28d9 !important;
             border: 1px solid #dacdff !important;
-        }
+        }}
 
         .st-key-home_card_free div[data-testid="stButton"] > button:hover,
         .st-key-home_card_challenge div[data-testid="stButton"] > button:hover,
-        .st-key-home_card_teacher div[data-testid="stButton"] > button:hover {
+        .st-key-home_card_teacher div[data-testid="stButton"] > button:hover {{
             transform: translateY(-1px);
             filter: brightness(.98);
-        }
+        }}
 
-        /* Bas de page */
-        .home-modern-bottom {
-            position:relative;
-            z-index:2;
+        .home-modern-bottom {{
             text-align:center;
             color:#0ed7ed;
-            margin-top:1.15rem;
-        }
+            margin-top:1rem;
+        }}
 
-        .home-modern-icons {
-            font-size:2.45rem;
-            letter-spacing:1.25rem;
-            margin-left:1.25rem;
+        .home-modern-icons {{
+            font-size:2.35rem;
+            letter-spacing:1rem;
+            margin-left:1rem;
             opacity:.95;
             text-shadow:0 0 18px rgba(0,210,255,.25);
-        }
+        }}
 
-        .home-modern-brand {
-            margin-top:.55rem;
+        .home-modern-brand {{
+            margin-top:.45rem;
             font-size:1rem;
             color:rgba(255,255,255,.92);
-        }
+        }}
 
-        .home-modern-brand b {
+        .home-modern-brand b {{
             color:#13d8e8;
-        }
+        }}
 
-        .footer-note {
+        .footer-note {{
             display:none !important;
-        }
+        }}
 
-        @media (max-width: 1000px) {
-            .modern-home-card { min-height: 385px; }
-            .modern-card-visual {
+        @media (max-width: 1000px) {{
+            .modern-home-card {{ min-height: 385px; }}
+            .modern-card-visual {{
                 width: 165px;
                 height: 150px;
                 font-size: 5rem;
-            }
-            .home-modern-icons { letter-spacing:.7rem; }
-        }
+            }}
+            .home-modern-icons {{ letter-spacing:.7rem; }}
+        }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -3062,21 +2844,6 @@ def page_home():
 
     st.markdown(
         """
-        <div class="home-bg-decor">
-            <div class="home-wave wave-top-left"></div>
-            <div class="home-wave wave-bottom-right"></div>
-            <div class="wave-dash top-left"></div>
-            <div class="wave-dash bottom-right"></div>
-            <span class="home-dot d1"></span>
-            <span class="home-dot d2"></span>
-            <span class="home-dot d3"></span>
-            <span class="home-dot d4"></span>
-            <span class="home-plus p1">+</span>
-            <span class="home-plus p2">+</span>
-            <span class="home-plus p3">+</span>
-            <span class="home-plus p4">+</span>
-        </div>
-
         <div class="home-modern-head">
             <div class="home-modern-icon">⚗️</div>
             <div class="home-modern-title">Que veux-tu faire aujourd’hui ?</div>
