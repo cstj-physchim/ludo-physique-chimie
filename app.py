@@ -1538,7 +1538,7 @@ def ion_formula_block(spec):
             align-items:center;
             justify-content:center;
             font-family:Arial,Helvetica,sans-serif;
-            font-size:2.35rem;
+            font-size:1.65rem;
             font-weight:800;
             color:#111;
             line-height:1;
@@ -2595,9 +2595,12 @@ def page_home():
         f"""
         <style>
         [data-testid="stAppViewContainer"] {{
-            background:
-                linear-gradient(rgba(3,18,50,.05), rgba(3,18,50,.10)),
-                url("data:image/png;base64,{bg_b64}") center center / cover no-repeat fixed !important;
+            background-image: url("data:image/png;base64,{bg_b64}") !important;
+            background-position: center center !important;
+            background-repeat: no-repeat !important;
+            background-size: 100% 100% !important;
+            background-attachment: fixed !important;
+            background-color: #061a42 !important;
             overflow-x: hidden !important;
         }}
 
@@ -2606,26 +2609,26 @@ def page_home():
         }}
 
         .block-container {{
-            max-width: 1500px !important;
-            padding-top: 0.65rem !important;
-            padding-bottom: 1.1rem !important;
+            max-width: 1180px !important;
+            padding-top: 0.25rem !important;
+            padding-bottom: 0.45rem !important;
         }}
 
         .home-modern-head {{
             text-align: center;
             color: white;
-            padding: .05rem 0 .85rem 0;
+            padding: 0 0 .5rem 0;
         }}
 
         .home-modern-icon {{
-            font-size: 3rem;
+            font-size: 2.2rem;
             line-height: 1;
-            margin-bottom: .2rem;
+            margin-bottom: .05rem;
             filter: drop-shadow(0 6px 14px rgba(0,215,255,.28));
         }}
 
         .home-modern-title {{
-            font-size: clamp(2.55rem, 4vw, 3.95rem);
+            font-size: clamp(2rem, 3vw, 2.85rem);
             line-height: 1.02;
             font-weight: 900;
             letter-spacing: -0.04em;
@@ -2634,15 +2637,15 @@ def page_home():
         }}
 
         .home-modern-subtitle {{
-            font-size: clamp(1.08rem, 1.55vw, 1.45rem);
-            margin-top: .4rem;
+            font-size: clamp(.92rem, 1.2vw, 1.12rem);
+            margin-top: .25rem;
             color: rgba(255,255,255,.96);
         }}
 
         .home-modern-line {{
-            width: 145px;
-            height: 4px;
-            margin: .7rem auto 0 auto;
+            width: 115px;
+            height: 3px;
+            margin: .45rem auto 0 auto;
             border-radius: 999px;
             background: linear-gradient(90deg,#00d9ff,#36e4d2);
             box-shadow: 0 0 15px rgba(0,217,255,.35);
@@ -2651,7 +2654,7 @@ def page_home():
         .st-key-home_card_free,
         .st-key-home_card_challenge,
         .st-key-home_card_teacher {{
-            border-radius: 24px !important;
+            border-radius: 20px !important;
             padding: 0 !important;
             overflow: hidden !important;
             background: rgba(255,255,255,.985) !important;
@@ -2664,8 +2667,8 @@ def page_home():
         .st-key-home_card_teacher {{ border-top: 6px solid #8b5cf6 !important; }}
 
         .modern-home-card {{
-            min-height: 420px;
-            padding: 1.05rem 1.35rem .6rem 1.35rem;
+            min-height: 310px;
+            padding: .65rem 1rem .35rem 1rem;
             text-align: center;
             box-sizing: border-box;
             display: flex;
@@ -2674,14 +2677,14 @@ def page_home():
         }}
 
         .modern-card-visual {{
-            width: 205px;
-            height: 180px;
+            width: 145px;
+            height: 118px;
             border-radius: 44% 56% 50% 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: .05rem auto .8rem auto;
-            font-size: 6rem;
+            margin: 0 auto .35rem auto;
+            font-size: 4.2rem;
             line-height: 1;
             position: relative;
             overflow: visible;
@@ -2717,7 +2720,7 @@ def page_home():
         .visual-challenge .v-mini,
         .visual-teacher .v-mini {{
             position:absolute;
-            font-size:1.85rem;
+            font-size:1.25rem;
             opacity:.82;
             filter:none;
         }}
@@ -2736,27 +2739,27 @@ def page_home():
 
         .modern-card-title {{
             color: #0b2b63;
-            font-size: 1.72rem;
+            font-size: 1.35rem;
             font-weight: 900;
             line-height: 1.08;
-            margin: .05rem 0 .55rem 0;
+            margin: .02rem 0 .32rem 0;
             letter-spacing: -0.03em;
         }}
 
         .modern-card-text {{
             color: #334b70;
-            font-size: 1.02rem;
-            line-height: 1.42;
+            font-size: .88rem;
+            line-height: 1.30;
             max-width: 300px;
-            min-height: 66px;
-            margin: 0 auto .6rem auto;
+            min-height: 48px;
+            margin: 0 auto .32rem auto;
         }}
 
         .modern-card-mini-line {{
             width: 34px;
             height: 3px;
             border-radius: 999px;
-            margin: .2rem auto 0 auto;
+            margin: .12rem auto 0 auto;
         }}
 
         .mini-blue {{ background:#1f91ff; }}
@@ -2766,11 +2769,11 @@ def page_home():
         .st-key-home_card_free div[data-testid="stButton"] > button,
         .st-key-home_card_challenge div[data-testid="stButton"] > button,
         .st-key-home_card_teacher div[data-testid="stButton"] > button {{
-            width: calc(100% - 2rem) !important;
-            margin: .1rem 1rem 1rem 1rem !important;
-            min-height: 3.45rem !important;
+            width: calc(100% - 1.6rem) !important;
+            margin: .05rem .8rem .7rem .8rem !important;
+            min-height: 2.75rem !important;
             border-radius: 17px !important;
-            font-size: 1.08rem !important;
+            font-size: .95rem !important;
             font-weight: 850 !important;
             box-shadow: none !important;
         }}
@@ -2803,20 +2806,20 @@ def page_home():
         .home-modern-bottom {{
             text-align:center;
             color:#0ed7ed;
-            margin-top:1rem;
+            margin-top:.18rem;
         }}
 
         .home-modern-icons {{
             font-size:2.35rem;
-            letter-spacing:1rem;
-            margin-left:1rem;
+            letter-spacing:.65rem;
+            margin-left:.65rem;
             opacity:.95;
             text-shadow:0 0 18px rgba(0,210,255,.25);
         }}
 
         .home-modern-brand {{
             margin-top:.45rem;
-            font-size:1rem;
+            font-size:.82rem;
             color:rgba(255,255,255,.92);
         }}
 
@@ -4384,7 +4387,7 @@ def page_entry_gate():
         }
 
         .st-key-entry_gate_image {
-            width: min(1120px, calc(100vw - 48px)) !important;
+            width: min(900px, calc(100vw - 48px)) !important;
             margin: 0 auto !important;
             padding: 0 !important;
         }
@@ -4403,10 +4406,10 @@ def page_entry_gate():
         }
 
         .st-key-entry_gate_card {
-            width: 280px !important;
+            width: 240px !important;
             max-width: calc(100vw - 32px) !important;
-            margin: -105px auto 18px auto !important;
-            padding: 7px 9px 9px 9px !important;
+            margin: -88px auto 14px auto !important;
+            padding: 6px 8px 8px 8px !important;
             border-radius: 13px !important;
             background: rgba(255,255,255,0.95) !important;
             border: 1px solid rgba(255,255,255,0.92) !important;
@@ -4425,23 +4428,23 @@ def page_entry_gate():
 
         .st-key-entry_gate_card input {
             text-align: center !important;
-            min-height: 34px !important;
-            height: 34px !important;
-            font-size: 0.88rem !important;
+            min-height: 31px !important;
+            height: 31px !important;
+            font-size: 0.82rem !important;
             border-radius: 9px !important;
         }
 
         .st-key-entry_gate_card div[data-testid="stButton"] > button {
-            min-height: 34px !important;
-            height: 34px !important;
+            min-height: 31px !important;
+            height: 31px !important;
             border-radius: 9px !important;
-            font-size: 0.88rem !important;
+            font-size: 0.82rem !important;
             box-shadow: none !important;
         }
 
         .entry-gate-hint {
             text-align: center;
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             color: #52647d;
             margin: 0 0 4px 0;
             line-height: 1.1;
