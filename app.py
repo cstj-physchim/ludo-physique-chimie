@@ -4051,77 +4051,74 @@ def page_teacher():
 
 
 def page_entry_gate():
-    """Premier écran : image d'accueil en fond + mini fenêtre de code superposée."""
+    """Premier écran : image d'accueil + petite carte superposée."""
     image_path = Path("assets/accueil_ludotheque.png")
 
     if not image_path.exists():
         st.error("L'image d'accueil est introuvable dans assets/accueil_ludotheque.png.")
         return
 
-    image_b64 = base64.b64encode(image_path.read_bytes()).decode("utf-8")
-
+    # On affiche l'image normalement : c'est beaucoup plus robuste dans Streamlit
+    # qu'un fond CSS appliqué à toute l'application.
     st.markdown(
-        f"""
+        """
         <style>
-        .stApp {{
-            background:
-                linear-gradient(rgba(5, 18, 50, 0.08), rgba(5, 18, 50, 0.16)),
-                url("data:image/png;base64,{image_b64}") center center / cover no-repeat fixed !important;
-        }}
+        .block-container {
+            max-width: 1200px !important;
+            padding-top: 0.5rem !important;
+            padding-bottom: 1rem !important;
+        }
 
-        .block-container {{
-            max-width: 100% !important;
-            min-height: 100vh !important;
-            padding: 0 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: flex-end !important;
-            align-items: center !important;
-        }}
+        div[data-testid="stImage"] {
+            margin: 0 auto !important;
+        }
 
-        .st-key-entry_gate_card {{
-            width: min(430px, calc(100vw - 36px)) !important;
-            margin: 0 auto 34px auto !important;
-            padding: 14px 16px 16px 16px !important;
-            border-radius: 18px !important;
-            background: rgba(255, 255, 255, 0.93) !important;
-            border: 1px solid rgba(255, 255, 255, 0.75) !important;
-            box-shadow: 0 12px 34px rgba(5, 18, 50, 0.24) !important;
+        .st-key-entry_gate_card {
+            position: relative !important;
+            z-index: 20 !important;
+            width: min(390px, calc(100% - 32px)) !important;
+            margin: -150px auto 32px auto !important;
+            padding: 12px 14px 14px 14px !important;
+            border-radius: 16px !important;
+            background: rgba(255,255,255,0.94) !important;
+            border: 1px solid rgba(255,255,255,0.8) !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.24) !important;
             backdrop-filter: blur(10px) !important;
-        }}
+        }
 
-        .st-key-entry_gate_card div[data-testid="stTextInput"] label {{
+        .st-key-entry_gate_card div[data-testid="stTextInput"] label {
             display: none !important;
-        }}
+        }
 
-        .st-key-entry_gate_card input {{
+        .st-key-entry_gate_card input {
             text-align: center !important;
-            font-size: 1rem !important;
-        }}
+        }
 
-        .st-key-entry_gate_card div[data-testid="stButton"] > button {{
-            min-height: 2.7rem !important;
-            border-radius: 12px !important;
-            font-size: 0.96rem !important;
+        .st-key-entry_gate_card div[data-testid="stButton"] > button {
+            min-height: 2.55rem !important;
+            border-radius: 11px !important;
             box-shadow: none !important;
-        }}
+        }
 
-        .entry-gate-hint {{
+        .entry-gate-hint {
             text-align: center;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             color: #52647d;
-            margin: 0 0 8px 0;
-        }}
+            margin: 0 0 7px 0;
+        }
 
-        @media (max-width: 700px) {{
-            .st-key-entry_gate_card {{
-                margin-bottom: 18px !important;
-            }}
-        }}
+        @media (max-width: 700px) {
+            .st-key-entry_gate_card {
+                margin-top: -105px !important;
+                width: calc(100% - 24px) !important;
+            }
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+    st.image(str(image_path), use_container_width=True)
 
     with st.container(key="entry_gate_card"):
         st.markdown(
@@ -4146,13 +4143,8 @@ def page_entry_gate():
             expected_code = str(st.secrets.get("LUDOTHEQUE_CODE", "")).strip()
 
             if not expected_code:
-                st.error(
-                    "Le code d'accès n'est pas encore configuré dans les Secrets Streamlit."
-                )
-            elif secrets.compare_digest(
-                entered_code.strip(),
-                expected_code,
-            ):
+                st.error("Le code d'accès n'est pas encore configuré dans les Secrets Streamlit.")
+            elif secrets.compare_digest(entered_code.strip(), expected_code):
                 st.session_state["ludotheque_access_granted"] = True
                 st.session_state.pop("ludotheque_entry_code", None)
                 st.rerun()
