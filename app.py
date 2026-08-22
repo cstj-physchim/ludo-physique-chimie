@@ -1,5 +1,6 @@
 import re
 import base64
+import base64
 import json
 import random
 import textwrap
@@ -4051,78 +4052,118 @@ def page_teacher():
 
 
 def page_entry_gate():
-    """Premier écran : image d'accueil + petite carte superposée."""
+    """Premier écran : image plein écran + mini saisie de code en superposition."""
     image_path = Path("assets/accueil_ludotheque.png")
 
     if not image_path.exists():
         st.error("L'image d'accueil est introuvable dans assets/accueil_ludotheque.png.")
         return
 
-    # On affiche l'image normalement : c'est beaucoup plus robuste dans Streamlit
-    # qu'un fond CSS appliqué à toute l'application.
+    image_b64 = base64.b64encode(image_path.read_bytes()).decode("utf-8")
+
     st.markdown(
-        """
+        f"""
         <style>
-        .block-container {
-            max-width: 1200px !important;
-            padding-top: 0.5rem !important;
-            padding-bottom: 1rem !important;
-        }
-
-        div[data-testid="stImage"] {
-            margin: 0 auto !important;
-        }
-
-        .st-key-entry_gate_card {
-            position: relative !important;
-            z-index: 20 !important;
-            width: min(390px, calc(100% - 32px)) !important;
-            margin: -150px auto 32px auto !important;
-            padding: 12px 14px 14px 14px !important;
-            border-radius: 16px !important;
-            background: rgba(255,255,255,0.94) !important;
-            border: 1px solid rgba(255,255,255,0.8) !important;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.24) !important;
-            backdrop-filter: blur(10px) !important;
-        }
-
-        .st-key-entry_gate_card div[data-testid="stTextInput"] label {
+        /* Écran d'entrée uniquement : on masque le chrome Streamlit */
+        [data-testid="stHeader"],
+        [data-testid="stToolbar"],
+        footer {{
             display: none !important;
-        }
+        }}
 
-        .st-key-entry_gate_card input {
+        html, body, [data-testid="stAppViewContainer"], .stApp {{
+            height: 100% !important;
+            min-height: 100vh !important;
+        }}
+
+        [data-testid="stAppViewContainer"] {{
+            background:
+                linear-gradient(rgba(4,18,48,0.03), rgba(4,18,48,0.08)),
+                url("data:image/png;base64,{image_b64}")
+                center center / cover no-repeat fixed !important;
+        }}
+
+        .stApp {{
+            background: transparent !important;
+        }}
+
+        .block-container {{
+            max-width: 100% !important;
+            width: 100% !important;
+            min-height: 100vh !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }}
+
+        /* Petite fenêtre flottante, volontairement très discrète */
+        .st-key-entry_gate_card {{
+            position: fixed !important;
+            left: 50% !important;
+            bottom: 3.5vh !important;
+            transform: translateX(-50%) !important;
+            z-index: 1000 !important;
+
+            width: min(320px, calc(100vw - 28px)) !important;
+            padding: 9px 10px 10px 10px !important;
+            margin: 0 !important;
+
+            border-radius: 14px !important;
+            background: rgba(255,255,255,0.88) !important;
+            border: 1px solid rgba(255,255,255,0.75) !important;
+            box-shadow: 0 8px 26px rgba(3,18,48,0.22) !important;
+            backdrop-filter: blur(8px) !important;
+        }}
+
+        .st-key-entry_gate_card div[data-testid="stTextInput"] {{
+            margin: 0 0 6px 0 !important;
+        }}
+
+        .st-key-entry_gate_card div[data-testid="stTextInput"] label {{
+            display: none !important;
+        }}
+
+        .st-key-entry_gate_card input {{
+            height: 38px !important;
+            min-height: 38px !important;
             text-align: center !important;
-        }
+            font-size: 0.93rem !important;
+            border-radius: 10px !important;
+        }}
 
-        .st-key-entry_gate_card div[data-testid="stButton"] > button {
-            min-height: 2.55rem !important;
-            border-radius: 11px !important;
+        .st-key-entry_gate_card div[data-testid="stButton"] > button {{
+            min-height: 38px !important;
+            height: 38px !important;
+            border-radius: 10px !important;
+            font-size: 0.92rem !important;
             box-shadow: none !important;
-        }
+        }}
 
-        .entry-gate-hint {
+        .entry-gate-hint {{
             text-align: center;
-            font-size: 0.88rem;
-            color: #52647d;
-            margin: 0 0 7px 0;
-        }
+            font-size: 0.78rem;
+            color: #4d6079;
+            margin: 0 0 6px 0;
+            line-height: 1.2;
+        }}
 
-        @media (max-width: 700px) {
-            .st-key-entry_gate_card {
-                margin-top: -105px !important;
-                width: calc(100% - 24px) !important;
-            }
-        }
+        @media (max-width: 700px) {{
+            [data-testid="stAppViewContainer"] {{
+                background-position: center center !important;
+            }}
+
+            .st-key-entry_gate_card {{
+                bottom: 2vh !important;
+                width: min(300px, calc(100vw - 20px)) !important;
+            }}
+        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    st.image(str(image_path), use_container_width=True)
-
     with st.container(key="entry_gate_card"):
         st.markdown(
-            '<div class="entry-gate-hint">Entre le code donné par ton professeur</div>',
+            '<div class="entry-gate-hint">Code donné par ton professeur</div>',
             unsafe_allow_html=True,
         )
 
@@ -4151,42 +4192,4 @@ def page_entry_gate():
             else:
                 st.error("Code incorrect.")
 
-# ============================================================
-# ROUTEUR PRINCIPAL
-# ============================================================
 
-# Premier sas d'entrée : il précède toute l'architecture actuelle.
-if not st.session_state.get("ludotheque_access_granted", False):
-    page_entry_gate()
-    st.stop()
-
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-
-page = st.session_state.page
-
-if page == "home":
-    page_home()
-elif page == "free_activity":
-    page_free_activity()
-elif page == "free_theme":
-    page_free_theme()
-elif page == "free_level":
-    page_free_level()
-elif page == "free_game":
-    page_free_game()
-elif page == "challenge":
-    page_challenge()
-elif page == "teacher":
-    page_teacher()
-else:
-    st.session_state.page = "home"
-    st.rerun()
-
-
-st.markdown(
-    '<div class="footer-note">'
-    'Ludothèque Physique-Chimie · Plateforme pédagogique de jeux et d’activités interactives'
-    '</div>',
-    unsafe_allow_html=True,
-)
