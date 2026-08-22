@@ -685,15 +685,24 @@ def save_students(students):
 
 
 def generate_student_code():
+    """Génère un code élève unique de 6 caractères, facile à saisir.
+
+    Les caractères ambigus (0/O, 1/I) sont volontairement exclus.
+    """
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     existing = set()
+
     for teacher_id in get_teacher_accounts():
         for student in redis_read_json(teacher_key("students", teacher_id), []):
-            existing.add(student["code"])
-    for _ in range(500):
-        code = "".join(secrets.choice(alphabet) for _ in range(4))
+            code = str(student.get("code", "")).strip().upper()
+            if code:
+                existing.add(code)
+
+    for _ in range(1000):
+        code = "".join(secrets.choice(alphabet) for _ in range(6))
         if code not in existing:
             return code
+
     raise RuntimeError("Impossible de générer un code élève unique.")
 
 
@@ -919,6 +928,26 @@ def delete_student(student_id):
     return True
 
 
+def regenerate_student_code(student_id):
+    """Remplace uniquement le code d'accès d'un élève.
+
+    La fiche, la classe et les résultats existants ne sont pas modifiés.
+    Le QR personnel étant construit à partir du code, il change lui aussi.
+    """
+    students = get_students()
+
+    for student in students:
+        if student.get("id") == student_id:
+            old_code = student.get("code", "")
+            new_code = generate_student_code()
+            student["code"] = new_code
+            student["code_regenerated_at"] = datetime.now().isoformat(timespec="seconds")
+            save_students(students)
+            return True, old_code, new_code
+
+    return False, None, None
+
+
 def delete_class(class_name):
     students = get_students()
 
@@ -980,7 +1009,8 @@ def reset_database():
 # ============================================================
 
 def student_qr_url(student):
-    return f"{APP_PUBLIC_URL}/?student={student['id']}"
+    # Le QR contient le code personnel courant. Un nouveau code = un nouveau QR.
+    return f"{APP_PUBLIC_URL}/?student_code={student['code']}"
 
 
 def make_qr_png_bytes(student):
@@ -1006,6 +1036,12 @@ def make_qr_png_bytes(student):
 
 
 def generate_student_cards_pdf(students):
+    """Génère 8 cartes par page avec les identifiants cachés sous un volet.
+
+    Le bandeau inférieur contient le QR et le code personnel. Une fois la carte
+    découpée, l'élève plie ce bandeau vers le haut : les deux moyens d'accès se
+    retrouvent contre la carte et ne sont plus visibles sans soulever le volet.
+    """
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
 
@@ -1021,7 +1057,8 @@ def generate_student_cards_pdf(students):
     card_width = (page_width - 2 * margin_x - gap_x) / cols
     card_height = (page_height - 2 * margin_y - 3 * gap_y) / rows
 
-    qr_size = 31 * mm
+    flap_height = 27 * mm
+    qr_size = 20 * mm
 
     sorted_students = sorted(
         students,
@@ -1051,61 +1088,86 @@ def generate_student_cards_pdf(students):
 
         pdf.setLineWidth(0.8)
         pdf.roundRect(
-            x,
-            y,
-            card_width,
-            card_height,
-            4 * mm,
-            stroke=1,
-            fill=0,
+            x, y, card_width, card_height, 4 * mm, stroke=1, fill=0
         )
 
-        pdf.setFont("Helvetica-Bold", 11)
+        fold_y = y + flap_height
+
+        # Partie fixe de la carte.
+        pdf.setFont("Helvetica-Bold", 10.5)
         pdf.drawString(
             x + 5 * mm,
-            y + card_height - 8 * mm,
+            y + card_height - 7.5 * mm,
             "Ludothèque Physique-Chimie",
         )
 
         pdf.setFont("Helvetica-Bold", 13)
         pdf.drawString(
             x + 5 * mm,
-            y + card_height - 17 * mm,
+            y + card_height - 16 * mm,
             f"{student['first_name']} {student['last_initial']}.",
         )
 
         pdf.setFont("Helvetica", 10)
         pdf.drawString(
             x + 5 * mm,
-            y + card_height - 24 * mm,
+            y + card_height - 23 * mm,
             f"Classe : {student['class_name']}",
         )
 
-        pdf.setFont("Helvetica", 9)
+        pdf.setFont("Helvetica", 6.8)
+        pdf.setFillGray(0.35)
         pdf.drawString(
             x + 5 * mm,
-            y + card_height - 35 * mm,
+            fold_y + 2.8 * mm,
+            "Soulève le volet uniquement pour t'identifier.",
+        )
+        pdf.setFillGray(0)
+
+        # Ligne de pli.
+        pdf.saveState()
+        pdf.setDash(2.2, 2.2)
+        pdf.setLineWidth(0.7)
+        pdf.line(x + 3 * mm, fold_y, x + card_width - 3 * mm, fold_y)
+        pdf.restoreState()
+
+        pdf.setFont("Helvetica-Bold", 6.8)
+        pdf.drawCentredString(
+            x + card_width / 2,
+            fold_y - 3 * mm,
+            "VOLET CONFIDENTIEL — PLIER ICI VERS LE HAUT",
+        )
+
+        # Zone confidentielle : code + QR, tous deux cachés lorsque le volet est fermé.
+        pdf.setFillGray(0.94)
+        pdf.roundRect(
+            x + 2.5 * mm,
+            y + 2.5 * mm,
+            card_width - 5 * mm,
+            flap_height - 6 * mm,
+            2.5 * mm,
+            stroke=0,
+            fill=1,
+        )
+        pdf.setFillGray(0)
+
+        pdf.setFont("Helvetica-Bold", 7.5)
+        pdf.drawString(
+            x + 5 * mm,
+            y + flap_height - 9 * mm,
             "Code personnel",
         )
 
-        pdf.setFont("Helvetica-Bold", 20)
-        pdf.drawString(
-            x + 5 * mm,
-            y + card_height - 45 * mm,
-            student["code"],
-        )
-
-        pdf.setFont("Helvetica", 7.5)
+        pdf.setFont("Helvetica-Bold", 16)
         pdf.drawString(
             x + 5 * mm,
             y + 7 * mm,
-            "Conserve cette carte pour l'année scolaire.",
+            student["code"],
         )
 
         qr_reader = ImageReader(BytesIO(make_qr_png_bytes(student)))
-
         qr_x = x + card_width - qr_size - 5 * mm
-        qr_y = y + (card_height - qr_size) / 2 - 2 * mm
+        qr_y = y + 4.5 * mm
 
         pdf.drawImage(
             qr_reader,
@@ -1117,16 +1179,15 @@ def generate_student_cards_pdf(students):
             mask="auto",
         )
 
-        pdf.setFont("Helvetica", 6.5)
+        pdf.setFont("Helvetica", 5.7)
         pdf.drawCentredString(
             qr_x + qr_size / 2,
-            qr_y - 2.5 * mm,
-            "QR personnel Ludothèque",
+            y + 2.8 * mm,
+            "QR personnel",
         )
 
     pdf.save()
     buffer.seek(0)
-
     return buffer.getvalue()
 
 
@@ -2870,9 +2931,9 @@ def page_home():
                         <span class="v-mini m3">✦</span>
                         <span class="v-main">🎮</span>
                     </div>
-                    <div class="modern-card-title">Entraînement libre</div>
+                    <div class="modern-card-title">Mon espace d’entraînement</div>
                     <div class="modern-card-text">
-                        Choisis un jeu, un thème et<br>progresse à ton rythme.
+                        Révise, entraîne-toi et<br>joue à ton rythme.
                     </div>
                     <div class="modern-card-mini-line mini-blue"></div>
                 </div>
@@ -2957,7 +3018,7 @@ def page_free_activity():
     back_button("home")
 
     st.markdown(
-        '<div class="breadcrumb">Accueil › Entraînement libre › Choix de l’activité</div>',
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Choix de l’activité</div>',
         unsafe_allow_html=True,
     )
 
@@ -3001,7 +3062,7 @@ def page_free_theme():
     back_button("free_activity")
 
     st.markdown(
-        '<div class="breadcrumb">Accueil › Entraînement libre › Dominos › Choix du thème</div>',
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Dominos › Choix du thème</div>',
         unsafe_allow_html=True,
     )
 
@@ -3081,7 +3142,7 @@ def page_free_level():
     theme_levels = levels_for_theme(theme)
 
     st.markdown(
-        f'<div class="breadcrumb">Accueil › Entraînement libre › Dominos › {theme} › Niveau</div>',
+        f'<div class="breadcrumb">Accueil › Mon espace d’entraînement › Dominos › {theme} › Niveau</div>',
         unsafe_allow_html=True,
     )
 
@@ -3218,7 +3279,7 @@ def page_free_game():
     level = st.session_state.get("selected_level", default_level)
 
     st.markdown(
-        f'<div class="breadcrumb">Accueil › Entraînement libre › Dominos › {theme} › {level}</div>',
+        f'<div class="breadcrumb">Accueil › Mon espace d’entraînement › Dominos › {theme} › {level}</div>',
         unsafe_allow_html=True,
     )
 
@@ -3239,13 +3300,25 @@ def page_challenge():
     back_button("home")
 
     if not st.session_state.get("challenge_student"):
-        qr_student_id = st.query_params.get("student")
+        # Nouveau QR : il contient le code personnel courant.
+        qr_student_code = st.query_params.get("student_code")
 
-        if qr_student_id:
-            qr_student = find_student_by_id(qr_student_id)
+        if qr_student_code:
+            qr_student = find_student_by_code(qr_student_code)
 
             if qr_student:
                 st.session_state.challenge_student = qr_student
+        else:
+            # Compatibilité temporaire avec les anciennes cartes QR basées sur l'ID.
+            # Dès qu'un code est régénéré, code_regenerated_at est ajouté à la fiche :
+            # l'ancien QR devient alors volontairement invalide.
+            legacy_student_id = st.query_params.get("student")
+
+            if legacy_student_id:
+                legacy_student = find_student_by_id(legacy_student_id)
+
+                if legacy_student and not legacy_student.get("code_regenerated_at"):
+                    st.session_state.challenge_student = legacy_student
 
     student = st.session_state.get("challenge_student")
     challenge = st.session_state.get("active_challenge")
@@ -3265,8 +3338,8 @@ def page_challenge():
 
         student_code = st.text_input(
             "Code élève",
-            max_chars=4,
-            placeholder="Ex. K7P4",
+            max_chars=6,
+            placeholder="Ex. K7P4QM",
             key="student_code_input",
         )
 
@@ -3488,7 +3561,7 @@ def teacher_dashboard():
         f"""
         <div class="teacher-band">
             <div class="teacher-band-title">👨‍🏫 Espace professeur — {current_teacher_name()}</div>
-            <div>Gérez vos classes, vos élèves, vos défis et vos résultats.</div>
+            <div>Gérez vos classes et élèves, vos défis et vos résultats.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -3501,24 +3574,16 @@ def teacher_dashboard():
 
     open_challenges = sum(1 for c in challenges if c.get("status") == "open")
 
-    cols = st.columns(4)
+    cols = st.columns(3)
 
     cards = [
         (
-            "🏫",
-            "Classes",
-            "Créez et gérez vos classes.",
-            f"{len(classes)} classe(s)",
+            "🏫👥",
+            "Classes et élèves",
+            "Créez vos classes, importez les élèves et gérez leurs accès.",
+            f"{len(classes)} classe(s) · {len(students)} élève(s)",
             "card-blue",
-            "classes",
-        ),
-        (
-            "👥",
-            "Élèves",
-            "Importez les élèves et générez les codes et QR.",
-            f"{len(students)} élève(s)",
-            "card-green",
-            "students",
+            "classes_students",
         ),
         (
             "🏆",
@@ -3659,10 +3724,16 @@ def teacher_dashboard():
             st.rerun()
 
 
-def teacher_classes():
-    teacher_header("Classes")
+def teacher_classes_students():
+    teacher_header("Classes et élèves")
 
-    st.subheader("Créer une classe")
+    classes = get_classes()
+    students = get_students()
+
+    # -------------------------
+    # Classes
+    # -------------------------
+    st.subheader("🏫 Mes classes")
 
     c1, c2 = st.columns([3, 1])
 
@@ -3680,264 +3751,200 @@ def teacher_classes():
             "➕ Nouvelle classe",
             type="primary",
             use_container_width=True,
+            key="create_class_button",
         ):
             if add_class(class_name):
-                st.success(
-                    f"Classe {class_name.strip().upper()} créée."
-                )
+                st.success(f"Classe {class_name.strip().upper()} créée.")
                 st.rerun()
             else:
-                st.warning(
-                    "Cette classe existe déjà ou le nom est vide."
-                )
+                st.warning("Cette classe existe déjà ou le nom est vide.")
 
     classes = get_classes()
     students = get_students()
 
-    rows = []
+    if classes:
+        class_rows = []
+        for class_item in classes:
+            effectif = sum(1 for s in students if s["class_name"] == class_item)
+            class_rows.append({"Classe": class_item, "Effectif": effectif})
 
-    for class_item in classes:
-        effectif = sum(
-            1 for s in students if s["class_name"] == class_item
-        )
-
-        rows.append(
-            {
-                "Classe": class_item,
-                "Effectif": effectif,
-            }
-        )
-
-    if rows:
-        st.dataframe(
-            rows,
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        st.markdown("---")
-        st.subheader("Supprimer une classe")
-
-        class_to_delete = st.selectbox(
-            "Classe à supprimer",
-            classes,
-            key="class_to_delete",
-        )
-
-        effectif_to_delete = sum(
-            1 for s in students if s["class_name"] == class_to_delete
-        )
-
-        if effectif_to_delete:
-            st.warning(
-                f"La classe {class_to_delete} contient encore "
-                f"{effectif_to_delete} élève(s). "
-                "Supprimez ou déplacez d'abord ces élèves."
-            )
-        else:
-            confirm_class = st.checkbox(
-                f"Je confirme la suppression de la classe {class_to_delete}.",
-                key="confirm_delete_class",
-            )
-
-            if st.button(
-                "🗑️ Supprimer cette classe",
-                disabled=not confirm_class,
-                use_container_width=True,
-                key="delete_class_button",
-            ):
-                ok, error = delete_class(class_to_delete)
-
-                if ok:
-                    st.success(f"Classe {class_to_delete} supprimée.")
-                    st.rerun()
-                else:
-                    st.error(error or "Suppression impossible.")
+        st.dataframe(class_rows, use_container_width=True, hide_index=True)
     else:
         st.info("Aucune classe enregistrée.")
 
+    st.markdown("---")
 
-def teacher_students():
-    teacher_header("Élèves")
+    # -------------------------
+    # Import / ajout d'élèves
+    # -------------------------
+    st.subheader("👥 Ajouter des élèves")
 
-    st.subheader("Importer une base élèves depuis Excel")
+    with st.expander("📥 Importer une classe depuis Excel", expanded=not students):
+        st.write(
+            "Le fichier doit contenir les informations nécessaires : "
+            "**Prénom**, **Initiale du nom** et **Classe**."
+        )
 
-    st.write(
-        "Le fichier doit contenir exactement les informations nécessaires : "
-        "**Prénom**, **Initiale du nom** et **Classe**."
-    )
+        st.download_button(
+            "📥 Télécharger le modèle Excel",
+            data=student_template_xlsx_bytes(),
+            file_name="modele_import_classe_ludotheque.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
 
-    st.download_button(
-        "📥 Télécharger le modèle Excel pour importer une classe",
-        data=student_template_xlsx_bytes(),
-        file_name="modele_import_classe_ludotheque.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
-    )
+        uploaded_students = st.file_uploader(
+            "Choisir un fichier Excel",
+            type=["xlsx", "xlsm"],
+            key="student_excel_upload",
+        )
 
-    uploaded_students = st.file_uploader(
-        "Choisir un fichier Excel",
-        type=["xlsx", "xlsm"],
-        key="student_excel_upload",
-    )
+        if uploaded_students is not None:
+            try:
+                excel_df = pd.read_excel(uploaded_students)
 
-    if uploaded_students is not None:
-        try:
-            excel_df = pd.read_excel(uploaded_students)
-
-            st.markdown("#### Aperçu")
-            st.dataframe(
-                excel_df.head(15),
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            first_col, initial_col, class_col = detect_student_columns(
-                excel_df
-            )
-
-            detected = []
-
-            if first_col:
-                detected.append(f"Prénom → **{first_col}**")
-            if initial_col:
-                detected.append(f"Initiale → **{initial_col}**")
-            if class_col:
-                detected.append(f"Classe → **{class_col}**")
-
-            if detected:
-                st.info("Colonnes détectées : " + " · ".join(detected))
-
-            if st.button(
-                "📥 Importer les élèves",
-                type="primary",
-                use_container_width=True,
-            ):
-                added, duplicates, errors = import_students_from_dataframe(
-                    excel_df
+                st.markdown("#### Aperçu")
+                st.dataframe(
+                    excel_df.head(15),
+                    use_container_width=True,
+                    hide_index=True,
                 )
 
-                if added:
-                    st.success(
-                        f"✅ {added} élève(s) importé(s). "
-                        f"{duplicates} doublon(s) ignoré(s)."
-                    )
+                first_col, initial_col, class_col = detect_student_columns(excel_df)
+                detected = []
 
-                if errors:
-                    st.warning(
-                        f"{len(errors)} ligne(s) n'ont pas été importées."
-                    )
+                if first_col:
+                    detected.append(f"Prénom → **{first_col}**")
+                if initial_col:
+                    detected.append(f"Initiale → **{initial_col}**")
+                if class_col:
+                    detected.append(f"Classe → **{class_col}**")
 
-                    for message in errors[:20]:
-                        st.write("• " + message)
+                if detected:
+                    st.info("Colonnes détectées : " + " · ".join(detected))
 
-                if added:
-                    st.rerun()
+                if st.button(
+                    "📥 Importer les élèves",
+                    type="primary",
+                    use_container_width=True,
+                    key="import_students_button",
+                ):
+                    added, duplicates, errors = import_students_from_dataframe(excel_df)
 
-        except Exception as exc:
-            st.error(
-                "Impossible de lire ce fichier Excel. "
-                f"Détail : {exc}"
-            )
+                    if added:
+                        st.success(
+                            f"✅ {added} élève(s) importé(s). "
+                            f"{duplicates} doublon(s) ignoré(s)."
+                        )
 
-    st.markdown("---")
-    st.subheader("Ajouter ponctuellement un élève")
+                    if errors:
+                        st.warning(f"{len(errors)} ligne(s) n'ont pas été importées.")
+                        for message in errors[:20]:
+                            st.write("• " + message)
+
+                    if added:
+                        st.rerun()
+
+            except Exception as exc:
+                st.error(
+                    "Impossible de lire ce fichier Excel. "
+                    f"Détail : {exc}"
+                )
 
     classes = get_classes()
 
     if classes:
-        c1, c2, c3 = st.columns([2, 1, 1])
+        with st.expander("➕ Ajouter ponctuellement un élève"):
+            c1, c2, c3 = st.columns([2, 1, 1])
 
-        with c1:
-            first_name = st.text_input(
-                "Prénom",
-                key="new_student_firstname",
-            )
+            with c1:
+                first_name = st.text_input("Prénom", key="new_student_firstname")
 
-        with c2:
-            last_initial = st.text_input(
-                "Initiale",
-                max_chars=1,
-                key="new_student_initial",
-            )
-
-        with c3:
-            student_class = st.selectbox(
-                "Classe",
-                classes,
-                key="new_student_class",
-            )
-
-        if st.button(
-            "➕ Ajouter l'élève",
-            use_container_width=True,
-        ):
-            student, error = add_student(
-                first_name,
-                last_initial,
-                student_class,
-            )
-
-            if error:
-                st.error(error)
-            else:
-                st.success(
-                    f"Élève ajouté — code **{student['code']}**"
+            with c2:
+                last_initial = st.text_input(
+                    "Initiale",
+                    max_chars=1,
+                    key="new_student_initial",
                 )
-                st.rerun()
+
+            with c3:
+                student_class = st.selectbox(
+                    "Classe",
+                    classes,
+                    key="new_student_class",
+                )
+
+            if st.button(
+                "➕ Ajouter l'élève",
+                use_container_width=True,
+                key="add_single_student_button",
+            ):
+                student, error = add_student(first_name, last_initial, student_class)
+
+                if error:
+                    st.error(error)
+                else:
+                    st.success(f"Élève ajouté — code **{student['code']}**")
+                    st.rerun()
+    else:
+        st.caption("Créez d'abord une classe avant d'ajouter un élève ponctuellement.")
 
     st.markdown("---")
-    st.subheader("Élèves enregistrés")
+
+    # -------------------------
+    # Liste et accès élèves
+    # -------------------------
+    st.subheader("🔐 Élèves enregistrés et codes d'accès")
 
     students = get_students()
 
     if not students:
         st.info("Aucun élève enregistré.")
-        return
-
-    filter_classes = ["Toutes"] + get_classes()
-
-    selected_filter = st.selectbox(
-        "Filtrer par classe",
-        filter_classes,
-        key="student_filter",
-    )
-
-    filtered = [
-        s
-        for s in students
-        if (
-            selected_filter == "Toutes"
-            or s["class_name"] == selected_filter
-        )
-    ]
-
-    if filtered:
-        pdf_cards = generate_student_cards_pdf(filtered)
-
-        filename = (
-            "cartes_eleves_ludotheque_toutes_classes.pdf"
-            if selected_filter == "Toutes"
-            else f"cartes_eleves_ludotheque_{selected_filter}.pdf"
+    else:
+        filter_classes = ["Toutes"] + get_classes()
+        selected_filter = st.selectbox(
+            "Filtrer par classe",
+            filter_classes,
+            key="student_filter",
         )
 
-        st.download_button(
-            "🖨️ Télécharger les cartes élèves en PDF (code + QR)",
-            data=pdf_cards,
-            file_name=filename,
-            mime="application/pdf",
-            type="primary",
-            use_container_width=True,
+        filtered = [
+            s
+            for s in students
+            if selected_filter == "Toutes" or s["class_name"] == selected_filter
+        ]
+
+        if filtered:
+            pdf_cards = generate_student_cards_pdf(filtered)
+            filename = (
+                "cartes_eleves_ludotheque_toutes_classes.pdf"
+                if selected_filter == "Toutes"
+                else f"cartes_eleves_ludotheque_{selected_filter}.pdf"
+            )
+
+            st.download_button(
+                "🖨️ Télécharger les cartes élèves (QR + volet code)",
+                data=pdf_cards,
+                file_name=filename,
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+            )
+
+        st.caption(
+            "Les nouveaux codes comportent 6 caractères. Les anciennes fiches à 4 caractères "
+            "restent valides tant que vous ne régénérez pas leur code."
         )
 
-    table = [
-        {
-            "Prénom": s["first_name"],
-            "Initiale": s["last_initial"] + ".",
-            "Classe": s["class_name"],
-            "Code": s["code"],
-        }
-        for s in sorted(
+        # En-tête de la liste interactive.
+        h1, h2, h3, h4, h5 = st.columns([2.2, 0.8, 1.0, 1.4, 1.8])
+        h1.markdown("**Prénom**")
+        h2.markdown("**Initiale**")
+        h3.markdown("**Classe**")
+        h4.markdown("**Code**")
+        h5.markdown("**Accès**")
+
+        sorted_filtered = sorted(
             filtered,
             key=lambda s: (
                 s["class_name"],
@@ -3945,52 +3952,170 @@ def teacher_students():
                 s["last_initial"],
             ),
         )
-    ]
 
-    st.dataframe(
-        table,
-        use_container_width=True,
-        hide_index=True,
-    )
+        for student in sorted_filtered:
+            c1, c2, c3, c4, c5 = st.columns([2.2, 0.8, 1.0, 1.4, 1.8])
+
+            c1.write(student["first_name"])
+            c2.write(student["last_initial"] + ".")
+            c3.write(student["class_name"])
+            c4.code(student["code"], language=None)
+
+            if c5.button(
+                "🔄 Nouveau code",
+                key=f"regen_code_{student['id']}",
+                use_container_width=True,
+            ):
+                st.session_state["pending_regenerate_student_id"] = student["id"]
+                st.rerun()
+
+        pending_id = st.session_state.get("pending_regenerate_student_id")
+
+        if pending_id:
+            pending_student = next(
+                (s for s in students if s.get("id") == pending_id),
+                None,
+            )
+
+            if pending_student:
+                st.warning(
+                    f"Régénérer le code de **{pending_student['first_name']} "
+                    f"{pending_student['last_initial']}. — {pending_student['class_name']}** ?\n\n"
+                    "L'ancien code ne fonctionnera plus et le QR de l'ancienne carte "
+                    "deviendra lui aussi invalide. La classe et les résultats ne seront pas modifiés."
+                )
+
+                confirm_col, cancel_col, spacer = st.columns([1.5, 1.2, 4])
+
+                with confirm_col:
+                    if st.button(
+                        "✅ Confirmer le nouveau code",
+                        type="primary",
+                        use_container_width=True,
+                        key="confirm_regenerate_student_code",
+                    ):
+                        ok, old_code, new_code = regenerate_student_code(pending_id)
+                        st.session_state.pop("pending_regenerate_student_id", None)
+
+                        if ok:
+                            st.session_state["last_regenerated_student"] = (
+                                pending_student["first_name"],
+                                pending_student["last_initial"],
+                                new_code,
+                            )
+                            st.rerun()
+                        else:
+                            st.error("Élève introuvable.")
+
+                with cancel_col:
+                    if st.button(
+                        "Annuler",
+                        use_container_width=True,
+                        key="cancel_regenerate_student_code",
+                    ):
+                        st.session_state.pop("pending_regenerate_student_id", None)
+                        st.rerun()
+            else:
+                st.session_state.pop("pending_regenerate_student_id", None)
+
+        last_regenerated = st.session_state.pop("last_regenerated_student", None)
+        if last_regenerated:
+            first_name, last_initial, new_code = last_regenerated
+            st.success(
+                f"Nouveau code créé pour **{first_name} {last_initial}.** : **{new_code}**. "
+                "Téléchargez à nouveau sa carte (ou les cartes de sa classe) pour obtenir le nouveau QR."
+            )
 
     st.markdown("---")
-    st.subheader("Retirer un élève")
 
-    student_options = {
-        f"{s['first_name']} {s['last_initial']}. — {s['class_name']} — {s['code']}": s["id"]
-        for s in sorted(
-            filtered,
-            key=lambda s: (
-                s["class_name"],
-                s["first_name"].lower(),
-                s["last_initial"],
-            ),
-        )
-    }
+    # -------------------------
+    # Suppressions
+    # -------------------------
+    st.subheader("🗑️ Retirer un élève ou supprimer une classe")
 
-    if student_options:
-        selected_student_label = st.selectbox(
-            "Élève à retirer",
-            list(student_options.keys()),
-            key="student_to_delete",
-        )
+    students = get_students()
+    classes = get_classes()
 
-        confirm_student = st.checkbox(
-            "Je confirme le retrait de cet élève de la base.",
-            key="confirm_delete_student",
-        )
+    tab_student, tab_class = st.tabs(["Retirer un élève", "Supprimer une classe"])
 
-        if st.button(
-            "🗑️ Retirer cet élève",
-            disabled=not confirm_student,
-            use_container_width=True,
-            key="delete_student_button",
-        ):
-            if delete_student(student_options[selected_student_label]):
-                st.success("Élève retiré de la base.")
-                st.rerun()
+    with tab_student:
+        if students:
+            student_options = {
+                f"{s['first_name']} {s['last_initial']}. — {s['class_name']} — {s['code']}": s["id"]
+                for s in sorted(
+                    students,
+                    key=lambda s: (
+                        s["class_name"],
+                        s["first_name"].lower(),
+                        s["last_initial"],
+                    ),
+                )
+            }
+
+            selected_student_label = st.selectbox(
+                "Élève à retirer",
+                list(student_options.keys()),
+                key="student_to_delete",
+            )
+
+            confirm_student = st.checkbox(
+                "Je confirme le retrait de cet élève de la base.",
+                key="confirm_delete_student",
+            )
+
+            if st.button(
+                "🗑️ Retirer cet élève",
+                disabled=not confirm_student,
+                use_container_width=True,
+                key="delete_student_button",
+            ):
+                if delete_student(student_options[selected_student_label]):
+                    st.success("Élève retiré de la base.")
+                    st.rerun()
+                else:
+                    st.error("Élève introuvable.")
+        else:
+            st.info("Aucun élève enregistré.")
+
+    with tab_class:
+        if classes:
+            class_to_delete = st.selectbox(
+                "Classe à supprimer",
+                classes,
+                key="class_to_delete",
+            )
+
+            effectif_to_delete = sum(
+                1 for s in students if s["class_name"] == class_to_delete
+            )
+
+            if effectif_to_delete:
+                st.warning(
+                    f"La classe {class_to_delete} contient encore "
+                    f"{effectif_to_delete} élève(s). "
+                    "Supprimez ou déplacez d'abord ces élèves."
+                )
             else:
-                st.error("Élève introuvable.")
+                confirm_class = st.checkbox(
+                    f"Je confirme la suppression de la classe {class_to_delete}.",
+                    key="confirm_delete_class",
+                )
+
+                if st.button(
+                    "🗑️ Supprimer cette classe",
+                    disabled=not confirm_class,
+                    use_container_width=True,
+                    key="delete_class_button",
+                ):
+                    ok, error = delete_class(class_to_delete)
+
+                    if ok:
+                        st.success(f"Classe {class_to_delete} supprimée.")
+                        st.rerun()
+                    else:
+                        st.error(error or "Suppression impossible.")
+        else:
+            st.info("Aucune classe enregistrée.")
 
 
 def teacher_challenges():
@@ -4356,10 +4481,8 @@ def page_teacher():
 
     if section == "dashboard":
         teacher_dashboard()
-    elif section == "classes":
-        teacher_classes()
-    elif section == "students":
-        teacher_students()
+    elif section in ("classes_students", "classes", "students"):
+        teacher_classes_students()
     elif section == "challenges":
         teacher_challenges()
     elif section == "results":
