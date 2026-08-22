@@ -1,4 +1,5 @@
 import re
+import base64
 import json
 import random
 import textwrap
@@ -4050,54 +4051,94 @@ def page_teacher():
 
 
 def page_entry_gate():
-    """Premier écran : image d'accueil + code d'accès général."""
+    """Premier écran : image d'accueil en fond + mini fenêtre de code superposée."""
     image_path = Path("assets/accueil_ludotheque.png")
 
-    # Écran volontairement très simple : l'image puis la saisie du code.
-    if image_path.exists():
-        st.image(str(image_path), use_container_width=True)
-    else:
+    if not image_path.exists():
         st.error("L'image d'accueil est introuvable dans assets/accueil_ludotheque.png.")
+        return
+
+    image_b64 = base64.b64encode(image_path.read_bytes()).decode("utf-8")
 
     st.markdown(
-        """
-        <div style="
-            max-width:560px;
-            margin:18px auto 8px auto;
-            text-align:center;
-        ">
-            <div style="
-                font-size:1.45rem;
-                font-weight:800;
-                color:#153160;
-                margin-bottom:6px;
-            ">
-                Accès à la ludothèque
-            </div>
-            <div style="
-                color:#52647d;
-                font-size:1rem;
-                line-height:1.4;
-            ">
-                Entre le code donné par ton professeur pour continuer.
-            </div>
-        </div>
+        f"""
+        <style>
+        .stApp {{
+            background:
+                linear-gradient(rgba(5, 18, 50, 0.08), rgba(5, 18, 50, 0.16)),
+                url("data:image/png;base64,{image_b64}") center center / cover no-repeat fixed !important;
+        }}
+
+        .block-container {{
+            max-width: 100% !important;
+            min-height: 100vh !important;
+            padding: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+        }}
+
+        .st-key-entry_gate_card {{
+            width: min(430px, calc(100vw - 36px)) !important;
+            margin: 0 auto 34px auto !important;
+            padding: 14px 16px 16px 16px !important;
+            border-radius: 18px !important;
+            background: rgba(255, 255, 255, 0.93) !important;
+            border: 1px solid rgba(255, 255, 255, 0.75) !important;
+            box-shadow: 0 12px 34px rgba(5, 18, 50, 0.24) !important;
+            backdrop-filter: blur(10px) !important;
+        }}
+
+        .st-key-entry_gate_card div[data-testid="stTextInput"] label {{
+            display: none !important;
+        }}
+
+        .st-key-entry_gate_card input {{
+            text-align: center !important;
+            font-size: 1rem !important;
+        }}
+
+        .st-key-entry_gate_card div[data-testid="stButton"] > button {{
+            min-height: 2.7rem !important;
+            border-radius: 12px !important;
+            font-size: 0.96rem !important;
+            box-shadow: none !important;
+        }}
+
+        .entry-gate-hint {{
+            text-align: center;
+            font-size: 0.9rem;
+            color: #52647d;
+            margin: 0 0 8px 0;
+        }}
+
+        @media (max-width: 700px) {{
+            .st-key-entry_gate_card {{
+                margin-bottom: 18px !important;
+            }}
+        }}
+        </style>
         """,
         unsafe_allow_html=True,
     )
 
-    left, center, right = st.columns([1.2, 1, 1.2])
+    with st.container(key="entry_gate_card"):
+        st.markdown(
+            '<div class="entry-gate-hint">Entre le code donné par ton professeur</div>',
+            unsafe_allow_html=True,
+        )
 
-    with center:
         entered_code = st.text_input(
             "Code d'entrée",
             type="password",
             key="ludotheque_entry_code",
-            placeholder="Saisir le code",
+            placeholder="Code d’accès",
+            label_visibility="collapsed",
         )
 
         if st.button(
-            "Entrer dans la ludothèque",
+            "Entrer",
             type="primary",
             use_container_width=True,
             key="ludotheque_entry_button",
@@ -4118,44 +4159,4 @@ def page_entry_gate():
             else:
                 st.error("Code incorrect.")
 
-
-# ============================================================
-# ROUTEUR PRINCIPAL
-# ============================================================
-
-# Premier sas d'entrée : il précède toute l'architecture actuelle.
-if not st.session_state.get("ludotheque_access_granted", False):
-    page_entry_gate()
-    st.stop()
-
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-
-page = st.session_state.page
-
-if page == "home":
-    page_home()
-elif page == "free_activity":
-    page_free_activity()
-elif page == "free_theme":
-    page_free_theme()
-elif page == "free_level":
-    page_free_level()
-elif page == "free_game":
-    page_free_game()
-elif page == "challenge":
-    page_challenge()
-elif page == "teacher":
-    page_teacher()
-else:
-    st.session_state.page = "home"
-    st.rerun()
-
-
-st.markdown(
-    '<div class="footer-note">'
-    'Ludothèque Physique-Chimie · Plateforme pédagogique de jeux et d’activités interactives'
-    '</div>',
-    unsafe_allow_html=True,
-)
 
