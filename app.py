@@ -4032,7 +4032,46 @@ def teacher_classes_students():
                 st.success(
                     f"Nouveau code créé pour **{last_regenerated['first_name']} "
                     f"{last_regenerated['last_initial']}.** : **{last_regenerated['new_code']}**. "
-                    "Téléchargez à nouveau sa carte (ou les cartes de sa classe) pour obtenir le nouveau QR."
+                    "L'ancienne carte est désormais invalide."
+                )
+
+                # Récupère la fiche mise à jour afin de générer uniquement la nouvelle carte
+                # de l'élève concerné, avec son nouveau code et son nouveau QR.
+                refreshed_students = get_students()
+                refreshed_student = next(
+                    (s for s in refreshed_students if s.get("id") == student["id"]),
+                    None,
+                )
+
+                if refreshed_student:
+                    single_card_pdf = generate_student_cards_pdf([refreshed_student])
+                    safe_first_name = re.sub(
+                        r"[^A-Za-z0-9_-]+",
+                        "_",
+                        refreshed_student["first_name"],
+                    ).strip("_") or "eleve"
+                    safe_class_name = re.sub(
+                        r"[^A-Za-z0-9_-]+",
+                        "_",
+                        refreshed_student["class_name"],
+                    ).strip("_") or "classe"
+
+                    st.download_button(
+                        f"🖨️ Télécharger la nouvelle carte de {refreshed_student['first_name']} "
+                        f"{refreshed_student['last_initial']}.",
+                        data=single_card_pdf,
+                        file_name=(
+                            f"carte_ludotheque_{safe_first_name}_"
+                            f"{refreshed_student['last_initial']}_{safe_class_name}.pdf"
+                        ),
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=False,
+                        key=f"download_new_card_{student['id']}_{last_regenerated['new_code']}",
+                    )
+
+                st.caption(
+                    "Vous pouvez aussi retélécharger les cartes de toute la classe avec le bouton bleu situé au-dessus."
                 )
                 st.session_state.pop("last_regenerated_student", None)
 
