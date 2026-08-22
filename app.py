@@ -4151,4 +4151,42 @@ def page_entry_gate():
             else:
                 st.error("Code incorrect.")
 
+# ============================================================
+# ROUTEUR PRINCIPAL
+# ============================================================
 
+# Premier sas d'entrée : il précède toute l'architecture actuelle.
+if not st.session_state.get("ludotheque_access_granted", False):
+    page_entry_gate()
+    st.stop()
+
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+page = st.session_state.page
+
+if page == "home":
+    page_home()
+elif page == "free_activity":
+    page_free_activity()
+elif page == "free_theme":
+    page_free_theme()
+elif page == "free_level":
+    page_free_level()
+elif page == "free_game":
+    page_free_game()
+elif page == "challenge":
+    page_challenge()
+elif page == "teacher":
+    page_teacher()
+else:
+    st.session_state.page = "home"
+    st.rerun()
+
+
+st.markdown(
+    '<div class="footer-note">'
+    'Ludothèque Physique-Chimie · Plateforme pédagogique de jeux et d’activités interactives'
+    '</div>',
+    unsafe_allow_html=True,
+)
