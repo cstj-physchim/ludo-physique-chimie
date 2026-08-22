@@ -1,6 +1,5 @@
 import re
 import base64
-import base64
 import json
 import random
 import textwrap
@@ -4052,114 +4051,93 @@ def page_teacher():
 
 
 def page_entry_gate():
-    """Premier écran : image plein écran + mini saisie de code en superposition."""
+    """Écran d'entrée robuste : image Streamlit + mini carte en superposition."""
     image_path = Path("assets/accueil_ludotheque.png")
 
     if not image_path.exists():
         st.error("L'image d'accueil est introuvable dans assets/accueil_ludotheque.png.")
         return
 
-    image_b64 = base64.b64encode(image_path.read_bytes()).decode("utf-8")
-
     st.markdown(
-        f"""
+        """
         <style>
-        /* Écran d'entrée uniquement : on masque le chrome Streamlit */
-        [data-testid="stHeader"],
-        [data-testid="stToolbar"],
-        footer {{
-            display: none !important;
-        }}
-
-        html, body, [data-testid="stAppViewContainer"], .stApp {{
-            height: 100% !important;
-            min-height: 100vh !important;
-        }}
-
-        [data-testid="stAppViewContainer"] {{
-            background:
-                linear-gradient(rgba(4,18,48,0.03), rgba(4,18,48,0.08)),
-                url("data:image/png;base64,{image_b64}")
-                center center / cover no-repeat fixed !important;
-        }}
-
-        .stApp {{
-            background: transparent !important;
-        }}
-
-        .block-container {{
+        /* Uniquement quelques réglages simples et sûrs */
+        .block-container {
             max-width: 100% !important;
+            padding-top: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        .st-key-entry_gate_image {
             width: 100% !important;
-            min-height: 100vh !important;
+            margin: 0 !important;
             padding: 0 !important;
+        }
+
+        .st-key-entry_gate_image div[data-testid="stImage"] {
+            width: 100% !important;
             margin: 0 !important;
-        }}
+        }
 
-        /* Petite fenêtre flottante, volontairement très discrète */
-        .st-key-entry_gate_card {{
-            position: fixed !important;
-            left: 50% !important;
-            bottom: 3.5vh !important;
-            transform: translateX(-50%) !important;
-            z-index: 1000 !important;
+        .st-key-entry_gate_image div[data-testid="stImage"] img {
+            width: 100% !important;
+            height: auto !important;
+            display: block !important;
+        }
 
-            width: min(320px, calc(100vw - 28px)) !important;
-            padding: 9px 10px 10px 10px !important;
-            margin: 0 !important;
-
+        .st-key-entry_gate_card {
+            width: 300px !important;
+            max-width: calc(100vw - 24px) !important;
+            margin: -118px auto 20px auto !important;
+            padding: 8px 10px 10px 10px !important;
             border-radius: 14px !important;
-            background: rgba(255,255,255,0.88) !important;
-            border: 1px solid rgba(255,255,255,0.75) !important;
-            box-shadow: 0 8px 26px rgba(3,18,48,0.22) !important;
-            backdrop-filter: blur(8px) !important;
-        }}
+            background: rgba(255,255,255,0.94) !important;
+            border: 1px solid rgba(255,255,255,0.90) !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.22) !important;
+            position: relative !important;
+            z-index: 5 !important;
+        }
 
-        .st-key-entry_gate_card div[data-testid="stTextInput"] {{
-            margin: 0 0 6px 0 !important;
-        }}
-
-        .st-key-entry_gate_card div[data-testid="stTextInput"] label {{
+        .st-key-entry_gate_card div[data-testid="stTextInput"] label {
             display: none !important;
-        }}
+        }
 
-        .st-key-entry_gate_card input {{
-            height: 38px !important;
-            min-height: 38px !important;
+        .st-key-entry_gate_card input {
             text-align: center !important;
-            font-size: 0.93rem !important;
-            border-radius: 10px !important;
-        }}
+            min-height: 36px !important;
+            height: 36px !important;
+            font-size: 0.9rem !important;
+        }
 
-        .st-key-entry_gate_card div[data-testid="stButton"] > button {{
-            min-height: 38px !important;
-            height: 38px !important;
-            border-radius: 10px !important;
-            font-size: 0.92rem !important;
+        .st-key-entry_gate_card div[data-testid="stButton"] > button {
+            min-height: 36px !important;
+            height: 36px !important;
+            border-radius: 9px !important;
+            font-size: 0.9rem !important;
             box-shadow: none !important;
-        }}
+        }
 
-        .entry-gate-hint {{
+        .entry-gate-hint {
             text-align: center;
-            font-size: 0.78rem;
-            color: #4d6079;
-            margin: 0 0 6px 0;
-            line-height: 1.2;
-        }}
+            font-size: 0.76rem;
+            color: #52647d;
+            margin: 0 0 5px 0;
+        }
 
-        @media (max-width: 700px) {{
-            [data-testid="stAppViewContainer"] {{
-                background-position: center center !important;
-            }}
-
-            .st-key-entry_gate_card {{
-                bottom: 2vh !important;
-                width: min(300px, calc(100vw - 20px)) !important;
-            }}
-        }}
+        @media (max-width: 700px) {
+            .st-key-entry_gate_card {
+                margin-top: -100px !important;
+                width: 280px !important;
+            }
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+    with st.container(key="entry_gate_image"):
+        st.image(str(image_path), use_container_width=True)
 
     with st.container(key="entry_gate_card"):
         st.markdown(
@@ -4192,4 +4170,42 @@ def page_entry_gate():
             else:
                 st.error("Code incorrect.")
 
+# ============================================================
+# ROUTEUR PRINCIPAL
+# ============================================================
 
+# Premier sas d'entrée : il précède toute l'architecture actuelle.
+if not st.session_state.get("ludotheque_access_granted", False):
+    page_entry_gate()
+    st.stop()
+
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+page = st.session_state.page
+
+if page == "home":
+    page_home()
+elif page == "free_activity":
+    page_free_activity()
+elif page == "free_theme":
+    page_free_theme()
+elif page == "free_level":
+    page_free_level()
+elif page == "free_game":
+    page_free_game()
+elif page == "challenge":
+    page_challenge()
+elif page == "teacher":
+    page_teacher()
+else:
+    st.session_state.page = "home"
+    st.rerun()
+
+
+st.markdown(
+    '<div class="footer-note">'
+    'Ludothèque Physique-Chimie · Plateforme pédagogique de jeux et d’activités interactives'
+    '</div>',
+    unsafe_allow_html=True,
+)
