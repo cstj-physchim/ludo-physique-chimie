@@ -79,6 +79,44 @@ def clear_teacher_session():
     ]:
         st.session_state.pop(key, None)
 
+
+def clear_app_session():
+    """Déconnecte complètement l'utilisateur courant de la Ludothèque."""
+    clear_teacher_session()
+
+    for key in [
+        "app_authenticated",
+        "app_user_type",
+        "app_student",
+        "challenge_student",
+        "active_challenge",
+        "collab_team_code",
+        "entry_student_code",
+        "entry_user_type",
+        "entry_teacher_password",
+        "entry_teacher_account",
+    ]:
+        st.session_state.pop(key, None)
+
+    st.session_state.page = "home"
+    st.query_params.clear()
+
+
+def current_app_user_label():
+    if st.session_state.get("app_user_type") == "student":
+        student = st.session_state.get("app_student") or {}
+        if student:
+            return (
+                f"{student.get('first_name', '')} {student.get('last_initial', '')}. "
+                f"— {student.get('class_name', '')}"
+            ).strip()
+        return "Élève"
+
+    if st.session_state.get("app_user_type") == "teacher":
+        return current_teacher_name()
+
+    return ""
+
 APP_PUBLIC_URL = st.secrets.get(
     "APP_PUBLIC_URL",
     "https://ludo-physique-chimie.streamlit.app",
@@ -2918,7 +2956,23 @@ def page_home():
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns(3, gap="large")
+    identity_label = current_app_user_label()
+    info_col, logout_col = st.columns([5, 1])
+    with info_col:
+        st.markdown(
+            f'<div style="color:white;font-weight:800;padding:.35rem 0 .45rem 0;">'
+            f'👤 Connecté : {identity_label}</div>',
+            unsafe_allow_html=True,
+        )
+    with logout_col:
+        if st.button("Déconnexion", key="home_logout", use_container_width=True):
+            clear_app_session()
+            st.rerun()
+
+    is_teacher = st.session_state.get("app_user_type") == "teacher"
+    home_cols = st.columns(3 if is_teacher else 2, gap="large")
+    c1, c2 = home_cols[0], home_cols[1]
+    c3 = home_cols[2] if is_teacher else None
 
     with c1:
         with st.container(key="home_card_free"):
@@ -2975,32 +3029,33 @@ def page_home():
             ):
                 go("challenge")
 
-    with c3:
-        with st.container(key="home_card_teacher"):
-            st.markdown(
-                """
-                <div class="modern-home-card">
-                    <div class="modern-card-visual visual-teacher">
-                        <span class="v-mini m1">📊</span>
-                        <span class="v-mini m2">🧪</span>
-                        <span class="v-mini m3">🧬</span>
-                        <span class="v-main">🔐</span>
+    if is_teacher and c3 is not None:
+        with c3:
+            with st.container(key="home_card_teacher"):
+                st.markdown(
+                    """
+                    <div class="modern-home-card">
+                        <div class="modern-card-visual visual-teacher">
+                            <span class="v-mini m1">📊</span>
+                            <span class="v-mini m2">🧪</span>
+                            <span class="v-mini m3">🧬</span>
+                            <span class="v-main">🔐</span>
+                        </div>
+                        <div class="modern-card-title">Espace professeur</div>
+                        <div class="modern-card-text">
+                            Gère tes classes, tes élèves,<br>tes défis et consulte les résultats.
+                        </div>
+                        <div class="modern-card-mini-line mini-purple"></div>
                     </div>
-                    <div class="modern-card-title">Espace professeur</div>
-                    <div class="modern-card-text">
-                        Gère tes classes, tes élèves,<br>tes défis et consulte les résultats.
-                    </div>
-                    <div class="modern-card-mini-line mini-purple"></div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            if st.button(
-                "Accéder   →",
-                key="home_teacher",
-                use_container_width=True,
-            ):
-                go("teacher")
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if st.button(
+                    "Accéder   →",
+                    key="home_teacher",
+                    use_container_width=True,
+                ):
+                    go("teacher")
 
     st.markdown(
         """
@@ -3299,26 +3354,13 @@ def page_challenge():
     hero()
     back_button("home")
 
-    if not st.session_state.get("challenge_student"):
-        # Nouveau QR : il contient le code personnel courant.
-        qr_student_code = st.query_params.get("student_code")
+    user_type = st.session_state.get("app_user_type")
 
-        if qr_student_code:
-            qr_student = find_student_by_code(qr_student_code)
-
-            if qr_student:
-                st.session_state.challenge_student = qr_student
-        else:
-            # Compatibilité temporaire avec les anciennes cartes QR basées sur l'ID.
-            # Dès qu'un code est régénéré, code_regenerated_at est ajouté à la fiche :
-            # l'ancien QR devient alors volontairement invalide.
-            legacy_student_id = st.query_params.get("student")
-
-            if legacy_student_id:
-                legacy_student = find_student_by_id(legacy_student_id)
-
-                if legacy_student and not legacy_student.get("code_regenerated_at"):
-                    st.session_state.challenge_student = legacy_student
+    # Un élève identifié à l'entrée reste identifié pendant toute sa session.
+    if user_type == "student":
+        session_student = st.session_state.get("app_student")
+        if session_student:
+            st.session_state.challenge_student = session_student
 
     student = st.session_state.get("challenge_student")
     challenge = st.session_state.get("active_challenge")
@@ -3333,30 +3375,37 @@ def page_challenge():
         unsafe_allow_html=True,
     )
 
+    # Le professeur peut tester un défi en choisissant ponctuellement un élève.
+    # L'élève, lui, n'a jamais à ressaisir son code personnel ici.
     if not student:
-        st.write("Entrez votre **code personnel élève**.")
+        if user_type == "teacher":
+            st.info(
+                "Mode professeur : pour tester un défi comme un élève, "
+                "saisissez ponctuellement le code personnel d'un élève."
+            )
 
-        student_code = st.text_input(
-            "Code élève",
-            max_chars=6,
-            placeholder="Ex. K7P4QM",
-            key="student_code_input",
-        )
+            student_code = st.text_input(
+                "Code élève de test",
+                max_chars=6,
+                placeholder="Ex. K7P4QM",
+                key="teacher_test_student_code",
+            )
 
-        if st.button(
-            "Continuer",
-            type="primary",
-            use_container_width=True,
-            key="identify_student",
-        ):
-            found = find_student_by_code(student_code)
+            if st.button(
+                "Continuer",
+                type="primary",
+                use_container_width=True,
+                key="teacher_identify_test_student",
+            ):
+                found = find_student_by_code(student_code)
+                if found:
+                    st.session_state.challenge_student = found
+                    st.rerun()
+                else:
+                    st.error("Code élève inconnu.")
+            return
 
-            if found:
-                st.session_state.challenge_student = found
-                st.rerun()
-            else:
-                st.error("Code élève inconnu.")
-
+        st.error("Aucun élève identifié. Déconnectez-vous puis reconnectez-vous avec votre code personnel.")
         return
 
     st.success(
@@ -3372,42 +3421,40 @@ def page_challenge():
             key="challenge_code_input",
         )
 
-        c1, c2 = st.columns(2)
+        if st.button(
+            "🏆 Rejoindre le défi",
+            type="primary",
+            use_container_width=True,
+        ):
+            found = find_open_challenge(used_code, student.get("_teacher_id"))
 
-        with c1:
-            if st.button(
-                "🏆 Rejoindre le défi",
-                type="primary",
-                use_container_width=True,
-            ):
-                found = find_open_challenge(used_code, student.get("_teacher_id"))
+            if not found:
+                st.error("Ce défi n'existe pas ou il est fermé.")
+            elif found["class_name"] != student["class_name"]:
+                st.error("Ce défi n'est pas destiné à votre classe.")
+            elif attempts_used(student, found) >= int(found["max_attempts"]):
+                st.error("Toutes les tentatives autorisées ont déjà été utilisées.")
+            elif found.get("activity", "Dominos") != "Dominos" or found.get("theme", "Molécules") not in ("Molécules", "Verrerie", "Ions", "Électricité"):
+                st.error("Cette activité n'est pas encore disponible dans cette version.")
+            else:
+                st.session_state.active_challenge = found
 
-                if not found:
-                    st.error("Ce défi n'existe pas ou il est fermé.")
-                elif found["class_name"] != student["class_name"]:
-                    st.error("Ce défi n'est pas destiné à votre classe.")
-                elif attempts_used(student, found) >= int(found["max_attempts"]):
-                    st.error("Toutes les tentatives autorisées ont déjà été utilisées.")
-                elif found.get("activity", "Dominos") != "Dominos" or found.get("theme", "Molécules") not in ("Molécules", "Verrerie", "Ions", "Électricité"):
-                    st.error("Cette activité n'est pas encore disponible dans cette version.")
+                if found.get("mode", "Individuel") == "Collaboratif":
+                    st.session_state.pop("collab_team_code", None)
                 else:
-                    st.session_state.active_challenge = found
+                    suffix = f"challenge_{found['code']}_{student['id']}"
+                    init_game(found["level"], suffix)
 
-                    if found.get("mode", "Individuel") == "Collaboratif":
-                        st.session_state.pop("collab_team_code", None)
-                    else:
-                        suffix = f"challenge_{found['code']}_{student['id']}"
-                        init_game(found["level"], suffix)
+                st.rerun()
 
-                    st.rerun()
-
-        with c2:
+        if st.session_state.get("app_user_type") == "teacher":
             if st.button(
-                "Changer d'élève",
+                "Changer d'élève de test",
                 use_container_width=True,
+                key="teacher_change_test_student",
             ):
                 st.session_state.pop("challenge_student", None)
-                st.query_params.clear()
+                st.session_state.pop("active_challenge", None)
                 st.rerun()
 
         return
@@ -3452,39 +3499,14 @@ def page_challenge():
 # ============================================================
 
 def teacher_login():
+    """La connexion professeur se fait désormais dans le sas d'entrée général."""
     if st.session_state.get("teacher_authenticated", False):
         return True
 
-    hero()
-    back_button("home")
-    st.markdown(
-        '<div class="section-title">🔒 Connexion professeur</div>',
-        unsafe_allow_html=True,
-    )
-
-    accounts = get_teacher_accounts()
-    if not accounts:
-        st.error("Aucun compte professeur n'est configuré dans les Secrets Streamlit.")
-        return False
-
-    teacher_ids = list(accounts.keys())
-    selected_id = st.selectbox(
-        "Professeur",
-        teacher_ids,
-        format_func=lambda tid: accounts[tid]["name"],
-        key="teacher_account_select",
-    )
-    password = st.text_input("Mot de passe", type="password", key="teacher_password")
-
-    if st.button("Se connecter", type="primary", use_container_width=True, key="teacher_login"):
-        if secrets.compare_digest(password, accounts[selected_id]["password"]):
-            st.session_state.teacher_authenticated = True
-            st.session_state.teacher_id = selected_id
-            st.session_state.teacher_name = accounts[selected_id]["name"]
-            st.session_state.teacher_section = "dashboard"
-            st.rerun()
-        else:
-            st.error("Mot de passe incorrect.")
+    st.warning("Veuillez vous identifier comme professeur depuis l'écran d'entrée.")
+    if st.button("Retour à l'identification", use_container_width=True):
+        clear_app_session()
+        st.rerun()
     return False
 
 
@@ -3502,7 +3524,7 @@ def teacher_header(title):
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3, c4 = st.columns([1.3, 1.1, 1.5, 3.1])
+    c1, c2, c3 = st.columns([1.4, 1.1, 4.5])
 
     with c1:
         if st.button("← Tableau de bord", use_container_width=True):
@@ -3514,21 +3536,15 @@ def teacher_header(title):
             go("home")
 
     with c3:
-        if st.button("🔄 Changer de professeur", use_container_width=True):
-            clear_teacher_session()
-            st.session_state.page = "teacher"
+        if st.button("Déconnexion", use_container_width=False, key=f"teacher_logout_{title}"):
+            clear_app_session()
             st.rerun()
-
-    with c4:
-        if st.button("Déconnexion", use_container_width=False):
-            clear_teacher_session()
-            go("home")
 
 
 def teacher_dashboard():
     hero()
 
-    nav1, nav2, nav3, nav4 = st.columns([1.3, 1.7, 1.2, 2.8])
+    nav1, nav2 = st.columns([1.4, 4.6])
 
     with nav1:
         if st.button(
@@ -3540,22 +3556,12 @@ def teacher_dashboard():
 
     with nav2:
         if st.button(
-            "🔄 Changer de professeur",
-            use_container_width=True,
-            key="teacher_change_button",
-        ):
-            clear_teacher_session()
-            st.session_state.page = "teacher"
-            st.rerun()
-
-    with nav3:
-        if st.button(
             "Déconnexion",
-            use_container_width=True,
+            use_container_width=False,
             key="teacher_logout_button",
         ):
-            clear_teacher_session()
-            go("home")
+            clear_app_session()
+            st.rerun()
 
     st.markdown(
         f"""
@@ -4491,17 +4497,42 @@ def page_teacher():
 
 
 def page_entry_gate():
-    """Écran d'entrée : image centrée + mini fenêtre de code centrée en superposition."""
+    """Identification générale : élève par code/QR, professeur par compte sécurisé."""
     image_path = Path("assets/accueil_ludotheque.png")
 
     if not image_path.exists():
         st.error("L'image d'accueil est introuvable dans assets/accueil_ludotheque.png.")
         return
 
+    # Un QR élève permet d'ouvrir directement sa session.
+    qr_student_code = st.query_params.get("student_code")
+    if qr_student_code:
+        student = find_student_by_code(str(qr_student_code))
+        if student:
+            st.session_state.app_authenticated = True
+            st.session_state.app_user_type = "student"
+            st.session_state.app_student = student
+            st.session_state.challenge_student = student
+            st.session_state.page = "home"
+            st.query_params.clear()
+            st.rerun()
+
+    # Compatibilité temporaire avec les anciennes cartes QR fondées sur l'ID.
+    legacy_student_id = st.query_params.get("student")
+    if legacy_student_id:
+        student = find_student_by_id(str(legacy_student_id))
+        if student and not student.get("code_regenerated_at"):
+            st.session_state.app_authenticated = True
+            st.session_state.app_user_type = "student"
+            st.session_state.app_student = student
+            st.session_state.challenge_student = student
+            st.session_state.page = "home"
+            st.query_params.clear()
+            st.rerun()
+
     st.markdown(
         """
         <style>
-        /* Écran d'entrée : dimensions stables et centrées */
         .block-container {
             max-width: 100% !important;
             padding-top: 0.35rem !important;
@@ -4529,58 +4560,51 @@ def page_entry_gate():
         }
 
         .st-key-entry_gate_card {
-            width: 240px !important;
+            width: 430px !important;
             max-width: calc(100vw - 32px) !important;
             margin: -88px auto 14px auto !important;
-            padding: 6px 8px 8px 8px !important;
-            border-radius: 13px !important;
-            background: rgba(255,255,255,0.95) !important;
-            border: 1px solid rgba(255,255,255,0.92) !important;
-            box-shadow: 0 7px 22px rgba(0,0,0,0.20) !important;
+            padding: 10px 14px 12px 14px !important;
+            border-radius: 16px !important;
+            background: rgba(255,255,255,0.97) !important;
+            border: 1px solid rgba(255,255,255,0.94) !important;
+            box-shadow: 0 9px 26px rgba(0,0,0,0.22) !important;
             position: relative !important;
             z-index: 5 !important;
         }
 
-        .st-key-entry_gate_card div[data-testid="stTextInput"] {
-            margin-bottom: 5px !important;
+        .entry-title {
+            text-align:center;
+            font-size:.92rem;
+            font-weight:850;
+            color:#153160;
+            margin:0 0 7px 0;
         }
 
-        .st-key-entry_gate_card div[data-testid="stTextInput"] label {
-            display: none !important;
+        .entry-hint {
+            text-align:center;
+            font-size:.72rem;
+            color:#52647d;
+            margin:0 0 7px 0;
+            line-height:1.25;
         }
 
         .st-key-entry_gate_card input {
             text-align: center !important;
-            min-height: 31px !important;
-            height: 31px !important;
-            font-size: 0.82rem !important;
-            border-radius: 9px !important;
         }
 
         .st-key-entry_gate_card div[data-testid="stButton"] > button {
-            min-height: 31px !important;
-            height: 31px !important;
-            border-radius: 9px !important;
-            font-size: 0.82rem !important;
+            min-height: 2.55rem !important;
+            border-radius: 11px !important;
             box-shadow: none !important;
-        }
-
-        .entry-gate-hint {
-            text-align: center;
-            font-size: 0.68rem;
-            color: #52647d;
-            margin: 0 0 4px 0;
-            line-height: 1.1;
         }
 
         @media (max-width: 800px) {
             .st-key-entry_gate_image {
                 width: calc(100vw - 20px) !important;
             }
-
             .st-key-entry_gate_card {
-                width: 260px !important;
-                margin-top: -92px !important;
+                width: min(430px, calc(100vw - 24px)) !important;
+                margin-top: -70px !important;
             }
         }
         </style>
@@ -4592,43 +4616,99 @@ def page_entry_gate():
         st.image(str(image_path), use_container_width=True)
 
     with st.container(key="entry_gate_card"):
-        st.markdown(
-            '<div class="entry-gate-hint">Code donné par ton professeur</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="entry-title">Identifie-toi pour entrer</div>', unsafe_allow_html=True)
 
-        entered_code = st.text_input(
-            "Code d'entrée",
-            type="password",
-            key="ludotheque_entry_code",
-            placeholder="Code d’accès",
+        user_type = st.radio(
+            "Je suis",
+            ["Élève", "Professeur"],
+            horizontal=True,
+            key="entry_user_type",
             label_visibility="collapsed",
         )
 
-        if st.button(
-            "Entrer",
-            type="primary",
-            use_container_width=True,
-            key="ludotheque_entry_button",
-        ):
-            expected_code = str(st.secrets.get("LUDOTHEQUE_CODE", "")).strip()
+        if user_type == "Élève":
+            st.markdown(
+                '<div class="entry-hint">Entre ton code personnel ou utilise le QR de ta carte.</div>',
+                unsafe_allow_html=True,
+            )
 
-            if not expected_code:
-                st.error("Le code d'accès n'est pas encore configuré dans les Secrets Streamlit.")
-            elif secrets.compare_digest(entered_code.strip(), expected_code):
-                st.session_state["ludotheque_access_granted"] = True
-                st.session_state.pop("ludotheque_entry_code", None)
-                st.rerun()
-            else:
-                st.error("Code incorrect.")
+            entered_code = st.text_input(
+                "Code personnel",
+                key="entry_student_code",
+                placeholder="Ex. K7P4QM",
+                max_chars=6,
+                label_visibility="collapsed",
+            )
+
+            if st.button(
+                "Entrer dans ma Ludothèque",
+                type="primary",
+                use_container_width=True,
+                key="entry_student_button",
+            ):
+                student = find_student_by_code(entered_code)
+
+                if student:
+                    st.session_state.app_authenticated = True
+                    st.session_state.app_user_type = "student"
+                    st.session_state.app_student = student
+                    st.session_state.challenge_student = student
+                    st.session_state.page = "home"
+                    st.rerun()
+                else:
+                    st.error("Code personnel inconnu.")
+
+        else:
+            st.markdown(
+                '<div class="entry-hint">Connexion à l’espace professeur sécurisé.</div>',
+                unsafe_allow_html=True,
+            )
+
+            accounts = get_teacher_accounts()
+            if not accounts:
+                st.error("Aucun compte professeur n'est configuré dans les Secrets Streamlit.")
+                return
+
+            teacher_ids = list(accounts.keys())
+            selected_id = st.selectbox(
+                "Professeur",
+                teacher_ids,
+                format_func=lambda tid: accounts[tid]["name"],
+                key="entry_teacher_account",
+            )
+            password = st.text_input(
+                "Mot de passe",
+                type="password",
+                key="entry_teacher_password",
+            )
+
+            if st.button(
+                "Entrer comme professeur",
+                type="primary",
+                use_container_width=True,
+                key="entry_teacher_button",
+            ):
+                if secrets.compare_digest(password, accounts[selected_id]["password"]):
+                    st.session_state.teacher_authenticated = True
+                    st.session_state.teacher_id = selected_id
+                    st.session_state.teacher_name = accounts[selected_id]["name"]
+                    st.session_state.teacher_section = "dashboard"
+                    st.session_state.app_authenticated = True
+                    st.session_state.app_user_type = "teacher"
+                    st.session_state.pop("app_student", None)
+                    st.session_state.pop("challenge_student", None)
+                    st.session_state.page = "home"
+                    st.rerun()
+                else:
+                    st.error("Mot de passe incorrect.")
 
 
 # ============================================================
 # ROUTEUR PRINCIPAL
 # ============================================================
 
-# Premier sas d'entrée : il précède toute l'architecture actuelle.
-if not st.session_state.get("ludotheque_access_granted", False):
+# Identification générale : aucun contenu n'est accessible avant reconnaissance.
+if not st.session_state.get("app_authenticated", False):
     page_entry_gate()
     st.stop()
 
