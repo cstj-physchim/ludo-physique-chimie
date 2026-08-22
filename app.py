@@ -4051,7 +4051,7 @@ def page_teacher():
 
 
 def page_entry_gate():
-    """Écran d'entrée robuste : image Streamlit + mini carte en superposition."""
+    """Écran d'entrée : image centrée + mini fenêtre de code centrée en superposition."""
     image_path = Path("assets/accueil_ludotheque.png")
 
     if not image_path.exists():
@@ -4061,42 +4061,48 @@ def page_entry_gate():
     st.markdown(
         """
         <style>
-        /* Uniquement quelques réglages simples et sûrs */
+        /* Écran d'entrée : dimensions stables et centrées */
         .block-container {
             max-width: 100% !important;
-            padding-top: 0 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
+            padding-top: 0.35rem !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
         }
 
         .st-key-entry_gate_image {
-            width: 100% !important;
-            margin: 0 !important;
+            width: min(1120px, calc(100vw - 48px)) !important;
+            margin: 0 auto !important;
             padding: 0 !important;
         }
 
         .st-key-entry_gate_image div[data-testid="stImage"] {
             width: 100% !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
         }
 
         .st-key-entry_gate_image div[data-testid="stImage"] img {
             width: 100% !important;
             height: auto !important;
             display: block !important;
+            margin: 0 auto !important;
+            border-radius: 10px !important;
         }
 
         .st-key-entry_gate_card {
-            width: 300px !important;
-            max-width: calc(100vw - 24px) !important;
-            margin: -118px auto 20px auto !important;
-            padding: 8px 10px 10px 10px !important;
-            border-radius: 14px !important;
-            background: rgba(255,255,255,0.94) !important;
-            border: 1px solid rgba(255,255,255,0.90) !important;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.22) !important;
+            width: 280px !important;
+            max-width: calc(100vw - 32px) !important;
+            margin: -105px auto 18px auto !important;
+            padding: 7px 9px 9px 9px !important;
+            border-radius: 13px !important;
+            background: rgba(255,255,255,0.95) !important;
+            border: 1px solid rgba(255,255,255,0.92) !important;
+            box-shadow: 0 7px 22px rgba(0,0,0,0.20) !important;
             position: relative !important;
             z-index: 5 !important;
+        }
+
+        .st-key-entry_gate_card div[data-testid="stTextInput"] {
+            margin-bottom: 5px !important;
         }
 
         .st-key-entry_gate_card div[data-testid="stTextInput"] label {
@@ -4105,30 +4111,36 @@ def page_entry_gate():
 
         .st-key-entry_gate_card input {
             text-align: center !important;
-            min-height: 36px !important;
-            height: 36px !important;
-            font-size: 0.9rem !important;
+            min-height: 34px !important;
+            height: 34px !important;
+            font-size: 0.88rem !important;
+            border-radius: 9px !important;
         }
 
         .st-key-entry_gate_card div[data-testid="stButton"] > button {
-            min-height: 36px !important;
-            height: 36px !important;
+            min-height: 34px !important;
+            height: 34px !important;
             border-radius: 9px !important;
-            font-size: 0.9rem !important;
+            font-size: 0.88rem !important;
             box-shadow: none !important;
         }
 
         .entry-gate-hint {
             text-align: center;
-            font-size: 0.76rem;
+            font-size: 0.72rem;
             color: #52647d;
-            margin: 0 0 5px 0;
+            margin: 0 0 4px 0;
+            line-height: 1.1;
         }
 
-        @media (max-width: 700px) {
+        @media (max-width: 800px) {
+            .st-key-entry_gate_image {
+                width: calc(100vw - 20px) !important;
+            }
+
             .st-key-entry_gate_card {
-                margin-top: -100px !important;
-                width: 280px !important;
+                width: 260px !important;
+                margin-top: -92px !important;
             }
         }
         </style>
@@ -4169,6 +4181,7 @@ def page_entry_gate():
                 st.rerun()
             else:
                 st.error("Code incorrect.")
+
 
 # ============================================================
 # ROUTEUR PRINCIPAL
