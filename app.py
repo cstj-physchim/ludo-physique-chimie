@@ -4048,9 +4048,85 @@ def page_teacher():
         teacher_results()
 
 
+
+def page_entry_gate():
+    """Premier écran : image d'accueil + code d'accès général."""
+    image_path = Path("assets/accueil_ludotheque.png")
+
+    # Écran volontairement très simple : l'image puis la saisie du code.
+    if image_path.exists():
+        st.image(str(image_path), use_container_width=True)
+    else:
+        st.error("L'image d'accueil est introuvable dans assets/accueil_ludotheque.png.")
+
+    st.markdown(
+        """
+        <div style="
+            max-width:560px;
+            margin:18px auto 8px auto;
+            text-align:center;
+        ">
+            <div style="
+                font-size:1.45rem;
+                font-weight:800;
+                color:#153160;
+                margin-bottom:6px;
+            ">
+                Accès à la ludothèque
+            </div>
+            <div style="
+                color:#52647d;
+                font-size:1rem;
+                line-height:1.4;
+            ">
+                Entre le code donné par ton professeur pour continuer.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    left, center, right = st.columns([1.2, 1, 1.2])
+
+    with center:
+        entered_code = st.text_input(
+            "Code d'entrée",
+            type="password",
+            key="ludotheque_entry_code",
+            placeholder="Saisir le code",
+        )
+
+        if st.button(
+            "Entrer dans la ludothèque",
+            type="primary",
+            use_container_width=True,
+            key="ludotheque_entry_button",
+        ):
+            expected_code = str(st.secrets.get("LUDOTHEQUE_CODE", "")).strip()
+
+            if not expected_code:
+                st.error(
+                    "Le code d'accès n'est pas encore configuré dans les Secrets Streamlit."
+                )
+            elif secrets.compare_digest(
+                entered_code.strip(),
+                expected_code,
+            ):
+                st.session_state["ludotheque_access_granted"] = True
+                st.session_state.pop("ludotheque_entry_code", None)
+                st.rerun()
+            else:
+                st.error("Code incorrect.")
+
+
 # ============================================================
 # ROUTEUR PRINCIPAL
 # ============================================================
+
+# Premier sas d'entrée : il précède toute l'architecture actuelle.
+if not st.session_state.get("ludotheque_access_granted", False):
+    page_entry_gate()
+    st.stop()
 
 if "page" not in st.session_state:
     st.session_state.page = "home"
