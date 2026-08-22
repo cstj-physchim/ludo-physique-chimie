@@ -2582,57 +2582,307 @@ def game_credit(theme):
 # ============================================================
 
 def page_home():
-    hero()
+    """Accueil modernisé — apparence uniquement, navigation inchangée."""
 
     st.markdown(
-        '<div class="section-title">Que voulez-vous faire aujourd’hui ?</div>',
+        """
+        <style>
+        /* =========================
+           PAGE D'ACCUEIL UNIQUEMENT
+           ========================= */
+        [data-testid="stAppViewContainer"] {
+            background:
+                radial-gradient(circle at 10% 10%, rgba(28, 197, 224, .15), transparent 24%),
+                radial-gradient(circle at 88% 88%, rgba(132, 55, 255, .18), transparent 26%),
+                linear-gradient(145deg, #061a42 0%, #071e4c 48%, #06183d 100%) !important;
+        }
+
+        .stApp {
+            background: transparent !important;
+        }
+
+        .block-container {
+            max-width: 1360px !important;
+            padding-top: 1.3rem !important;
+            padding-bottom: 1.4rem !important;
+        }
+
+        /* Titre */
+        .home-modern-head {
+            text-align: center;
+            color: white;
+            padding: .45rem 0 1.35rem 0;
+        }
+
+        .home-modern-icon {
+            font-size: 3.2rem;
+            line-height: 1;
+            margin-bottom: .45rem;
+            filter: drop-shadow(0 5px 12px rgba(0, 215, 255, .18));
+        }
+
+        .home-modern-title {
+            font-size: clamp(2.35rem, 4vw, 3.85rem);
+            line-height: 1.04;
+            font-weight: 900;
+            letter-spacing: -0.035em;
+            margin: 0;
+            text-shadow: 0 5px 18px rgba(0,0,0,.22);
+        }
+
+        .home-modern-subtitle {
+            font-size: clamp(1.08rem, 1.7vw, 1.55rem);
+            margin-top: .5rem;
+            color: rgba(255,255,255,.94);
+            font-weight: 400;
+        }
+
+        .home-modern-line {
+            width: 150px;
+            height: 4px;
+            margin: 1rem auto 0 auto;
+            border-radius: 999px;
+            background: linear-gradient(90deg,#00d7ff,#36e3d0);
+            box-shadow: 0 0 15px rgba(0,215,255,.35);
+        }
+
+        /* Conteneurs des trois cartes */
+        .st-key-home_card_free,
+        .st-key-home_card_challenge,
+        .st-key-home_card_teacher {
+            border-radius: 25px !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            background: rgba(255,255,255,.985) !important;
+            box-shadow: 0 16px 36px rgba(0,0,0,.22) !important;
+            border: 1px solid rgba(255,255,255,.72) !important;
+        }
+
+        .st-key-home_card_free { border-top: 6px solid #1d8cff !important; }
+        .st-key-home_card_challenge { border-top: 6px solid #22c55e !important; }
+        .st-key-home_card_teacher { border-top: 6px solid #8b5cf6 !important; }
+
+        .modern-home-card {
+            min-height: 410px;
+            padding: 1.25rem 1.45rem .75rem 1.45rem;
+            text-align: center;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .modern-card-visual {
+            width: 176px;
+            height: 176px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: .1rem auto 1rem auto;
+            font-size: 5.6rem;
+            line-height: 1;
+            position: relative;
+        }
+
+        .visual-free {
+            background: radial-gradient(circle,#e7f4ff 0%,#d8edff 56%,rgba(215,237,255,.2) 72%);
+            filter: drop-shadow(0 7px 12px rgba(25,110,225,.12));
+        }
+
+        .visual-challenge {
+            background: radial-gradient(circle,#eefcf2 0%,#dcf7e4 56%,rgba(220,247,228,.2) 72%);
+            filter: drop-shadow(0 7px 12px rgba(22,163,74,.11));
+        }
+
+        .visual-teacher {
+            background: radial-gradient(circle,#f3efff 0%,#e8e0ff 56%,rgba(232,224,255,.2) 72%);
+            filter: drop-shadow(0 7px 12px rgba(109,40,217,.11));
+        }
+
+        .modern-card-title {
+            color: #0b2b63;
+            font-size: 1.68rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin: .15rem 0 .65rem 0;
+            letter-spacing: -0.025em;
+        }
+
+        .modern-card-text {
+            color: #334b70;
+            font-size: 1.03rem;
+            line-height: 1.42;
+            max-width: 290px;
+            min-height: 65px;
+            margin: 0 auto .75rem auto;
+        }
+
+        .modern-card-mini-line {
+            width: 34px;
+            height: 3px;
+            border-radius: 999px;
+            margin: .25rem auto .1rem auto;
+        }
+
+        .mini-blue { background:#1d8cff; }
+        .mini-green { background:#22c55e; }
+        .mini-purple { background:#8b5cf6; }
+
+        /* Boutons : on garde exactement les mêmes clés et actions */
+        .st-key-home_card_free div[data-testid="stButton"] > button,
+        .st-key-home_card_challenge div[data-testid="stButton"] > button,
+        .st-key-home_card_teacher div[data-testid="stButton"] > button {
+            width: calc(100% - 2rem) !important;
+            margin: .15rem 1rem 1rem 1rem !important;
+            min-height: 3.45rem !important;
+            border-radius: 17px !important;
+            font-size: 1.08rem !important;
+            font-weight: 850 !important;
+            box-shadow: none !important;
+        }
+
+        .st-key-home_card_free div[data-testid="stButton"] > button {
+            background: #e1f0ff !important;
+            color: #0876ea !important;
+            border: 1px solid #cce5ff !important;
+        }
+
+        .st-key-home_card_challenge div[data-testid="stButton"] > button {
+            background: #dcf8e5 !important;
+            color: #12a044 !important;
+            border: 1px solid #c8f0d4 !important;
+        }
+
+        .st-key-home_card_teacher div[data-testid="stButton"] > button {
+            background: #ece5ff !important;
+            color: #6d28d9 !important;
+            border: 1px solid #dfd2ff !important;
+        }
+
+        .st-key-home_card_free div[data-testid="stButton"] > button:hover,
+        .st-key-home_card_challenge div[data-testid="stButton"] > button:hover,
+        .st-key-home_card_teacher div[data-testid="stButton"] > button:hover {
+            transform: translateY(-1px);
+            filter: brightness(.98);
+        }
+
+        .home-modern-footer {
+            color: rgba(255,255,255,.88);
+            text-align: center;
+            margin-top: 1.8rem;
+            font-size: 1rem;
+        }
+
+        .home-modern-footer b {
+            color:#19d8e8;
+        }
+
+        /* Le footer global n'est pas utile sur cette page graphique */
+        .footer-note {
+            display:none !important;
+        }
+
+        @media (max-width: 900px) {
+            .modern-home-card {
+                min-height: 360px;
+            }
+            .modern-card-visual {
+                width: 145px;
+                height: 145px;
+                font-size: 4.6rem;
+            }
+        }
+        </style>
+        """,
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns(3)
+    st.markdown(
+        """
+        <div class="home-modern-head">
+            <div class="home-modern-icon">⚗️</div>
+            <div class="home-modern-title">Que veux-tu faire aujourd’hui ?</div>
+            <div class="home-modern-subtitle">Choisis ton espace pour commencer.</div>
+            <div class="home-modern-line"></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    c1, c2, c3 = st.columns(3, gap="large")
 
     with c1:
-        nav_card(
-            "🎮",
-            "Entraînement libre",
-            "Choisissez un jeu, un thème et un niveau puis entraînez-vous librement.",
-            "card-blue",
-        )
-        if st.button(
-            "Commencer  ›",
-            key="home_free",
-            use_container_width=True,
-        ):
-            go("free_activity")
+        with st.container(key="home_card_free"):
+            st.markdown(
+                """
+                <div class="modern-home-card">
+                    <div class="modern-card-visual visual-free">🎮</div>
+                    <div class="modern-card-title">Entraînement libre</div>
+                    <div class="modern-card-text">
+                        Choisis un jeu, un thème et progresse à ton rythme.
+                    </div>
+                    <div class="modern-card-mini-line mini-blue"></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                "Jouer   →",
+                key="home_free",
+                use_container_width=True,
+            ):
+                go("free_activity")
 
     with c2:
-        nav_card(
-            "🏆",
-            "Participer à un défi",
-            "Entrez votre code personnel et le code du défi lancé par votre professeur.",
-            "card-green",
-        )
-        if st.button(
-            "Participer  ›",
-            key="home_challenge",
-            type="primary",
-            use_container_width=True,
-        ):
-            go("challenge")
+        with st.container(key="home_card_challenge"):
+            st.markdown(
+                """
+                <div class="modern-home-card">
+                    <div class="modern-card-visual visual-challenge">🏆</div>
+                    <div class="modern-card-title">Participer à un défi</div>
+                    <div class="modern-card-text">
+                        Rejoins le défi lancé par ton professeur.
+                    </div>
+                    <div class="modern-card-mini-line mini-green"></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                "Rejoindre   →",
+                key="home_challenge",
+                type="primary",
+                use_container_width=True,
+            ):
+                go("challenge")
 
     with c3:
-        nav_card(
-            "🔒",
-            "Espace professeur",
-            "Gérez les classes, les élèves, les défis et consultez les résultats.",
-            "card-purple",
-        )
-        if st.button(
-            "Accéder  ›",
-            key="home_teacher",
-            use_container_width=True,
-        ):
-            go("teacher")
+        with st.container(key="home_card_teacher"):
+            st.markdown(
+                """
+                <div class="modern-home-card">
+                    <div class="modern-card-visual visual-teacher">🔐</div>
+                    <div class="modern-card-title">Espace professeur</div>
+                    <div class="modern-card-text">
+                        Gère tes classes, tes élèves, tes défis et consulte les résultats.
+                    </div>
+                    <div class="modern-card-mini-line mini-purple"></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                "Accéder   →",
+                key="home_teacher",
+                use_container_width=True,
+            ):
+                go("teacher")
+
+    st.markdown(
+        '<div class="home-modern-footer">Ludothèque <b>Physique-Chimie</b></div>',
+        unsafe_allow_html=True,
+    )
 
 
 def page_free_activity():
