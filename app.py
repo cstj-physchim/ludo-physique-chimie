@@ -2587,14 +2587,12 @@ def page_home():
     st.markdown(
         """
         <style>
-        /* =========================
-           PAGE D'ACCUEIL UNIQUEMENT
-           ========================= */
         [data-testid="stAppViewContainer"] {
             background:
-                radial-gradient(circle at 10% 10%, rgba(28, 197, 224, .15), transparent 24%),
-                radial-gradient(circle at 88% 88%, rgba(132, 55, 255, .18), transparent 26%),
-                linear-gradient(145deg, #061a42 0%, #071e4c 48%, #06183d 100%) !important;
+                radial-gradient(circle at 8% 8%, rgba(0, 225, 255, .22), transparent 17%),
+                radial-gradient(circle at 92% 92%, rgba(135, 38, 255, .25), transparent 22%),
+                linear-gradient(145deg, #061a42 0%, #082054 48%, #071743 100%) !important;
+            overflow-x: hidden !important;
         }
 
         .stApp {
@@ -2602,69 +2600,127 @@ def page_home():
         }
 
         .block-container {
-            max-width: 1360px !important;
-            padding-top: 1.3rem !important;
-            padding-bottom: 1.4rem !important;
+            max-width: 1500px !important;
+            padding-top: 0.75rem !important;
+            padding-bottom: 1rem !important;
         }
 
-        /* Titre */
+        /* Décor scientifique */
+        .home-bg-decor {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .home-bg-decor::before {
+            content: "⚛";
+            position: absolute;
+            left: 5.5%;
+            top: 14%;
+            font-size: 7rem;
+            color: rgba(0, 185, 255, .16);
+            transform: rotate(-12deg);
+        }
+
+        .home-bg-decor::after {
+            content: "⌬";
+            position: absolute;
+            right: 7%;
+            top: 11%;
+            font-size: 6rem;
+            color: rgba(44, 120, 255, .17);
+            transform: rotate(12deg);
+        }
+
+        .home-dot {
+            position:absolute;
+            width:10px;height:10px;
+            border:2px solid #13d7ee;
+            border-radius:50%;
+            opacity:.8;
+        }
+
+        .home-dot.d1 { left:3%; top:6%; }
+        .home-dot.d2 { right:5%; top:19%; }
+        .home-dot.d3 { left:2.5%; bottom:20%; }
+        .home-dot.d4 { right:2.5%; bottom:14%; border-color:#7b61ff; }
+
+        .home-plus {
+            position:absolute;
+            color:#11d7ec;
+            font-size:2rem;
+            font-weight:300;
+            opacity:.9;
+        }
+
+        .home-plus.p1 { left:2.8%; top:35%; }
+        .home-plus.p2 { right:5.5%; top:33%; }
+        .home-plus.p3 { left:4%; bottom:8%; }
+        .home-plus.p4 { right:3%; bottom:28%; color:#7e5cff; }
+
+        /* En-tête */
         .home-modern-head {
+            position: relative;
+            z-index: 2;
             text-align: center;
             color: white;
-            padding: .45rem 0 1.35rem 0;
+            padding: .1rem 0 .9rem 0;
         }
 
         .home-modern-icon {
-            font-size: 3.2rem;
+            font-size: 3.1rem;
             line-height: 1;
-            margin-bottom: .45rem;
-            filter: drop-shadow(0 5px 12px rgba(0, 215, 255, .18));
+            margin-bottom: .25rem;
+            filter: drop-shadow(0 6px 14px rgba(0,215,255,.26));
         }
 
         .home-modern-title {
-            font-size: clamp(2.35rem, 4vw, 3.85rem);
-            line-height: 1.04;
+            font-size: clamp(2.6rem, 4.1vw, 4rem);
+            line-height: 1.02;
             font-weight: 900;
-            letter-spacing: -0.035em;
+            letter-spacing: -0.04em;
             margin: 0;
-            text-shadow: 0 5px 18px rgba(0,0,0,.22);
+            text-shadow: 0 6px 20px rgba(0,0,0,.28);
         }
 
         .home-modern-subtitle {
-            font-size: clamp(1.08rem, 1.7vw, 1.55rem);
-            margin-top: .5rem;
-            color: rgba(255,255,255,.94);
-            font-weight: 400;
+            font-size: clamp(1.1rem, 1.6vw, 1.55rem);
+            margin-top: .45rem;
+            color: rgba(255,255,255,.96);
         }
 
         .home-modern-line {
             width: 150px;
             height: 4px;
-            margin: 1rem auto 0 auto;
+            margin: .75rem auto 0 auto;
             border-radius: 999px;
-            background: linear-gradient(90deg,#00d7ff,#36e3d0);
-            box-shadow: 0 0 15px rgba(0,215,255,.35);
+            background: linear-gradient(90deg,#00d9ff,#36e4d2);
+            box-shadow: 0 0 15px rgba(0,217,255,.35);
         }
 
-        /* Conteneurs des trois cartes */
+        /* Cartes */
         .st-key-home_card_free,
         .st-key-home_card_challenge,
         .st-key-home_card_teacher {
-            border-radius: 25px !important;
+            position: relative !important;
+            z-index: 2 !important;
+            border-radius: 24px !important;
             padding: 0 !important;
             overflow: hidden !important;
             background: rgba(255,255,255,.985) !important;
-            box-shadow: 0 16px 36px rgba(0,0,0,.22) !important;
-            border: 1px solid rgba(255,255,255,.72) !important;
+            box-shadow: 0 18px 40px rgba(0,0,0,.23) !important;
+            border: 1px solid rgba(255,255,255,.78) !important;
         }
 
-        .st-key-home_card_free { border-top: 6px solid #1d8cff !important; }
-        .st-key-home_card_challenge { border-top: 6px solid #22c55e !important; }
+        .st-key-home_card_free { border-top: 6px solid #1f91ff !important; }
+        .st-key-home_card_challenge { border-top: 6px solid #21c65b !important; }
         .st-key-home_card_teacher { border-top: 6px solid #8b5cf6 !important; }
 
         .modern-home-card {
-            min-height: 410px;
-            padding: 1.25rem 1.45rem .75rem 1.45rem;
+            min-height: 430px;
+            padding: 1.1rem 1.35rem .65rem 1.35rem;
             text-align: center;
             box-sizing: border-box;
             display: flex;
@@ -2673,68 +2729,116 @@ def page_home():
         }
 
         .modern-card-visual {
-            width: 176px;
-            height: 176px;
-            border-radius: 50%;
+            width: 205px;
+            height: 185px;
+            border-radius: 44% 56% 50% 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: .1rem auto 1rem auto;
-            font-size: 5.6rem;
+            margin: .05rem auto .9rem auto;
+            font-size: 6.2rem;
             line-height: 1;
             position: relative;
+            overflow: visible;
+        }
+
+        .modern-card-visual::before,
+        .modern-card-visual::after {
+            content:"";
+            position:absolute;
+            border-radius:50%;
+            width:13px;height:13px;
+            opacity:.75;
         }
 
         .visual-free {
-            background: radial-gradient(circle,#e7f4ff 0%,#d8edff 56%,rgba(215,237,255,.2) 72%);
-            filter: drop-shadow(0 7px 12px rgba(25,110,225,.12));
+            background:
+                radial-gradient(circle at 50% 50%, rgba(205,233,255,.95), rgba(232,246,255,.72) 55%, rgba(255,255,255,0) 72%);
+            filter: drop-shadow(0 7px 14px rgba(25,110,225,.12));
         }
+        .visual-free::before { left:18px; top:20px; border:2px solid #7cc7ff; }
+        .visual-free::after { right:18px; bottom:22px; background:#74d1ff; }
 
         .visual-challenge {
-            background: radial-gradient(circle,#eefcf2 0%,#dcf7e4 56%,rgba(220,247,228,.2) 72%);
-            filter: drop-shadow(0 7px 12px rgba(22,163,74,.11));
+            background:
+                radial-gradient(circle at 50% 50%, rgba(217,249,226,.98), rgba(235,255,240,.74) 55%, rgba(255,255,255,0) 72%);
+            filter: drop-shadow(0 7px 14px rgba(22,163,74,.12));
         }
+        .visual-challenge::before { left:20px; top:24px; border:2px solid #72db98; }
+        .visual-challenge::after { right:20px; bottom:20px; background:#64d58d; }
 
         .visual-teacher {
-            background: radial-gradient(circle,#f3efff 0%,#e8e0ff 56%,rgba(232,224,255,.2) 72%);
-            filter: drop-shadow(0 7px 12px rgba(109,40,217,.11));
+            background:
+                radial-gradient(circle at 50% 50%, rgba(234,225,255,.98), rgba(246,241,255,.76) 55%, rgba(255,255,255,0) 72%);
+            filter: drop-shadow(0 7px 14px rgba(109,40,217,.12));
         }
+        .visual-teacher::before { left:18px; top:24px; border:2px solid #b79bff; }
+        .visual-teacher::after { right:20px; bottom:18px; background:#a88bff; }
+
+        .visual-free .v-main,
+        .visual-challenge .v-main,
+        .visual-teacher .v-main {
+            position: relative;
+            z-index:2;
+            transform: translateY(2px);
+        }
+
+        .visual-free .v-mini,
+        .visual-challenge .v-mini,
+        .visual-teacher .v-mini {
+            position:absolute;
+            font-size:1.9rem;
+            opacity:.82;
+            filter:none;
+        }
+
+        .visual-free .m1 { left:14px; top:54px; }
+        .visual-free .m2 { right:8px; bottom:35px; }
+        .visual-free .m3 { right:32px; top:18px; }
+
+        .visual-challenge .m1 { left:14px; top:62px; }
+        .visual-challenge .m2 { right:12px; top:42px; }
+        .visual-challenge .m3 { right:24px; bottom:28px; }
+
+        .visual-teacher .m1 { left:10px; bottom:30px; }
+        .visual-teacher .m2 { right:12px; top:42px; }
+        .visual-teacher .m3 { right:28px; bottom:24px; }
 
         .modern-card-title {
             color: #0b2b63;
-            font-size: 1.68rem;
+            font-size: 1.75rem;
             font-weight: 900;
-            line-height: 1.1;
-            margin: .15rem 0 .65rem 0;
-            letter-spacing: -0.025em;
+            line-height: 1.08;
+            margin: .05rem 0 .55rem 0;
+            letter-spacing: -0.03em;
         }
 
         .modern-card-text {
             color: #334b70;
-            font-size: 1.03rem;
+            font-size: 1.02rem;
             line-height: 1.42;
-            max-width: 290px;
-            min-height: 65px;
-            margin: 0 auto .75rem auto;
+            max-width: 300px;
+            min-height: 66px;
+            margin: 0 auto .6rem auto;
         }
 
         .modern-card-mini-line {
             width: 34px;
             height: 3px;
             border-radius: 999px;
-            margin: .25rem auto .1rem auto;
+            margin: .2rem auto 0 auto;
         }
 
-        .mini-blue { background:#1d8cff; }
-        .mini-green { background:#22c55e; }
+        .mini-blue { background:#1f91ff; }
+        .mini-green { background:#21c65b; }
         .mini-purple { background:#8b5cf6; }
 
-        /* Boutons : on garde exactement les mêmes clés et actions */
+        /* Boutons : fonctionnement inchangé */
         .st-key-home_card_free div[data-testid="stButton"] > button,
         .st-key-home_card_challenge div[data-testid="stButton"] > button,
         .st-key-home_card_teacher div[data-testid="stButton"] > button {
             width: calc(100% - 2rem) !important;
-            margin: .15rem 1rem 1rem 1rem !important;
+            margin: .1rem 1rem 1rem 1rem !important;
             min-height: 3.45rem !important;
             border-radius: 17px !important;
             font-size: 1.08rem !important;
@@ -2743,21 +2847,21 @@ def page_home():
         }
 
         .st-key-home_card_free div[data-testid="stButton"] > button {
-            background: #e1f0ff !important;
+            background: linear-gradient(90deg,#e2f1ff,#cfe8ff) !important;
             color: #0876ea !important;
-            border: 1px solid #cce5ff !important;
+            border: 1px solid #c6e1ff !important;
         }
 
         .st-key-home_card_challenge div[data-testid="stButton"] > button {
-            background: #dcf8e5 !important;
-            color: #12a044 !important;
-            border: 1px solid #c8f0d4 !important;
+            background: linear-gradient(90deg,#e1f9e8,#ccf1d8) !important;
+            color: #10a044 !important;
+            border: 1px solid #c5ebd0 !important;
         }
 
         .st-key-home_card_teacher div[data-testid="stButton"] > button {
-            background: #ece5ff !important;
+            background: linear-gradient(90deg,#f0eaff,#e1d5ff) !important;
             color: #6d28d9 !important;
-            border: 1px solid #dfd2ff !important;
+            border: 1px solid #dacdff !important;
         }
 
         .st-key-home_card_free div[data-testid="stButton"] > button:hover,
@@ -2767,31 +2871,45 @@ def page_home():
             filter: brightness(.98);
         }
 
-        .home-modern-footer {
-            color: rgba(255,255,255,.88);
-            text-align: center;
-            margin-top: 1.8rem;
-            font-size: 1rem;
+        /* Bas de page */
+        .home-modern-bottom {
+            position:relative;
+            z-index:2;
+            text-align:center;
+            color:#0ed7ed;
+            margin-top:1.15rem;
         }
 
-        .home-modern-footer b {
-            color:#19d8e8;
+        .home-modern-icons {
+            font-size:2.45rem;
+            letter-spacing:1.25rem;
+            margin-left:1.25rem;
+            opacity:.95;
+            text-shadow:0 0 18px rgba(0,210,255,.25);
         }
 
-        /* Le footer global n'est pas utile sur cette page graphique */
+        .home-modern-brand {
+            margin-top:.55rem;
+            font-size:1rem;
+            color:rgba(255,255,255,.92);
+        }
+
+        .home-modern-brand b {
+            color:#13d8e8;
+        }
+
         .footer-note {
             display:none !important;
         }
 
-        @media (max-width: 900px) {
-            .modern-home-card {
-                min-height: 360px;
-            }
+        @media (max-width: 1000px) {
+            .modern-home-card { min-height: 385px; }
             .modern-card-visual {
-                width: 145px;
-                height: 145px;
-                font-size: 4.6rem;
+                width: 165px;
+                height: 150px;
+                font-size: 5rem;
             }
+            .home-modern-icons { letter-spacing:.7rem; }
         }
         </style>
         """,
@@ -2800,6 +2918,17 @@ def page_home():
 
     st.markdown(
         """
+        <div class="home-bg-decor">
+            <span class="home-dot d1"></span>
+            <span class="home-dot d2"></span>
+            <span class="home-dot d3"></span>
+            <span class="home-dot d4"></span>
+            <span class="home-plus p1">+</span>
+            <span class="home-plus p2">+</span>
+            <span class="home-plus p3">+</span>
+            <span class="home-plus p4">+</span>
+        </div>
+
         <div class="home-modern-head">
             <div class="home-modern-icon">⚗️</div>
             <div class="home-modern-title">Que veux-tu faire aujourd’hui ?</div>
@@ -2817,10 +2946,15 @@ def page_home():
             st.markdown(
                 """
                 <div class="modern-home-card">
-                    <div class="modern-card-visual visual-free">🎮</div>
+                    <div class="modern-card-visual visual-free">
+                        <span class="v-mini m1">⚛️</span>
+                        <span class="v-mini m2">🧬</span>
+                        <span class="v-mini m3">✦</span>
+                        <span class="v-main">🎮</span>
+                    </div>
                     <div class="modern-card-title">Entraînement libre</div>
                     <div class="modern-card-text">
-                        Choisis un jeu, un thème et progresse à ton rythme.
+                        Choisis un jeu, un thème et<br>progresse à ton rythme.
                     </div>
                     <div class="modern-card-mini-line mini-blue"></div>
                 </div>
@@ -2839,10 +2973,15 @@ def page_home():
             st.markdown(
                 """
                 <div class="modern-home-card">
-                    <div class="modern-card-visual visual-challenge">🏆</div>
+                    <div class="modern-card-visual visual-challenge">
+                        <span class="v-mini m1">⚛️</span>
+                        <span class="v-mini m2">⚡</span>
+                        <span class="v-mini m3">🧬</span>
+                        <span class="v-main">🏆</span>
+                    </div>
                     <div class="modern-card-title">Participer à un défi</div>
                     <div class="modern-card-text">
-                        Rejoins le défi lancé par ton professeur.
+                        Rejoins le défi lancé par<br>ton professeur.
                     </div>
                     <div class="modern-card-mini-line mini-green"></div>
                 </div>
@@ -2862,10 +3001,15 @@ def page_home():
             st.markdown(
                 """
                 <div class="modern-home-card">
-                    <div class="modern-card-visual visual-teacher">🔐</div>
+                    <div class="modern-card-visual visual-teacher">
+                        <span class="v-mini m1">📊</span>
+                        <span class="v-mini m2">🧪</span>
+                        <span class="v-mini m3">🧬</span>
+                        <span class="v-main">🔐</span>
+                    </div>
                     <div class="modern-card-title">Espace professeur</div>
                     <div class="modern-card-text">
-                        Gère tes classes, tes élèves, tes défis et consulte les résultats.
+                        Gère tes classes, tes élèves,<br>tes défis et consulte les résultats.
                     </div>
                     <div class="modern-card-mini-line mini-purple"></div>
                 </div>
@@ -2880,7 +3024,12 @@ def page_home():
                 go("teacher")
 
     st.markdown(
-        '<div class="home-modern-footer">Ludothèque <b>Physique-Chimie</b></div>',
+        """
+        <div class="home-modern-bottom">
+            <div class="home-modern-icons">🧲  🌡️  💡  ⚗️</div>
+            <div class="home-modern-brand">Ludothèque <b>Physique-Chimie</b></div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
