@@ -1098,8 +1098,14 @@ def reset_database():
 # ============================================================
 
 def student_qr_url(student):
-    # Le QR contient le code personnel courant. Un nouveau code = un nouveau QR.
-    return f"{APP_PUBLIC_URL}/?student_code={student['code']}"
+    # Le QR doit contenir une véritable URL absolue afin que les appareils
+    # mobiles la reconnaissent directement comme un lien cliquable.
+    base_url = str(APP_PUBLIC_URL).strip().rstrip("/")
+    if not re.match(r"^https?://", base_url, flags=re.IGNORECASE):
+        base_url = "https://" + base_url
+
+    code = str(student["code"]).strip().upper()
+    return f"{base_url}/?student_code={code}"
 
 
 def make_qr_png_bytes(student):
