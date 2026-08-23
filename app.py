@@ -3673,6 +3673,71 @@ def teacher_header(title):
 
 
 def teacher_dashboard():
+    # Affiche immédiatement un écran de transition au-dessus de l'ancienne page.
+    # Streamlit met à jour le DOM progressivement : sans ce masque, les anciennes
+    # cartes de l'accueil restent visibles pendant les appels réseau Upstash.
+    loading = st.empty()
+    loading.markdown(
+        """
+        <style>
+        .teacher-loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            background: rgba(248, 251, 255, 0.98);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        .teacher-loading-card {
+            background: white;
+            border: 1px solid #dfe7f3;
+            border-radius: 24px;
+            padding: 28px 34px;
+            box-shadow: 0 18px 50px rgba(31, 55, 90, 0.14);
+            text-align: center;
+            color: #153160;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .teacher-loading-icon {
+            font-size: 2.4rem;
+            margin-bottom: .55rem;
+        }
+        .teacher-loading-title {
+            font-size: 1.12rem;
+            font-weight: 800;
+            margin-bottom: .3rem;
+        }
+        .teacher-loading-text {
+            color: #60728c;
+            font-size: .92rem;
+        }
+        </style>
+        <div class="teacher-loading-overlay">
+            <div class="teacher-loading-card">
+                <div class="teacher-loading-icon">🧪</div>
+                <div class="teacher-loading-title">Ouverture de l’espace professeur…</div>
+                <div class="teacher-loading-text">Chargement de vos classes et résultats</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Les lectures réseau sont faites AVANT d'afficher le nouveau tableau de bord.
+    # Ainsi on ne mélange plus visuellement l'ancien accueil et le nouvel écran.
+    classes = get_classes()
+    students = get_students()
+    challenges = get_challenges()
+    results = get_results()
+
+    open_challenges = sum(1 for c in challenges if c.get("status") == "open")
+    pilot_contents = content_pilot_enabled_for_teacher()
+
+    # Les données sont prêtes : on retire le masque puis on construit la page complète.
+    loading.empty()
+
     hero()
 
     nav1, nav2 = st.columns([1.4, 4.6])
@@ -3704,14 +3769,6 @@ def teacher_dashboard():
         unsafe_allow_html=True,
     )
 
-    classes = get_classes()
-    students = get_students()
-    challenges = get_challenges()
-    results = get_results()
-
-    open_challenges = sum(1 for c in challenges if c.get("status") == "open")
-
-    pilot_contents = content_pilot_enabled_for_teacher()
     cols = st.columns(4 if pilot_contents else 3)
 
     cards = [
@@ -3751,9 +3808,9 @@ def teacher_dashboard():
             "contents",
         ))
 
-    for i, (icon, title, text, count, color, section) in enumerate(cards):
+    for i, (icon, title, text_card, count, color, section) in enumerate(cards):
         with cols[i]:
-            nav_card(icon, title, f"{text}<br><br><strong>{count}</strong>", color)
+            nav_card(icon, title, f"{text_card}<br><br><strong>{count}</strong>", color)
 
             st.button(
                 f"Gérer {title.lower()}  ›",
@@ -3836,7 +3893,6 @@ def teacher_dashboard():
         }
 
         config = reset_config[reset_choice]
-
         st.info(config["message"])
 
         reset_confirmation = st.text_input(
@@ -3870,7 +3926,6 @@ def teacher_dashboard():
 
             st.success(config["success"])
             st.rerun()
-
 
 def teacher_classes_students():
     teacher_header("Classes et élèves")
