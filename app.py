@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_23_STATES_MATTER_V1
+# VERSION_UI_2026_08_23_GLOBAL_TRANSITIONS_STATES_MATTER_V1
 import re
 import base64
 import json
@@ -398,25 +398,86 @@ def nav_card(icon, title, text, color_class="card-blue", coming_soon=False):
     )
 
 
+def request_page_transition():
+    """Demande l'animation globale lors du prochain rendu de page."""
+    st.session_state["_page_transition_pending"] = True
+
+
+def render_page_transition():
+    """Applique une transition douce identique à toutes les navigations.
+
+    Le voile flouté est injecté avant le rendu de la nouvelle page puis disparaît
+    automatiquement. Il masque les anciens éléments que Streamlit pourrait laisser
+    visibles pendant le rerun.
+    """
+    if not st.session_state.pop("_page_transition_pending", False):
+        return
+
+    st.markdown(
+        """
+        <style>
+        @keyframes ludoPageReveal {
+            0% {
+                opacity: 1;
+                backdrop-filter: blur(14px);
+                -webkit-backdrop-filter: blur(14px);
+            }
+            68% {
+                opacity: .92;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            100% {
+                opacity: 0;
+                backdrop-filter: blur(0px);
+                -webkit-backdrop-filter: blur(0px);
+                visibility: hidden;
+            }
+        }
+
+        .ludo-page-transition {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483000;
+            pointer-events: none;
+            background: rgba(248, 251, 255, .76);
+            animation: ludoPageReveal .48s cubic-bezier(.22,.61,.36,1) forwards;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .ludo-page-transition {
+                animation-duration: .12s;
+            }
+        }
+        </style>
+        <div class="ludo-page-transition" aria-hidden="true"></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def go(page):
-    """Navigation impérative utilisée quand un rerun immédiat est réellement nécessaire."""
+    """Navigation impérative avec transition globale."""
+    request_page_transition()
     st.session_state.page = page
     st.rerun()
 
 
 def set_page(page):
-    """Callback de navigation exécuté avant le rerun automatique du bouton."""
+    """Callback de navigation : même transition pour toutes les pages."""
+    request_page_transition()
     st.session_state.page = page
 
 
 def set_teacher_section(section):
-    """Callback léger pour changer de rubrique professeur sans double rerun."""
+    """Callback de navigation interne à l'espace professeur."""
+    request_page_transition()
     st.session_state.teacher_section = section
 
 
-
 def logout_app():
-    """Déconnexion utilisée comme callback : l'état change avant le rerun automatique."""
+    """Déconnexion avec la même transition visuelle que le reste de l'application."""
+    request_page_transition()
     clear_app_session()
 
 
@@ -4963,6 +5024,7 @@ def page_entry_gate():
             st.session_state.app_user_type = "student"
             st.session_state.app_student = student
             st.session_state.challenge_student = student
+            request_page_transition()
             st.session_state.page = "home"
             st.query_params.clear()
             st.rerun()
@@ -4976,6 +5038,7 @@ def page_entry_gate():
             st.session_state.app_user_type = "student"
             st.session_state.app_student = student
             st.session_state.challenge_student = student
+            request_page_transition()
             st.session_state.page = "home"
             st.query_params.clear()
             st.rerun()
@@ -5153,6 +5216,7 @@ def page_entry_gate():
                         st.session_state.app_user_type = "student"
                         st.session_state.app_student = student
                         st.session_state.challenge_student = student
+                        request_page_transition()
                         st.session_state.page = "home"
                         st.rerun()
                     else:
@@ -5197,6 +5261,7 @@ def page_entry_gate():
                         st.session_state.app_user_type = "teacher"
                         st.session_state.pop("app_student", None)
                         st.session_state.pop("challenge_student", None)
+                        request_page_transition()
                         st.session_state.page = "home"
                         st.rerun()
                     else:
@@ -5216,6 +5281,9 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 
 page = st.session_state.page
+
+# Règle unique : toute navigation passe par le même voile de transition.
+render_page_transition()
 
 if page == "home":
     page_home()
