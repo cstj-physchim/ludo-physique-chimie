@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_23_ENTRY_RIGHT_AND_REGEN_DIALOG
+# VERSION_UI_2026_08_23_CONTENTS_PILOT
 import re
 import base64
 import json
@@ -67,6 +67,51 @@ def get_teacher_accounts():
 
 def current_teacher_name():
     return st.session_state.get("teacher_name", "Professeur")
+
+
+def content_pilot_enabled_for_teacher(teacher_id=None, teacher_name=None):
+    """Limite le prototype de pilotage des contenus au compte de Christophe."""
+    teacher_id = str(teacher_id or st.session_state.get("teacher_id", "")).strip().lower()
+    teacher_name = str(teacher_name or st.session_state.get("teacher_name", "")).strip().lower()
+    return (
+        "christophe" in teacher_name
+        or "declerck" in teacher_name
+        or "christophe" in teacher_id
+        or "declerck" in teacher_id
+    )
+
+
+PILOT_CONTENTS = {
+    "states_matter": {
+        "label": "États de la matière",
+        "description": "Structure prête pour accueillir les futurs exercices et activités.",
+        "resource_ready": False,
+    },
+    "atoms_molecules": {
+        "label": "Atomes et molécules",
+        "description": "Donne accès au domino Molécules déjà présent dans la Ludothèque.",
+        "resource_ready": True,
+    },
+}
+
+
+def get_content_access(teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        return {}
+    return redis_read_json(teacher_key("content_access", teacher_id), {})
+
+
+def save_content_access(access, teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        raise RuntimeError("Aucun professeur associé aux contenus.")
+    redis_write_json(teacher_key("content_access", teacher_id), access)
+
+
+def content_is_open_for_class(content_id, class_name, teacher_id):
+    access = get_content_access(teacher_id)
+    return bool(access.get(str(class_name), {}).get(content_id, False))
 
 
 def clear_teacher_session():
@@ -1098,14 +1143,8 @@ def reset_database():
 # ============================================================
 
 def student_qr_url(student):
-    # Le QR doit contenir une véritable URL absolue afin que les appareils
-    # mobiles la reconnaissent directement comme un lien cliquable.
-    base_url = str(APP_PUBLIC_URL).strip().rstrip("/")
-    if not re.match(r"^https?://", base_url, flags=re.IGNORECASE):
-        base_url = "https://" + base_url
-
-    code = str(student["code"]).strip().upper()
-    return f"{base_url}/?student_code={code}"
+    # Le QR contient le code personnel courant. Un nouveau code = un nouveau QR.
+    return f"{APP_PUBLIC_URL}/?student_code={student['code']}"
 
 
 def make_qr_png_bytes(student):
@@ -3186,19 +3225,39 @@ def page_free_theme():
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
-        nav_card(
-            "🔵",
-            "Molécules",
-            "Formules, modèles moléculaires et composition de la matière.",
-            "card-blue",
-        )
-        if st.button(
-            "Choisir Molécules",
-            key="theme_molecules",
-            use_container_width=True,
-        ):
-            st.session_state.selected_theme = "Molécules"
-            go("free_level")
+        show_molecules = True
+        if st.session_state.get("app_user_type") == "student":
+            student = st.session_state.get("app_student") or {}
+            student_teacher_id = student.get("_teacher_id")
+            if content_pilot_enabled_for_teacher(student_teacher_id, ""):
+                show_molecules = content_is_open_for_class(
+                    "atoms_molecules",
+                    student.get("class_name", ""),
+                    student_teacher_id,
+                )
+
+        if show_molecules:
+            nav_card(
+                "🔵",
+                "Molécules",
+                "Formules, modèles moléculaires et composition de la matière.",
+                "card-blue",
+            )
+            if st.button(
+                "Choisir Molécules",
+                key="theme_molecules",
+                use_container_width=True,
+            ):
+                st.session_state.selected_theme = "Molécules"
+                go("free_level")
+        else:
+            nav_card(
+                "🔒",
+                "Atomes et molécules",
+                "Cette notion apparaîtra lorsque votre professeur l'aura ouverte pour la classe.",
+                "card-blue",
+                coming_soon=True,
+            )
 
     with c2:
         nav_card(
@@ -3637,7 +3696,8 @@ def teacher_dashboard():
 
     open_challenges = sum(1 for c in challenges if c.get("status") == "open")
 
-    cols = st.columns(3)
+    pilot_contents = content_pilot_enabled_for_teacher()
+    cols = st.columns(4 if pilot_contents else 3)
 
     cards = [
         (
@@ -3665,6 +3725,16 @@ def teacher_dashboard():
             "results",
         ),
     ]
+
+    if pilot_contents:
+        cards.insert(1, (
+            "📚",
+            "Contenus",
+            "Choisissez les notions visibles pour chacune de vos classes.",
+            "Prototype personnel",
+            "card-green",
+            "contents",
+        ))
 
     for i, (icon, title, text, count, color, section) in enumerate(cards):
         with cols[i]:
@@ -4173,6 +4243,65 @@ def teacher_classes_students():
             st.info("Aucune classe enregistrée.")
 
 
+def teacher_contents():
+    teacher_header("Contenus")
+
+    if not content_pilot_enabled_for_teacher():
+        st.info("Le pilotage des contenus est actuellement en phase de test sur un seul compte professeur.")
+        return
+
+    classes = get_classes()
+    if not classes:
+        st.info("Créez d'abord une classe dans « Classes et élèves ».")
+        return
+
+    st.markdown(
+        """
+        <div class="section-title">📚 Pilotage des contenus par classe</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Cochez une notion lorsqu'elle a été travaillée en classe. "
+        "Les élèves de cette classe la verront alors dans leur espace d'entraînement. "
+        "Votre compte professeur conserve toujours l'accès à tout le contenu."
+    )
+
+    selected_class = st.selectbox("Classe à configurer", classes, key="content_class_select")
+    access = get_content_access()
+    class_access = dict(access.get(selected_class, {}))
+
+    changed = False
+    for content_id, info in PILOT_CONTENTS.items():
+        c1, c2 = st.columns([4.5, 1.5])
+        with c1:
+            st.markdown(f"**{info['label']}**")
+            st.caption(info["description"])
+            if not info["resource_ready"]:
+                st.caption("🛠️ Aucun exercice n'est encore rattaché à cette notion : on ajoutera les exercices ensuite.")
+        with c2:
+            value = st.toggle(
+                "Visible pour la classe",
+                value=bool(class_access.get(content_id, False)),
+                key=f"content_toggle_{selected_class}_{content_id}",
+            )
+            if value != bool(class_access.get(content_id, False)):
+                class_access[content_id] = value
+                changed = True
+
+    if changed:
+        access[selected_class] = class_access
+        save_content_access(access)
+        st.success(f"Accès de la classe {selected_class} mis à jour.")
+        st.rerun()
+
+    opened = [info["label"] for cid, info in PILOT_CONTENTS.items() if class_access.get(cid)]
+    if opened:
+        st.info("Actuellement visible pour cette classe : " + ", ".join(opened))
+    else:
+        st.info("Aucune notion de ce prototype n'est encore ouverte pour cette classe.")
+
+
 def teacher_challenges():
     teacher_header("Défis")
 
@@ -4538,6 +4667,8 @@ def page_teacher():
         teacher_dashboard()
     elif section in ("classes_students", "classes", "students"):
         teacher_classes_students()
+    elif section == "contents":
+        teacher_contents()
     elif section == "challenges":
         teacher_challenges()
     elif section == "results":
