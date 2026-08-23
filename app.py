@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_23_GLOBAL_TRANSITIONS_STATES_MATTER_V1
+# VERSION_UI_2026_08_23_STATES_V3_FULLSCREEN_STATES_MATTER_V1
 import re
 import base64
 import json
@@ -34,6 +34,53 @@ st.set_page_config(
     page_icon="🧪",
     layout="wide",
 )
+
+
+# Utiliser toute la hauteur de la fenêtre : le bandeau Streamlit supérieur
+# est masqué et le contenu remonte. Les commandes Streamlit restent accessibles
+# via le menu de l'application si l'hébergement les expose.
+st.markdown(
+    """
+    <style>
+    /* Récupère l'espace du bandeau blanc Streamlit */
+    [data-testid="stHeader"] {
+        height: 0 !important;
+        min-height: 0 !important;
+        background: transparent !important;
+    }
+
+    [data-testid="stHeader"] > div {
+        display: none !important;
+    }
+
+    [data-testid="stToolbar"] {
+        display: none !important;
+    }
+
+    [data-testid="stDecoration"] {
+        display: none !important;
+    }
+
+    /* Réduit fortement la marge haute native de Streamlit */
+    .stMainBlockContainer,
+    [data-testid="stMainBlockContainer"],
+    .block-container {
+        padding-top: 0.55rem !important;
+    }
+
+    /* Sur mobile, on garde juste un peu d'air en haut */
+    @media (max-width: 768px) {
+        .stMainBlockContainer,
+        [data-testid="stMainBlockContainer"],
+        .block-container {
+            padding-top: 0.35rem !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 ASSETS = Path("assets/molecules")
 ASSETS_ELECTRICITY = Path("assets/electricity")
@@ -346,7 +393,7 @@ st.markdown(
         padding: 0.75rem 1rem;
         color: #45617f;
         text-align: center;
-        margin-top: 1rem;
+        margin-top: 0.15rem;
     }
     </style>
     """,
@@ -3392,13 +3439,13 @@ STATES_MATTER_QUESTIONS = [
     {
         "question": "Parmi ces propositions, laquelle décrit correctement l'air ?",
         "choices": [
-            "L'air est un gaz",
+            "L'air est un mélange de gaz",
             "L'air est un liquide invisible",
             "L'air n'est pas de la matière",
         ],
-        "answer": "L'air est un gaz",
-        "hint": "L'air peut remplir un ballon et occuper un volume.",
-        "explanation": "L'air est un mélange de gaz : c'est bien de la matière et il occupe un volume.",
+        "answer": "L'air est un mélange de gaz",
+        "hint": "L'air contient notamment du diazote et du dioxygène.",
+        "explanation": "L'air est un mélange de plusieurs gaz, principalement du diazote et du dioxygène. C'est bien de la matière et il occupe un volume.",
     },
 ]
 
