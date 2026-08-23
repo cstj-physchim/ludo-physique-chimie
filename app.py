@@ -4645,8 +4645,29 @@ def page_entry_gate():
                 padding-right: .65rem !important;
             }
             .st-key-entry_gate_card {
-                max-width: 520px !important;
+                width: 100% !important;
+                max-width: none !important;
                 margin-top: .8rem !important;
+                padding: 1rem .9rem 1.1rem .9rem !important;
+            }
+            .st-key-entry_gate_card .entry-title {
+                font-size: 1.15rem !important;
+                margin-bottom: .8rem !important;
+            }
+            .st-key-entry_gate_card .entry-hint {
+                font-size: .94rem !important;
+                margin-top: .7rem !important;
+                margin-bottom: .8rem !important;
+            }
+            .st-key-entry_gate_card div[data-testid="stButton"] > button {
+                min-height: 3.25rem !important;
+                font-size: 1rem !important;
+                padding-left: .6rem !important;
+                padding-right: .6rem !important;
+            }
+            .st-key-entry_gate_card input {
+                min-height: 3.15rem !important;
+                font-size: 1.05rem !important;
             }
         }
         </style>
@@ -4670,13 +4691,33 @@ def page_entry_gate():
                 unsafe_allow_html=True,
             )
 
-            user_type = st.radio(
-                "Je suis",
-                ["Élève", "Professeur"],
-                horizontal=True,
-                key="entry_user_type",
-                label_visibility="collapsed",
-            )
+            # Choix de rôle volontairement présenté sous forme de gros boutons.
+            # C'est beaucoup plus lisible sur téléphone que les petits boutons radio.
+            if "entry_user_type" not in st.session_state:
+                st.session_state.entry_user_type = "Élève"
+
+            role_left, role_right = st.columns(2, gap="small")
+            with role_left:
+                if st.button(
+                    "🎓  Élève",
+                    key="entry_role_student",
+                    type="primary" if st.session_state.entry_user_type == "Élève" else "secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state.entry_user_type = "Élève"
+                    st.rerun()
+
+            with role_right:
+                if st.button(
+                    "👩‍🏫  Professeur",
+                    key="entry_role_teacher",
+                    type="primary" if st.session_state.entry_user_type == "Professeur" else "secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state.entry_user_type = "Professeur"
+                    st.rerun()
+
+            user_type = st.session_state.entry_user_type
 
             if user_type == "Élève":
                 st.markdown(
