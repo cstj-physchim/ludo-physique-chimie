@@ -28,6 +28,7 @@ from levels import LEVELS, LEVEL_NAMES, MOLECULE_LEVEL_NAMES, ELECTRICITY_LEVEL_
 # CONFIGURATION
 # ============================================================
 
+# Version navigation optimisée : suppression des doubles reruns évitables
 st.set_page_config(
     page_title="Ludothèque Physique-Chimie",
     page_icon="🧪",
@@ -398,8 +399,19 @@ def nav_card(icon, title, text, color_class="card-blue", coming_soon=False):
 
 
 def go(page):
+    """Navigation impérative utilisée quand un rerun immédiat est réellement nécessaire."""
     st.session_state.page = page
     st.rerun()
+
+
+def set_page(page):
+    """Callback de navigation exécuté avant le rerun automatique du bouton."""
+    st.session_state.page = page
+
+
+def set_teacher_section(section):
+    """Callback léger pour changer de rubrique professeur sans double rerun."""
+    st.session_state.teacher_section = section
 
 
 def back_button(target="home", label="← Retour"):
@@ -3090,12 +3102,13 @@ def page_home():
                 """,
                 unsafe_allow_html=True,
             )
-            if st.button(
+            st.button(
                 "Jouer   →",
                 key="home_free",
                 use_container_width=True,
-            ):
-                go("free_activity")
+                on_click=set_page,
+                args=("free_activity",),
+            )
 
     with c2:
         with st.container(key="home_card_challenge"):
@@ -3117,13 +3130,14 @@ def page_home():
                 """,
                 unsafe_allow_html=True,
             )
-            if st.button(
+            st.button(
                 "Rejoindre   →",
                 key="home_challenge",
                 type="primary",
                 use_container_width=True,
-            ):
-                go("challenge")
+                on_click=set_page,
+                args=("challenge",),
+            )
 
     if is_teacher and c3 is not None:
         with c3:
@@ -3146,12 +3160,13 @@ def page_home():
                     """,
                     unsafe_allow_html=True,
                 )
-                if st.button(
+                st.button(
                     "Accéder   →",
                     key="home_teacher",
                     use_container_width=True,
-                ):
-                    go("teacher")
+                    on_click=set_page,
+                    args=("teacher",),
+                )
 
     st.markdown(
         """
@@ -3740,13 +3755,13 @@ def teacher_dashboard():
         with cols[i]:
             nav_card(icon, title, f"{text}<br><br><strong>{count}</strong>", color)
 
-            if st.button(
+            st.button(
                 f"Gérer {title.lower()}  ›",
                 key=f"teacher_{section}",
                 use_container_width=True,
-            ):
-                st.session_state.teacher_section = section
-                st.rerun()
+                on_click=set_teacher_section,
+                args=(section,),
+            )
 
     st.markdown(
         '<div class="footer-note">ⓘ Toutes les données sont synchronisées avec Upstash.</div>',
