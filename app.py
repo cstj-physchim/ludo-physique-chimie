@@ -28,7 +28,7 @@ from levels import LEVELS, LEVEL_NAMES, MOLECULE_LEVEL_NAMES, ELECTRICITY_LEVEL_
 # CONFIGURATION
 # ============================================================
 
-# Version navigation optimisée : suppression des doubles reruns évitables
+# Version navigation optimisée v2 : callbacks aussi sur tous les retours et déconnexions
 st.set_page_config(
     page_title="Ludothèque Physique-Chimie",
     page_icon="🧪",
@@ -414,9 +414,19 @@ def set_teacher_section(section):
     st.session_state.teacher_section = section
 
 
+
+def logout_app():
+    """Déconnexion utilisée comme callback : l'état change avant le rerun automatique."""
+    clear_app_session()
+
+
 def back_button(target="home", label="← Retour"):
-    if st.button(label, use_container_width=False):
-        go(target)
+    st.button(
+        label,
+        use_container_width=False,
+        on_click=set_page,
+        args=(target,),
+    )
 
 
 # ============================================================
@@ -3658,18 +3668,30 @@ def teacher_header(title):
     c1, c2, c3 = st.columns([1.4, 1.1, 4.5])
 
     with c1:
-        if st.button("← Tableau de bord", use_container_width=True):
-            st.session_state.teacher_section = "dashboard"
-            st.rerun()
+        st.button(
+            "← Tableau de bord",
+            use_container_width=True,
+            on_click=set_teacher_section,
+            args=("dashboard",),
+            key=f"teacher_back_dashboard_{title}",
+        )
 
     with c2:
-        if st.button("🏠 Accueil", use_container_width=True):
-            go("home")
+        st.button(
+            "🏠 Accueil",
+            use_container_width=True,
+            on_click=set_page,
+            args=("home",),
+            key=f"teacher_home_{title}",
+        )
 
     with c3:
-        if st.button("Déconnexion", use_container_width=False, key=f"teacher_logout_{title}"):
-            clear_app_session()
-            st.rerun()
+        st.button(
+            "Déconnexion",
+            use_container_width=False,
+            key=f"teacher_logout_{title}",
+            on_click=logout_app,
+        )
 
 
 def teacher_dashboard():
@@ -3743,21 +3765,21 @@ def teacher_dashboard():
     nav1, nav2 = st.columns([1.4, 4.6])
 
     with nav1:
-        if st.button(
+        st.button(
             "🏠 Retour à l'accueil",
             use_container_width=True,
             key="teacher_home_button",
-        ):
-            go("home")
+            on_click=set_page,
+            args=("home",),
+        )
 
     with nav2:
-        if st.button(
+        st.button(
             "Déconnexion",
             use_container_width=False,
             key="teacher_logout_button",
-        ):
-            clear_app_session()
-            st.rerun()
+            on_click=logout_app,
+        )
 
     st.markdown(
         f"""
