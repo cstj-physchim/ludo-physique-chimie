@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE1_SHUFFLED_SINGLE_LINE_V10
+# VERSION_UI_2026_08_25_EXERCISE1_RESTART_TRACKING_V11
 import re
 import base64
 import json
@@ -1954,6 +1954,7 @@ def record_training_result(
     rows.append({
         "id": secrets.token_urlsafe(10),
         "activity_kind": "training",
+        "status": "completed",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
         "last_initial": student.get("last_initial"),
@@ -2007,6 +2008,19 @@ def latest_training_by_student_resource(rows):
         if current is None or str(row.get("finished_at", "")) > str(current.get("finished_at", "")):
             latest[key] = row
     return latest
+
+
+def training_attempt_counts(rows):
+    counts = {}
+    restarted = {}
+    for row in rows:
+        if row.get("activity_kind") != "training":
+            continue
+        key = (row.get("student_id"), row.get("resource_id"))
+        counts[key] = counts.get(key, 0) + 1
+        if row.get("status") == "restarted":
+            restarted[key] = restarted.get(key, 0) + 1
+    return counts, restarted
 
 
 def format_short_datetime(value):
@@ -4092,8 +4106,67 @@ def _ex1_get_shuffled_order():
     return st.session_state[key]
 
 
+
+def _ex1_record_restart_if_needed():
+    """Enregistre une tentative recommencée si l'élève avait déjà commencé l'exercice."""
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    total = len(EXERCISE1_STATES_WATER)
+    touched = 0
+    errors = 0
+
+    for i in range(total):
+        # Une ligne est considérée comme commencée si au moins un choix a été cliqué
+        # ou si une erreur a déjà été comptabilisée.
+        states = [
+            st.session_state.get(f"ex1_water_cell_{i}_solid", "idle"),
+            st.session_state.get(f"ex1_water_cell_{i}_liquid", "idle"),
+            st.session_state.get(f"ex1_water_cell_{i}_gas", "idle"),
+        ]
+        if any(state != "idle" for state in states):
+            touched += 1
+        errors += int(st.session_state.get(f"ex1_water_errors_{i}", 0))
+
+    if touched == 0:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        row for row in rows
+        if row.get("student_id") == student.get("id")
+        and row.get("resource_id") == "exercise1_states_water"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise1_states_water",
+        "resource_label": PILOT_CONTENTS.get("exercise1_states_water", {}).get("label", "Exercice 1"),
+        "chapter": PILOT_CONTENTS.get("exercise1_states_water", {}).get("chapter", ""),
+        "score_percent": None,
+        "completed_items": touched,
+        "total_items": total,
+        "errors": errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
 def _ex1_start_new_attempt():
-    """Reset answers and generate a fresh random order for a new attempt."""
+    """Enregistre l'éventuelle tentative en cours, puis repart sur un nouvel ordre."""
+    _ex1_record_restart_if_needed()
     reset_exercise1_states_water()
 
     order = list(range(len(EXERCISE1_STATES_WATER)))
@@ -5966,6 +6039,7 @@ def teacher_tracking():
         ]
 
         latest = latest_training_by_student_resource(filtered_rows)
+        attempt_counts, restart_counts = training_attempt_counts(filtered_rows)
 
         selected_students = [
             s for s in students
@@ -5987,24 +6061,55 @@ def teacher_tracking():
             selected_students,
             key=lambda s: (s.get("class_name", ""), s.get("first_name", "").lower()),
         ):
-            student_rows = [
+            latest_rows = [
                 latest[(student.get("id"), rid)]
                 for rid in resource_ids
                 if (student.get("id"), rid) in latest
             ]
 
-            if student_rows:
-                best = max(int(r.get("score_percent", 0)) for r in student_rows)
-                done = len(student_rows)
+            completed_rows = [
+                r for r in filtered_rows
+                if r.get("student_id") == student.get("id")
+                and r.get("resource_id") in resource_ids
+                and r.get("status", "completed") == "completed"
+            ]
+
+            done_resources = {
+                r.get("resource_id") for r in completed_rows
+            }
+
+            if latest_rows or completed_rows:
+                valid_scores = [
+                    int(r.get("score_percent", 0))
+                    for r in completed_rows
+                    if r.get("score_percent") is not None
+                ]
+                best = max(valid_scores) if valid_scores else None
+                done = len(done_resources)
                 last_activity = max(
-                    str(r.get("finished_at", "")) for r in student_rows
+                    [str(r.get("finished_at", "")) for r in latest_rows + completed_rows]
                 )
-                attempts = sum(int(r.get("attempt_number", 1)) for r in student_rows)
-                status = "✅ Actif" if done == len(resource_ids) and resource_ids else "🟠 En cours"
-                result_text = f"{best} %"
+                attempts = sum(
+                    attempt_counts.get((student.get("id"), rid), 0)
+                    for rid in resource_ids
+                )
+                restarts = sum(
+                    restart_counts.get((student.get("id"), rid), 0)
+                    for rid in resource_ids
+                )
+
+                if done == len(resource_ids) and resource_ids:
+                    status = "✅ Actif"
+                elif attempts > 0:
+                    status = "🟠 En cours"
+                else:
+                    status = "⚪ Non commencé"
+
+                result_text = f"{best} %" if best is not None else "—"
             else:
                 done = 0
                 attempts = 0
+                restarts = 0
                 last_activity = ""
                 status = "⚪ Non commencé"
                 result_text = "—"
@@ -6016,6 +6121,7 @@ def teacher_tracking():
                 "Exercices faits": f"{done}/{len(resource_ids)}" if resource_ids else "—",
                 "Résultat": result_text,
                 "Tentatives": attempts if attempts else "—",
+                "Recommencées": restarts if restarts else "—",
                 "Dernière activité": format_short_datetime(last_activity),
                 "Dernière connexion": format_short_datetime(student.get("last_login_at")),
             })
