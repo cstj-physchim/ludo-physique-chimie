@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE7_ALLOYS_V46
+# VERSION_UI_2026_08_25_EXERCISE7_SNAP_DRAGDROP_V47
 import re
 import base64
 import json
@@ -8810,7 +8810,7 @@ def _ex7_feedback(question):
 
     else:
         if errors == 1:
-            msg = "💡 Pour l’acier, pense aux petits atomes de carbone. Pour le laiton, compare la taille des différents atomes."
+            msg = "💡 Relis le document 3 et compare la manière dont les nouveaux atomes prennent place dans la structure du solide."
         elif errors == 2:
             msg = "📘 Acier : de petits atomes de carbone se placent dans les espaces. Laiton : des atomes métalliques de taille voisine prennent la place d’autres atomes."
         else:
@@ -8880,7 +8880,10 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sa
 .carbon{width:22px;height:22px;background:#2d3742;border:3px solid #111820}
 .fixed{pointer-events:none}
 .slot{position:absolute;width:52px;height:52px;border:2px dashed #b9c6d4;border-radius:50%;background:#f8fbff}
-.interstice{position:absolute;width:28px;height:28px;border:2px dashed #b9c6d4;border-radius:50%;background:#f8fbff}
+.interstice{position:absolute;width:28px;height:28px;border:2px dashed #aebed0;border-radius:50%;background:#f8fbff}
+.slot{transition:.15s ease}
+.interstice{transition:.15s ease}
+.slot:hover,.interstice:hover{background:#eef6ff;border-color:#7fa8d6}
 .tray{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;min-height:62px;padding:8px;border:1px solid #dbe4ee;border-radius:12px;background:#fff}
 .source{position:relative!important;left:auto!important;top:auto!important;cursor:grab;touch-action:none;user-select:none;flex:0 0 auto}
 .placed{display:none;z-index:30;cursor:grab;touch-action:none;user-select:none}
@@ -8976,7 +8979,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
   let state=fresh();
 
-  function storageKey(){return "ludo_ex7_alloys_v1_"+storageId+"_"+String(generation)}
+  function storageKey(){return "ludo_ex7_alloys_v2_"+storageId+"_"+String(generation)}
   function save(){try{sessionStorage.setItem(storageKey(),JSON.stringify(state))}catch(e){}}
   function load(){
     try{
@@ -9121,57 +9124,131 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
   function cancel(){cleanup();drag=null}
 
+  function targetList(type){
+    return type==="carbon" ? steelTargets : brassTargets;
+  }
+
+  function particleSize(type){
+    return type==="carbon" ? 22 : 48;
+  }
+
+  function targetBoxSize(type){
+    return type==="carbon" ? 28 : 52;
+  }
+
+  function snappedPosition(type,targetIndex){
+    const targets=targetList(type);
+    const t=targets[targetIndex];
+    const delta=(targetBoxSize(type)-particleSize(type))/2;
+    return{
+      x:Math.round(t[0]+delta),
+      y:Math.round(t[1]+delta),
+      target:targetIndex
+    };
+  }
+
+  function usedTargets(type,ignoreIndex){
+    const used=new Set();
+    state[type].forEach((pos,i)=>{
+      if(i===ignoreIndex||!pos)return;
+      if(Number.isInteger(pos.target))used.add(pos.target);
+    });
+    return used;
+  }
+
+  function nearestAvailableTarget(type,index,clientX,clientY,modelRect){
+    const targets=targetList(type);
+    const occupied=usedTargets(type,index);
+    const box=targetBoxSize(type);
+
+    let best=null;
+    let bestD=Infinity;
+
+    targets.forEach((t,targetIndex)=>{
+      if(occupied.has(targetIndex))return;
+
+      const cx=modelRect.left+t[0]+box/2;
+      const cy=modelRect.top+t[1]+box/2;
+      const d=Math.hypot(clientX-cx,clientY-cy);
+
+      if(d<bestD){
+        bestD=d;
+        best=targetIndex;
+      }
+    });
+
+    // L'élève doit déposer près d'un cercle pointillé.
+    // Le seuil reste assez généreux pour rendre le geste facile.
+    const maxDistance=type==="carbon" ? 48 : 62;
+    return best!==null && bestD<=maxDistance ? best : null;
+  }
+
   function drop(e){
     if(!drag||e.pointerId!==drag.pointerId)return;
     e.preventDefault();
 
-    const model=document.getElementById(drag.type==="carbon"?"steelModel":"brassModel");
+    const model=document.getElementById(
+      drag.type==="carbon" ? "steelModel" : "brassModel"
+    );
     const br=model.getBoundingClientRect();
 
-    const inside=e.clientX>=br.left&&e.clientX<=br.right&&e.clientY>=br.top&&e.clientY<=br.bottom;
+    const inside=
+      e.clientX>=br.left&&e.clientX<=br.right&&
+      e.clientY>=br.top&&e.clientY<=br.bottom;
 
     if(inside){
-      const gr=drag.ghost.getBoundingClientRect();
-      const size=drag.type==="carbon"?22:48;
-      let x=gr.left-br.left,y=gr.top-br.top;
+      const targetIndex=nearestAvailableTarget(
+        drag.type,
+        drag.index,
+        e.clientX,
+        e.clientY,
+        br
+      );
 
-      x=Math.max(2,Math.min(model.clientWidth-size-2,x));
-      y=Math.max(2,Math.min(model.clientHeight-size-2,y));
+      if(targetIndex!==null){
+        // Aimantation exacte au centre de la cible.
+        state[drag.type][drag.index]=snappedPosition(drag.type,targetIndex);
+        state.success=false;
+        renderOne(drag.type,drag.index);
+        save();
 
-      state[drag.type][drag.index]={x:Math.round(x),y:Math.round(y)};
-      state.success=false;
-      renderOne(drag.type,drag.index);
-      save();
+        setFeedback(
+          "neutral",
+          drag.type==="carbon"
+            ? "Atome de carbone placé dans un interstice."
+            : "Atome métallique placé sur un emplacement du réseau."
+        );
+      }else{
+        // On ne laisse plus l'atome flotter n'importe où dans le schéma.
+        setFeedback(
+          "hint",
+          "💡 Dépose l’atome sur l’un des cercles pointillés disponibles."
+        );
+      }
+    }else{
+      setFeedback(
+        "hint",
+        "💡 Dépose l’atome à l’intérieur du modèle, sur un cercle pointillé."
+      );
     }
 
     cleanup();
     drag=null;
   }
 
-  function center(pos,type){
-    const s=type==="carbon"?22:48;
-    return{x:pos.x+s/2,y:pos.y+s/2};
-  }
-
   function targetMatch(positions,type,targets,maxD){
     if(positions.length!==targets.length)return false;
-    const remaining=targets.map((t,i)=>({x:t[0],y:t[1],i}));
 
-    for(const pos of positions){
-      const c=center(pos,type);
-      let best=-1,bestD=Infinity;
+    // Avec l'aimantation, chaque atome doit simplement occuper
+    // un emplacement différent parmi toutes les cibles prévues.
+    const occupied=positions
+      .map(p=>Number.isInteger(p.target)?p.target:null)
+      .filter(v=>v!==null);
 
-      remaining.forEach((t,idx)=>{
-        const tx=t.x+(type==="carbon"?14:26);
-        const ty=t.y+(type==="carbon"?14:26);
-        const d=Math.hypot(c.x-tx,c.y-ty);
-        if(d<bestD){bestD=d;best=idx}
-      });
-
-      if(best<0||bestD>maxD)return false;
-      remaining.splice(best,1);
-    }
-    return remaining.length===0;
+    return (
+      occupied.length===targets.length &&
+      new Set(occupied).size===targets.length
+    );
   }
 
   function validate(){
@@ -9254,18 +9331,18 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
 
 @st.cache_resource
-def _ex7_component_v1():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex7_alloys_component_v1"
+def _ex7_component_v2():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex7_alloys_component_v2"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX7_INTERACTIVE_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex7_alloys_models_v1",
+        "ex7_alloys_models_v2",
         path=str(component_dir),
     )
 
 
 def render_ex7_models(generation):
-    component = _ex7_component_v1()
+    component = _ex7_component_v2()
     student = st.session_state.get("app_student") or {}
     storage_id = str(
         student.get("id")
@@ -9275,7 +9352,7 @@ def render_ex7_models(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex7_alloys_v1_{generation}",
+        key=f"ex7_alloys_v2_{generation}",
         default={
             "success": False,
             "errors": 0,
@@ -9470,9 +9547,9 @@ def page_exercise7_solid_mixtures_alloys():
             <div class="ex7-doc">
               <h3>Document 2 — Exemple : le laiton</h3>
               Le laiton utilisé ici est présenté comme un alliage contenant
-              <strong>du cuivre, du zinc et du nickel</strong>.
-              Ces métaux possèdent des atomes de tailles assez proches :
-              on peut les modéliser comme un <strong>alliage de substitution</strong>.
+              <strong>du cuivre, du zinc et du nickel</strong>.<br><br>
+              Les atomes de ces différents métaux ont des
+              <strong>tailles relativement proches</strong>.
             </div>
             """,
             unsafe_allow_html=True,
@@ -9534,10 +9611,24 @@ def page_exercise7_solid_mixtures_alloys():
     st.markdown('</div>',unsafe_allow_html=True)
 
     # Modèles statiques
-    st.markdown("### Document 3 — Deux organisations microscopiques possibles")
+    st.markdown("### Document 3 — Les différents types d’alliages")
     st.markdown(
-        '<div class="ex7-doc">Dans les deux modèles ci-dessous, les grosses pastilles représentent '
-        'les atomes du métal principal. Observe ce qui change lorsqu’un autre élément est ajouté.</div>',
+        """
+        <div class="ex7-doc">
+          <strong>Alliage d’insertion :</strong> de petits atomes d’un autre élément
+          viennent <strong>s’insérer dans les espaces du réseau cristallin</strong>
+          du métal principal. C’est le cas de l’<strong>acier</strong> :
+          de petits atomes de carbone se placent entre les atomes de fer.<br><br>
+
+          <strong>Alliage de substitution :</strong> certains atomes d’un autre élément,
+          de taille comparable, <strong>remplacent des atomes du métal principal</strong>
+          dans le réseau cristallin. Le <strong>laiton</strong> et le bronze sont des
+          exemples d’alliages de substitution.<br><br>
+
+          Dans les deux modèles ci-dessous, observe surtout
+          <strong>la position des nouveaux atomes</strong>.
+        </div>
+        """,
         unsafe_allow_html=True,
     )
     st.markdown(EX7_STATIC_MODELS_HTML, unsafe_allow_html=True)
