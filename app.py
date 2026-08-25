@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE1_SINGLE_LINE_V9
+# VERSION_UI_2026_08_25_EXERCISE1_SHUFFLED_SINGLE_LINE_V10
 import re
 import base64
 import json
@@ -3977,7 +3977,7 @@ def reset_exercise1_states_water():
         ):
             st.session_state.pop(key, None)
     st.session_state.pop("ex1_water_result_saved", None)
-
+    st.session_state.pop("ex1_water_shuffled_order", None)
 
 def ex1_hint_for_item(label):
     hints = {
@@ -4078,6 +4078,27 @@ def _ex1_render_answer_button(index, state_name, correct_states):
         f'<div class="{state_class}" data-ex1="{index}-{state_name}"></div>',
         unsafe_allow_html=True,
     )
+
+
+def _ex1_get_shuffled_order():
+    """Create one random order per attempt and keep it stable during Streamlit reruns."""
+    key = "ex1_water_shuffled_order"
+
+    if key not in st.session_state:
+        order = list(range(len(EXERCISE1_STATES_WATER)))
+        random.shuffle(order)
+        st.session_state[key] = order
+
+    return st.session_state[key]
+
+
+def _ex1_start_new_attempt():
+    """Reset answers and generate a fresh random order for a new attempt."""
+    reset_exercise1_states_water()
+
+    order = list(range(len(EXERCISE1_STATES_WATER)))
+    random.shuffle(order)
+    st.session_state["ex1_water_shuffled_order"] = order
 
 def page_exercise1_states_water():
     hero()
@@ -4230,7 +4251,10 @@ def page_exercise1_states_water():
         unsafe_allow_html=True,
     )
 
-    for index, item in enumerate(EXERCISE1_STATES_WATER):
+    shuffled_order = _ex1_get_shuffled_order()
+
+    for index in shuffled_order:
+        item = EXERCISE1_STATES_WATER[index]
         # Proposition + 3 choix + feedback, sur UNE seule ligne.
         c1, c2, c3, c4, c5 = st.columns([2.1, 1.2, 1.2, 1.2, 2.5], gap="small")
 
@@ -4282,11 +4306,11 @@ def page_exercise1_states_water():
     reset_col, spacer = st.columns([1.3, 4.7])
     with reset_col:
         if st.button(
-            "↻ Réinitialiser",
+            "↻ Recommencer",
             use_container_width=True,
             key="restart_ex1_states_water",
         ):
-            reset_exercise1_states_water()
+            _ex1_start_new_attempt()
             st.rerun()
 
     total = len(EXERCISE1_STATES_WATER)
