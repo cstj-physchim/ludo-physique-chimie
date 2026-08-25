@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE1_PER_QUESTION_BUTTONS_V8
+# VERSION_UI_2026_08_25_EXERCISE1_SINGLE_LINE_V9
 import re
 import base64
 import json
@@ -4094,98 +4094,115 @@ def page_exercise1_states_water():
             background: #f5f9ff;
             border: 1px solid #cfe0fb;
             border-radius: 16px;
-            padding: .9rem 1.1rem;
+            padding: .85rem 1rem;
             color: #324a68;
-            margin: .4rem 0 1rem 0;
+            margin: .35rem 0 .85rem 0;
         }
 
-        .ex1-question-card {
+        .ex1-line-label {
+            min-height: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 .85rem;
             background: #f1f3f6;
             border: 1px solid #dfe6ef;
-            border-radius: 16px;
-            padding: .85rem 1rem .95rem 1rem;
-            margin-bottom: .75rem;
-            box-shadow: 0 3px 10px rgba(31, 55, 90, .04);
+            border-radius: 12px;
+            color: #162b4d;
+            font-weight: 800;
+            font-size: .98rem;
+            box-sizing: border-box;
         }
 
-        .ex1-question-title {
-            font-weight: 800;
-            color: #162b4d;
-            font-size: 1.02rem;
-            margin-bottom: .55rem;
+        .ex1-feedback-mini {
+            min-height: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 .75rem;
+            border-radius: 12px;
+            font-size: .9rem;
+            font-weight: 700;
+            box-sizing: border-box;
+        }
+
+        .ex1-feedback-empty {
+            background: #f8fafc;
+            border: 1px solid #e3e9f2;
+            color: #90a0b3;
+        }
+
+        .ex1-feedback-ok {
+            background: #eefaf2;
+            border: 1px solid #cdebd6;
+            color: #24623a;
         }
 
         .ex1-feedback-hint {
             background: #fff7e6;
             border: 1px solid #f4d69b;
-            border-radius: 12px;
-            padding: .65rem .8rem;
-            margin: .45rem 0 0 0;
             color: #73541c;
         }
 
         .ex1-feedback-correction {
             background: #fff1f1;
             border: 1px solid #f0c8c8;
-            border-radius: 12px;
-            padding: .65rem .8rem;
-            margin: .45rem 0 0 0;
             color: #7b2c2c;
         }
 
-        .ex1-feedback-ok {
-            background: #eefaf2;
-            border: 1px solid #cdebd6;
-            border-radius: 12px;
-            padding: .6rem .8rem;
-            margin: .45rem 0 0 0;
-            color: #24623a;
-        }
-
-        /* Boutons des réponses */
+        /* Boutons des réponses compacts et alignés sur la ligne */
         div[data-testid="stButton"] button {
-            min-height: 46px;
+            min-height: 48px;
+            height: 48px;
             font-weight: 800;
             border-radius: 12px;
+            margin: 0 !important;
         }
 
-        /* Choix au repos */
         div[data-testid="stButton"] button[kind="secondary"] {
             background: #ffffff;
             border: 2px solid #cfd8e6;
             color: #18345d;
         }
 
-        /* Bon choix */
         div[data-testid="stButton"] button[kind="primary"] {
             background: #2fb05b !important;
             border-color: #268f4b !important;
             color: #ffffff !important;
         }
 
-        /* Mauvais choix */
         div[data-testid="stButton"]:has(+ .ex1-choice-wrong) button {
             background: #e05656 !important;
             border-color: #bd3d3d !important;
             color: #ffffff !important;
         }
 
-        /* Repos */
         div[data-testid="stButton"]:has(+ .ex1-choice-idle) button {
             background: #ffffff !important;
             border-color: #cfd8e6 !important;
             color: #18345d !important;
         }
 
-        /* Correct */
         div[data-testid="stButton"]:has(+ .ex1-choice-correct) button {
             background: #2fb05b !important;
             border-color: #268f4b !important;
             color: #ffffff !important;
         }
 
-        .ex1-reset-row {
-            margin-top: .75rem;
+        /* Réduit l'espace vertical entre les lignes */
+        div[data-testid="stHorizontalBlock"] {
+            gap: .6rem;
+        }
+
+        .ex1-line-spacer {
+            height: .35rem;
+        }
+
+        @media (max-width: 900px) {
+            .ex1-feedback-mini {
+                font-size: .82rem;
+                padding: 0 .55rem;
+            }
         }
         </style>
         """,
@@ -4206,58 +4223,63 @@ def page_exercise1_states_water():
     st.markdown(
         """
         <div class="ex1-instruction">
-            <strong>ℹ️ Consigne :</strong> Pour chaque proposition, clique sur l’état ou les états physiques correspondants.<br>
-            <span style="opacity:.82;">La correction apparaît immédiatement. Certaines propositions peuvent avoir plusieurs bonnes réponses.</span>
+            <strong>ℹ️ Consigne :</strong> Pour chaque proposition, clique sur l’état ou les états physiques correspondants.
+            La correction apparaît immédiatement.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
     for index, item in enumerate(EXERCISE1_STATES_WATER):
-        st.markdown(
-            f'<div class="ex1-question-card"><div class="ex1-question-title">{item["label"]}</div>',
-            unsafe_allow_html=True,
-        )
-
-        c1, c2, c3 = st.columns(3, gap="small")
+        # Proposition + 3 choix + feedback, sur UNE seule ligne.
+        c1, c2, c3, c4, c5 = st.columns([2.1, 1.2, 1.2, 1.2, 2.5], gap="small")
 
         with c1:
-            _ex1_render_answer_button(index, "solid", item["answers"])
+            st.markdown(
+                f'<div class="ex1-line-label">{item["label"]}</div>',
+                unsafe_allow_html=True,
+            )
 
         with c2:
-            _ex1_render_answer_button(index, "liquid", item["answers"])
+            _ex1_render_answer_button(index, "solid", item["answers"])
 
         with c3:
-            _ex1_render_answer_button(index, "gas", item["answers"])
+            _ex1_render_answer_button(index, "liquid", item["answers"])
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        with c4:
+            _ex1_render_answer_button(index, "gas", item["answers"])
 
         error_count = int(st.session_state.get(f"ex1_water_errors_{index}", 0))
         row_complete = bool(st.session_state.get(f"ex1_water_row_complete_{index}", False))
 
-        if row_complete:
-            st.markdown(
-                f'<div class="ex1-feedback-ok">✅ <strong>{item["label"]}</strong> : bonne réponse.</div>',
-                unsafe_allow_html=True,
-            )
-        elif error_count == 1:
-            st.markdown(
-                f'<div class="ex1-feedback-hint">💡 <strong>Indice — {item["label"]}</strong> : '
-                f'{ex1_hint_for_item(item["label"])}</div>',
-                unsafe_allow_html=True,
-            )
-        elif error_count >= 2:
-            correct_text = " + ".join(sorted(item["answers"]))
-            st.markdown(
-                f'<div class="ex1-feedback-correction">❌ <strong>{item["label"]}</strong> : '
-                f'la bonne réponse est <strong>{correct_text}</strong>.<br>'
-                f'📘 {item["explanation"]}</div>',
-                unsafe_allow_html=True,
-            )
+        with c5:
+            if row_complete:
+                feedback_html = (
+                    f'<div class="ex1-feedback-mini ex1-feedback-ok">'
+                    f'✅ {item["label"]} : bonne réponse.</div>'
+                )
+            elif error_count == 1:
+                feedback_html = (
+                    f'<div class="ex1-feedback-mini ex1-feedback-hint">'
+                    f'💡 {ex1_hint_for_item(item["label"])}</div>'
+                )
+            elif error_count >= 2:
+                correct_text = " + ".join(sorted(item["answers"]))
+                feedback_html = (
+                    f'<div class="ex1-feedback-mini ex1-feedback-correction">'
+                    f'❌ {correct_text} — {item["explanation"]}</div>'
+                )
+            else:
+                feedback_html = (
+                    '<div class="ex1-feedback-mini ex1-feedback-empty">'
+                    'Correction</div>'
+                )
 
-    st.markdown("<div class='ex1-reset-row'></div>", unsafe_allow_html=True)
+            st.markdown(feedback_html, unsafe_allow_html=True)
 
-    reset_col, spacer = st.columns([1.4, 3.6])
+        st.markdown('<div class="ex1-line-spacer"></div>', unsafe_allow_html=True)
+
+    reset_col, spacer = st.columns([1.3, 4.7])
     with reset_col:
         if st.button(
             "↻ Réinitialiser",
