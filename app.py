@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE2_EQUAL_IMAGES_V14
+# VERSION_UI_2026_08_25_EXERCISE3_PARTICLE_MODELS_V15
 import re
 import base64
 import json
@@ -142,6 +142,13 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 7,
         "description": "Associer des étiquettes à trois représentations de l’eau en utilisant les lettres A, B et C.",
+        "resource_ready": True,
+    },
+    "exercise3_particle_models": {
+        "label": "Exercice 3 — Comprendre la modélisation",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 9,
+        "description": "Identifier l’état de la matière à partir de la disposition des molécules.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -2002,6 +2009,7 @@ def tracked_exercise_ids():
     return [
         "exercise1_states_water",
         "exercise2_water_properties",
+        "exercise3_particle_models",
         "exercise_states_matter",
     ]
 
@@ -3907,6 +3915,16 @@ def page_exercise_topics():
             "key": "start_ex2_water_properties",
         })
 
+    if resource_is_available_for_current_user("exercise3_particle_models"):
+        exercises.append({
+            "icon": "🔬",
+            "title": "Exercice 3 — Comprendre la modélisation",
+            "description": "Observe la disposition des molécules et écris l’état de la matière représenté.",
+            "color": "card-purple",
+            "page": "exercise3_particle_models",
+            "key": "start_ex3_particle_models",
+        })
+
     if states_matter_available_for_current_user():
         exercises.append({
             "icon": "🧊",
@@ -4932,6 +4950,407 @@ def page_exercise2_water_properties():
                 errors=total_errors,
             )
             st.session_state["ex2_result_saved"] = True
+
+
+
+# ============================================================
+# EXERCICE 3 — COMPRENDRE LA MODÉLISATION
+# ============================================================
+
+EXERCISE3_MODELS = {
+    "solid": {
+        "path": "assets/chapitre_1/exercice_3/bouteille eau solide.png",
+        "answer": "solide",
+        "alt": "Modèle particulaire d'un solide",
+    },
+    "liquid": {
+        "path": "assets/chapitre_1/exercice_3/bouteille eau liquide.png",
+        "answer": "liquide",
+        "alt": "Modèle particulaire d'un liquide",
+    },
+    "gas": {
+        "path": "assets/chapitre_1/exercice_3/bouteille eau gazeuse.png",
+        "answer": "gaz",
+        "alt": "Modèle particulaire d'un gaz",
+    },
+}
+
+EXERCISE3_COURSE_HELP = "assets/chapitre_1/exercice_3/aide cours.png"
+
+
+def _normalize_state_answer(value):
+    value = str(value or "").strip().lower()
+    replacements = {
+        "é": "e", "è": "e", "ê": "e", "ë": "e",
+        "à": "a", "â": "a", "ä": "a",
+        "î": "i", "ï": "i",
+        "ô": "o", "ö": "o",
+        "ù": "u", "û": "u", "ü": "u",
+        "ç": "c",
+    }
+    for old, new in replacements.items():
+        value = value.replace(old, new)
+
+    value = " ".join(value.split())
+
+    aliases = {
+        "solide": "solide",
+        "etat solide": "solide",
+        "liquide": "liquide",
+        "etat liquide": "liquide",
+        "gaz": "gaz",
+        "gazeux": "gaz",
+        "etat gazeux": "gaz",
+        "etat gaz": "gaz",
+    }
+    return aliases.get(value, value)
+
+
+def _ex3_get_order():
+    key = "ex3_model_order"
+    if key not in st.session_state:
+        order = list(EXERCISE3_MODELS.keys())
+        random.shuffle(order)
+        st.session_state[key] = order
+    return st.session_state[key]
+
+
+def _ex3_validate_model(model_key):
+    answer_key = f"ex3_answer_{model_key}"
+    errors_key = f"ex3_errors_{model_key}"
+    correct_key = f"ex3_correct_{model_key}"
+
+    given = _normalize_state_answer(st.session_state.get(answer_key, ""))
+    expected = EXERCISE3_MODELS[model_key]["answer"]
+
+    if not given:
+        st.session_state[f"ex3_empty_{model_key}"] = True
+        return
+
+    st.session_state[f"ex3_empty_{model_key}"] = False
+
+    if given == expected:
+        st.session_state[correct_key] = True
+    else:
+        st.session_state[correct_key] = False
+        st.session_state[errors_key] = int(st.session_state.get(errors_key, 0)) + 1
+
+
+def _ex3_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    touched = 0
+    errors = 0
+    total = len(EXERCISE3_MODELS)
+
+    for model_key in EXERCISE3_MODELS:
+        if str(st.session_state.get(f"ex3_answer_{model_key}", "")).strip():
+            touched += 1
+        errors += int(st.session_state.get(f"ex3_errors_{model_key}", 0))
+
+    if touched == 0:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        row for row in rows
+        if row.get("student_id") == student.get("id")
+        and row.get("resource_id") == "exercise3_particle_models"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise3_particle_models",
+        "resource_label": PILOT_CONTENTS["exercise3_particle_models"]["label"],
+        "chapter": PILOT_CONTENTS["exercise3_particle_models"]["chapter"],
+        "score_percent": None,
+        "completed_items": touched,
+        "total_items": total,
+        "errors": errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise3_particle_models():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex3_"):
+            st.session_state.pop(key, None)
+
+
+def _ex3_start_new_attempt():
+    _ex3_record_restart_if_needed()
+    reset_exercise3_particle_models()
+    order = list(EXERCISE3_MODELS.keys())
+    random.shuffle(order)
+    st.session_state["ex3_model_order"] = order
+
+
+def page_exercise3_particle_models():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise3_particle_models"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex3-instruction {
+            background: #f5f9ff;
+            border: 1px solid #cfe0fb;
+            border-radius: 16px;
+            padding: .85rem 1rem;
+            color: #324a68;
+            margin: .35rem 0 .8rem 0;
+        }
+
+        .ex3-legend {
+            background: #eefaf7;
+            border: 1px solid #c8e8df;
+            border-radius: 13px;
+            padding: .7rem .9rem;
+            color: #285b50;
+            font-weight: 700;
+            margin-bottom: .9rem;
+        }
+
+        .ex3-help-1 {
+            background: #fff7e6;
+            border: 1px solid #f4d69b;
+            border-radius: 12px;
+            padding: .65rem .8rem;
+            color: #73541c;
+            margin-top: .4rem;
+        }
+
+        .ex3-help-2 {
+            background: #eef6ff;
+            border: 1px solid #cfe0fb;
+            border-radius: 12px;
+            padding: .7rem .85rem;
+            color: #284e7a;
+            margin-top: .4rem;
+        }
+
+        .ex3-help-3 {
+            background: #f6f1ff;
+            border: 1px solid #d9c9f4;
+            border-radius: 12px;
+            padding: .65rem .8rem;
+            color: #563b7c;
+            margin-top: .4rem;
+        }
+
+        .ex3-correct {
+            background: #eefaf2;
+            border: 1px solid #cdebd6;
+            border-radius: 12px;
+            padding: .65rem .8rem;
+            color: #24623a;
+            margin-top: .4rem;
+            font-weight: 700;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Comprendre la modélisation</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="section-title">🔬 Exercice 3 — Comprendre la modélisation</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="ex3-instruction">
+            <strong>ℹ️ Consigne :</strong> Observe chaque modèle et écris l’état de la matière représenté.
+            Aucune proposition n’est donnée au départ : à toi de raisonner à partir du modèle.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="ex3-legend">
+            🟢 <strong>Légende :</strong> chaque pastille turquoise représente une molécule de matière.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    order = _ex3_get_order()
+    cols = st.columns(3, gap="large")
+
+    missing = []
+
+    for col, model_key in zip(cols, order):
+        info = EXERCISE3_MODELS[model_key]
+
+        with col:
+            path = Path(info["path"])
+            if path.exists():
+                st.image(str(path), width=250)
+            else:
+                missing.append(info["path"])
+                st.warning(f"Image manquante : {path.name}")
+
+            st.text_input(
+                "Quel état de la matière est représenté ?",
+                key=f"ex3_answer_{model_key}",
+                placeholder="Écris ta réponse",
+                disabled=bool(st.session_state.get(f"ex3_correct_{model_key}", False)),
+            )
+
+            st.button(
+                "Vérifier",
+                key=f"ex3_validate_{model_key}",
+                use_container_width=True,
+                on_click=_ex3_validate_model,
+                args=(model_key,),
+                disabled=bool(st.session_state.get(f"ex3_correct_{model_key}", False)),
+            )
+
+            if st.session_state.get(f"ex3_empty_{model_key}", False):
+                st.warning("Écris d’abord une réponse.")
+
+            errors = int(st.session_state.get(f"ex3_errors_{model_key}", 0))
+            correct = bool(st.session_state.get(f"ex3_correct_{model_key}", False))
+
+            if correct:
+                st.markdown(
+                    f'<div class="ex3-correct">✅ Bonne réponse : <strong>{info["answer"]}</strong>.</div>',
+                    unsafe_allow_html=True,
+                )
+
+            elif errors == 1:
+                st.markdown(
+                    """
+                    <div class="ex3-help-1">
+                        💡 <strong>Premier indice :</strong> observe bien la <strong>disposition des molécules</strong>.
+                        Sont-elles proches les unes des autres ou très espacées ?
+                        Lorsqu’elles sont proches, semblent-elles rangées ou désordonnées ?
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            elif errors == 2:
+                st.markdown(
+                    """
+                    <div class="ex3-help-2">
+                        📘 <strong>Rappel du cours :</strong><br>
+                        • <strong>Solide</strong> : molécules compactes et ordonnées.<br>
+                        • <strong>Liquide</strong> : molécules compactes et désordonnées.<br>
+                        • <strong>Gaz</strong> : molécules dispersées et désordonnées.
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            elif errors >= 3:
+                st.markdown(
+                    """
+                    <div class="ex3-help-3">
+                        🔎 <strong>Aide complète :</strong> compare maintenant ton modèle avec les schémas du cours ci-dessous.
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    if missing:
+        st.info(
+            "Les trois images doivent être placées dans "
+            "assets/chapitre_1/exercice_3/ avec les noms : "
+            "bouteille eau solide.png, bouteille eau liquide.png et bouteille eau gazeuse.png."
+        )
+
+    # Aide visuelle commune : elle n'apparaît que si au moins un élève atteint le 3e niveau d'aide.
+    show_course_help = any(
+        int(st.session_state.get(f"ex3_errors_{key}", 0)) >= 3
+        for key in EXERCISE3_MODELS
+    )
+
+    if show_course_help:
+        help_path = Path(EXERCISE3_COURSE_HELP)
+        st.markdown("### Aide visuelle du cours")
+        if help_path.exists():
+            st.image(str(help_path), use_container_width=True)
+        else:
+            st.warning(
+                "Image d’aide manquante : ajoute « aide cours.png » dans "
+                "assets/chapitre_1/exercice_3/."
+            )
+
+    total = len(EXERCISE3_MODELS)
+    completed = sum(
+        1 for key in EXERCISE3_MODELS
+        if st.session_state.get(f"ex3_correct_{key}", False)
+    )
+
+    c_reset, c_space = st.columns([1.3, 4.7])
+    with c_reset:
+        if st.button(
+            "↻ Recommencer",
+            use_container_width=True,
+            key="restart_ex3_particle_models",
+        ):
+            _ex3_start_new_attempt()
+            st.rerun()
+
+    if completed:
+        st.markdown("### Ton avancement")
+        st.progress(completed / total)
+        st.write(f"**{completed} / {total} modèles correctement identifiés**")
+
+    if completed == total:
+        st.success("🎉 Bravo ! Tu as correctement identifié les trois états de la matière.")
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex3_result_saved", False)
+        ):
+            total_errors = sum(
+                int(st.session_state.get(f"ex3_errors_{key}", 0))
+                for key in EXERCISE3_MODELS
+            )
+
+            mastery_score = round(
+                100 * total / max(total, total + total_errors)
+            )
+
+            record_training_result(
+                student,
+                "exercise3_particle_models",
+                mastery_score,
+                total,
+                total,
+                errors=total_errors,
+            )
+            st.session_state["ex3_result_saved"] = True
 
 
 def reset_states_matter_training():
@@ -7209,6 +7628,8 @@ elif page == "exercise1_states_water":
     page_exercise1_states_water()
 elif page == "exercise2_water_properties":
     page_exercise2_water_properties()
+elif page == "exercise3_particle_models":
+    page_exercise3_particle_models()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
