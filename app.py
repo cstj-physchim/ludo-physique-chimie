@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_DRAGDROP_GHOST_V26
+# VERSION_UI_2026_08_25_EX4_DRAGDROP_REBUILT_AND_TESTED_V27
 import re
 import base64
 import json
@@ -5462,28 +5462,23 @@ EX4_DRAGDROP_HTML = r"""
   :root{
     --navy:#173b70;
     --teal:#15d7b2;
-    --teal-dark:#087f76;
+    --teal2:#0da98f;
+    --teal-dark:#075e64;
     --pale:#f5f9ff;
     --line:#cfdbea;
     --good:#eaf8ef;
     --good-line:#b8e2c4;
     --hint:#fff8e8;
     --hint-line:#efd89c;
-    --bad:#fff0f0;
-    --bad-line:#edc5c5;
   }
   *{box-sizing:border-box}
   body{
     margin:0;
     font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     color:#17345f;
-    background:white;
+    background:#fff;
   }
-  .wrap{
-    max-width:1100px;
-    margin:0 auto;
-    padding:8px 10px 14px;
-  }
+  .wrap{max-width:1100px;margin:0 auto;padding:8px 10px 14px}
   .intro{
     background:var(--pale);
     border:1px solid #cfe0fb;
@@ -5495,7 +5490,7 @@ EX4_DRAGDROP_HTML = r"""
   }
   .layout{
     display:grid;
-    grid-template-columns: 220px 1fr 220px;
+    grid-template-columns:220px 1fr 220px;
     gap:16px;
     align-items:start;
   }
@@ -5506,18 +5501,9 @@ EX4_DRAGDROP_HTML = r"""
     padding:12px;
     min-height:220px;
   }
-  .tray h4{
-    margin:0 0 6px;
-    text-align:center;
-    font-size:14px;
-  }
-  .tray p{
-    margin:0 0 12px;
-    text-align:center;
-    color:#63738a;
-    font-size:12px;
-  }
-  .molecule-pool{
+  .tray h4{margin:0 0 6px;text-align:center;font-size:14px}
+  .tray p{margin:0 0 12px;text-align:center;color:#63738a;font-size:12px}
+  .pool{
     display:flex;
     flex-wrap:wrap;
     justify-content:center;
@@ -5525,184 +5511,109 @@ EX4_DRAGDROP_HTML = r"""
     min-height:130px;
     align-content:flex-start;
   }
+
   .mol{
-    position:absolute;
     width:32px;
     height:32px;
     border-radius:50%;
-    background:radial-gradient(circle at 31% 28%, #9affeb 0 16%, var(--teal) 18% 63%, #0da98f 65% 100%);
-    border:3px solid #075e64;
+    background:
+      radial-gradient(circle at 31% 28%,
+      #9affeb 0 16%, var(--teal) 18% 63%, var(--teal2) 65% 100%);
+    border:3px solid var(--teal-dark);
     box-shadow:0 2px 6px rgba(0,0,0,.16);
     cursor:grab;
     touch-action:none;
     user-select:none;
     -webkit-user-select:none;
     -webkit-touch-callout:none;
-    z-index:10;
   }
-  .mol.dragging{
-    cursor:grabbing;
-    transform:scale(1.08);
-    box-shadow:0 5px 12px rgba(0,0,0,.25);
-    z-index:50;
-  }
-  .body > .mol{
-    display:block !important;
-    visibility:visible !important;
-    opacity:1 !important;
+  .source-mol{position:relative;flex:0 0 auto}
+  .placed-mol{
+    position:absolute;
+    display:none;
     z-index:30;
   }
-  .pool-mol{
-    position:relative;
-    display:inline-block;
-    flex:0 0 auto;
+  .ghost{
+    position:fixed !important;
+    z-index:99999 !important;
+    pointer-events:none !important;
+    transform:scale(1.08);
+    box-shadow:0 5px 12px rgba(0,0,0,.28);
   }
 
-  .center{
-    min-width:0;
-  }
-  .bottle-stage{
-    position:relative;
-    height:560px;
-    max-width:510px;
-    margin:0 auto;
-  }
-  .bottle{
-    position:absolute;
-    inset:0;
-    margin:auto;
-    width:360px;
-    height:530px;
-  }
+  .center{min-width:0}
+  .stage{position:relative;height:560px;max-width:510px;margin:0 auto}
+  .bottle{position:absolute;inset:0;margin:auto;width:360px;height:530px}
   .neck{
-    position:absolute;
-    width:126px;
-    height:76px;
-    left:117px;
-    top:4px;
-    border:5px solid #172027;
-    border-bottom:none;
-    border-radius:16px 16px 0 0;
-    background:rgba(255,255,255,.86);
+    position:absolute;width:126px;height:76px;left:117px;top:4px;
+    border:5px solid #172027;border-bottom:none;
+    border-radius:16px 16px 0 0;background:rgba(255,255,255,.9)
   }
   .valve{
-    position:absolute;
-    width:76px;
-    height:18px;
-    border:4px solid #172027;
-    border-radius:4px;
-    left:142px;
-    top:-5px;
-    background:white;
+    position:absolute;width:76px;height:18px;left:142px;top:-5px;
+    border:4px solid #172027;border-radius:4px;background:#fff
   }
-  .body{
+  .bottle-body{
     position:absolute;
-    left:28px;
-    top:66px;
-    width:304px;
-    height:450px;
+    left:28px;top:66px;width:304px;height:450px;
     border:5px solid #172027;
     border-radius:76px 76px 54px 54px;
-    background:linear-gradient(90deg,rgba(238,255,251,.72),rgba(255,255,255,.94),rgba(233,252,249,.72));
+    background:linear-gradient(90deg,#ecfffbcc,#fff,#e9fcf9cc);
     overflow:hidden;
   }
   .divider{
-    position:absolute;
-    left:0;
-    right:0;
-    top:304px;
-    height:4px;
-    background:#172027;
+    position:absolute;left:0;right:0;top:304px;height:4px;
+    background:#172027;z-index:5;pointer-events:none
   }
-  .zone-label{
-    position:absolute;
-    right:10px;
-    font-size:13px;
-    font-weight:800;
-    color:var(--navy);
-    background:rgba(255,255,255,.86);
-    border:1px solid #cfdbea;
-    border-radius:999px;
-    padding:4px 9px;
+  .zone-overlay{
+    position:absolute;left:0;right:0;
     pointer-events:none;
-  }
-  .label-a{top:12px}
-  .label-b{top:320px}
-
-  .dropzone{
-    position:absolute;
-    left:0;
-    right:0;
+    transition:background .12s ease;
   }
   #zoneA{top:0;height:304px}
   #zoneB{top:308px;height:142px}
-
-  .dropzone.active{
-    background:rgba(21,215,178,.07);
+  .zone-overlay.active{background:rgba(21,215,178,.10)}
+  .zone-label{
+    position:absolute;right:10px;z-index:6;
+    font-size:13px;font-weight:800;color:var(--navy);
+    background:#fffffff0;border:1px solid #cfdbea;
+    border-radius:999px;padding:4px 9px;pointer-events:none
   }
+  .label-a{top:12px}.label-b{top:320px}
 
   .legend{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    margin-top:4px;
-    font-size:12px;
-    color:#5e6f85;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    margin-top:4px;font-size:12px;color:#5e6f85
   }
   .legend-dot{
     width:18px;height:18px;border-radius:50%;
-    background:var(--teal);
-    border:2px solid #075e64;
+    background:var(--teal);border:2px solid var(--teal-dark)
   }
-
   .controls{
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    margin:12px 0 8px;
-    flex-wrap:wrap;
+    display:flex;justify-content:center;gap:10px;
+    margin:12px 0 8px;flex-wrap:wrap
   }
   button{
-    border:1px solid #bfcde0;
-    border-radius:11px;
-    padding:9px 15px;
-    font-weight:750;
-    background:white;
-    color:#17345f;
-    cursor:pointer;
+    border:1px solid #bfcde0;border-radius:11px;padding:9px 15px;
+    font-weight:750;background:#fff;color:#17345f;cursor:pointer
   }
-  button.primary{
-    background:#1f6fd6;
-    border-color:#1b61b9;
-    color:white;
-  }
-  button:hover{filter:brightness(.98)}
+  button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   .feedback{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-    margin-top:8px;
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px
   }
   .msg{
-    min-height:52px;
-    display:flex;
-    align-items:center;
-    border-radius:12px;
-    padding:10px 12px;
-    font-size:13px;
-    font-weight:650;
+    min-height:52px;display:flex;align-items:center;border-radius:12px;
+    padding:10px 12px;font-size:13px;font-weight:650
   }
   .neutral{background:#f7f9fc;border:1px solid #dfe6ef;color:#6e7c90}
   .good{background:var(--good);border:1px solid var(--good-line);color:#24623a}
   .hint{background:var(--hint);border:1px solid var(--hint-line);color:#73541c}
-  .bad{background:var(--bad);border:1px solid var(--bad-line);color:#7b2c2c}
 
   @media(max-width:900px){
     .layout{grid-template-columns:1fr}
     .tray{min-height:0}
-    .molecule-pool{min-height:70px}
-    .bottle-stage{height:540px}
+    .pool{min-height:72px}
+    .stage{height:540px}
   }
 </style>
 </head>
@@ -5710,38 +5621,43 @@ EX4_DRAGDROP_HTML = r"""
 <div class="wrap">
   <div class="intro">
     <strong>Modélise le contenu de la bouteille.</strong>
-    Fais glisser les 9 molécules de la zone <strong>a</strong> dans la partie supérieure et les 9 molécules de la zone <strong>b</strong>
-    dans la partie inférieure. Une fois déposées, tu peux les déplacer librement dans leur compartiment avant de vérifier ton modèle.
+    Fais glisser les 9 molécules de la zone <strong>a</strong> dans la partie supérieure
+    et les 9 molécules de la zone <strong>b</strong> dans la partie inférieure.
+    Une fois placées, tu peux reprendre chaque molécule et la déplacer librement
+    dans son compartiment.
   </div>
 
   <div class="layout">
-    <div class="tray" id="trayA">
+    <div class="tray">
       <h4>Molécules pour la zone a</h4>
       <p>9 molécules à placer</p>
-      <div class="molecule-pool" id="poolA"></div>
+      <div class="pool" id="poolA"></div>
     </div>
 
     <div class="center">
-      <div class="bottle-stage">
+      <div class="stage">
         <div class="bottle">
           <div class="valve"></div>
           <div class="neck"></div>
-          <div class="body" id="body">
-            <div class="dropzone" id="zoneA"></div>
+          <div class="bottle-body" id="bottleBody">
+            <div class="zone-overlay" id="zoneA"></div>
             <div class="divider"></div>
-            <div class="dropzone" id="zoneB"></div>
+            <div class="zone-overlay" id="zoneB"></div>
             <div class="zone-label label-a">zone a</div>
             <div class="zone-label label-b">zone b</div>
           </div>
         </div>
       </div>
-      <div class="legend"><span class="legend-dot"></span> Chaque pastille représente une molécule de dioxygène.</div>
+      <div class="legend">
+        <span class="legend-dot"></span>
+        Chaque pastille représente une molécule de dioxygène.
+      </div>
     </div>
 
-    <div class="tray" id="trayB">
+    <div class="tray">
       <h4>Molécules pour la zone b</h4>
       <p>9 molécules à placer</p>
-      <div class="molecule-pool" id="poolB"></div>
+      <div class="pool" id="poolB"></div>
     </div>
   </div>
 
@@ -5759,11 +5675,56 @@ EX4_DRAGDROP_HTML = r"""
 <script>
 (function(){
   const N = 9;
-  let args = {};
-  let positions = {a:[], b:[]};
-  let errors = {a:0,b:0};
-  let success = {a:false,b:false};
+  const DIVIDER_Y = 304;
+
+  let generation = null;
+  let storageId = "default";
+  let initialized = false;
   let drag = null;
+
+  let state = freshState();
+
+  function freshState(){
+    return {
+      a:Array(N).fill(null),
+      b:Array(N).fill(null),
+      errors:{a:0,b:0},
+      success:{a:false,b:false}
+    };
+  }
+
+  function storageKey(){
+    return "ludo_ex4_dragdrop_v27_" + storageId + "_" + String(generation ?? 0);
+  }
+
+  function saveLocal(){
+    try{
+      sessionStorage.setItem(storageKey(), JSON.stringify(state));
+    }catch(e){}
+  }
+
+  function loadLocal(){
+    try{
+      const raw=sessionStorage.getItem(storageKey());
+      if(!raw) return freshState();
+      const parsed=JSON.parse(raw);
+      if(!parsed.a || !parsed.b) return freshState();
+      return {
+        a:Array.from({length:N},(_,i)=>parsed.a[i] ?? null),
+        b:Array.from({length:N},(_,i)=>parsed.b[i] ?? null),
+        errors:{
+          a:Number(parsed.errors?.a || 0),
+          b:Number(parsed.errors?.b || 0)
+        },
+        success:{
+          a:Boolean(parsed.success?.a),
+          b:Boolean(parsed.success?.b)
+        }
+      };
+    }catch(e){
+      return freshState();
+    }
+  }
 
   function sendReady(){
     window.parent.postMessage({
@@ -5772,6 +5733,7 @@ EX4_DRAGDROP_HTML = r"""
       apiVersion:1
     },"*");
   }
+
   function setHeight(){
     window.parent.postMessage({
       isStreamlitMessage:true,
@@ -5779,80 +5741,139 @@ EX4_DRAGDROP_HTML = r"""
       height:document.documentElement.scrollHeight + 8
     },"*");
   }
+
   function sendValue(){
     window.parent.postMessage({
       isStreamlitMessage:true,
       type:"streamlit:setComponentValue",
       value:{
-        zone_a:success.a,
-        zone_b:success.b,
-        errors_a:errors.a,
-        errors_b:errors.b,
-        positions:positions
+        zone_a:state.success.a,
+        zone_b:state.success.b,
+        errors_a:state.errors.a,
+        errors_b:state.errors.b,
+        positions:{
+          a:state.a.filter(Boolean),
+          b:state.b.filter(Boolean)
+        }
       }
     },"*");
   }
 
-  function makeMol(group, index){
-    const m=document.createElement("div");
-    m.className="mol pool-mol";
-    m.dataset.group=group;
-    m.dataset.index=index;
-    m.setAttribute("role","button");
-    m.setAttribute("aria-label",`Molécule ${index+1}, zone ${group}`);
-    m.addEventListener("pointerdown",startDrag);
-    return m;
+  function sourceId(group,index){return `source-${group}-${index}`}
+  function placedId(group,index){return `placed-${group}-${index}`}
+
+  function makeSource(group,index){
+    const e=document.createElement("div");
+    e.className="mol source-mol";
+    e.id=sourceId(group,index);
+    e.dataset.group=group;
+    e.dataset.index=String(index);
+    e.setAttribute("role","button");
+    e.setAttribute("aria-label",`Molécule ${index+1}, zone ${group}`);
+    e.addEventListener("pointerdown",startDrag);
+    return e;
   }
 
-  function buildPools(){
-    const pa=document.getElementById("poolA");
-    const pb=document.getElementById("poolB");
-    pa.innerHTML="";
-    pb.innerHTML="";
-    for(let i=0;i<N;i++){
-      pa.appendChild(makeMol("a",i));
-      pb.appendChild(makeMol("b",i));
+  function makePlaced(group,index){
+    const e=document.createElement("div");
+    e.className="mol placed-mol";
+    e.id=placedId(group,index);
+    e.dataset.group=group;
+    e.dataset.index=String(index);
+    e.setAttribute("role","button");
+    e.setAttribute("aria-label",`Molécule placée ${index+1}, zone ${group}`);
+    e.addEventListener("pointerdown",startDrag);
+    return e;
+  }
+
+  function sourceEl(group,index){
+    return document.getElementById(sourceId(group,index));
+  }
+  function placedEl(group,index){
+    return document.getElementById(placedId(group,index));
+  }
+
+  function buildDom(){
+    const poolA=document.getElementById("poolA");
+    const poolB=document.getElementById("poolB");
+    const body=document.getElementById("bottleBody");
+
+    poolA.innerHTML="";
+    poolB.innerHTML="";
+    body.querySelectorAll(".placed-mol").forEach(e=>e.remove());
+
+    for(const group of ["a","b"]){
+      for(let i=0;i<N;i++){
+        (group==="a" ? poolA : poolB).appendChild(makeSource(group,i));
+        body.appendChild(makePlaced(group,i));
+      }
     }
-    positions={a:[],b:[]};
-    success={a:false,b:false};
-    document.getElementById("feedbackA").className="msg neutral";
-    document.getElementById("feedbackA").textContent="Zone a : modèle non vérifié.";
-    document.getElementById("feedbackB").className="msg neutral";
-    document.getElementById("feedbackB").textContent="Zone b : modèle non vérifié.";
-    setTimeout(setHeight,50);
+
+    renderAll();
+    renderFeedbackFromState();
+    setTimeout(setHeight,40);
+  }
+
+  function renderOne(group,index){
+    const src=sourceEl(group,index);
+    const dst=placedEl(group,index);
+    const pos=state[group][index];
+
+    if(pos){
+      src.style.visibility="hidden";
+      dst.style.display="block";
+      dst.style.left=Number(pos.x)+"px";
+      dst.style.top=Number(pos.y)+"px";
+    }else{
+      src.style.visibility="visible";
+      dst.style.display="none";
+    }
+  }
+
+  function renderAll(){
+    for(const g of ["a","b"]){
+      for(let i=0;i<N;i++) renderOne(g,i);
+    }
+  }
+
+  function renderFeedbackFromState(){
+    if(state.success.a){
+      setFeedback("a","good","✅ Zone a : modèle validé.");
+    }else{
+      setFeedback("a","neutral","Zone a : modèle non vérifié.");
+    }
+    if(state.success.b){
+      setFeedback("b","good","✅ Zone b : modèle validé.");
+    }else{
+      setFeedback("b","neutral","Zone b : modèle non vérifié.");
+    }
   }
 
   function startDrag(e){
     e.preventDefault();
 
     const el=e.currentTarget;
+    const group=el.dataset.group;
+    const index=Number(el.dataset.index);
     const rect=el.getBoundingClientRect();
 
-    // On ne déplace plus l'élément original dès le clic.
-    // On utilise un "fantôme" visible qui suit le pointeur.
-    // L'original n'est déplacé dans la bouteille qu'au relâchement.
     const ghost=el.cloneNode(true);
     ghost.removeAttribute("id");
-    ghost.classList.remove("pool-mol");
-    ghost.classList.add("dragging");
-    ghost.style.position="fixed";
+    ghost.className="mol ghost";
     ghost.style.left=rect.left+"px";
     ghost.style.top=rect.top+"px";
     ghost.style.width=rect.width+"px";
     ghost.style.height=rect.height+"px";
-    ghost.style.pointerEvents="none";
-    ghost.style.zIndex="9999";
     document.body.appendChild(ghost);
 
     drag={
-      el,
+      group,
+      index,
       ghost,
-      group:el.dataset.group,
-      index:Number(el.dataset.index),
       pointerId:e.pointerId,
       offsetX:e.clientX-rect.left,
       offsetY:e.clientY-rect.top,
-      wasInBottle:el.parentElement===document.getElementById("body")
+      oldPosition:state[group][index] ? {...state[group][index]} : null
     };
 
     document.addEventListener("pointermove",moveDrag,{passive:false});
@@ -5861,240 +5882,280 @@ EX4_DRAGDROP_HTML = r"""
   }
 
   function moveDrag(e){
-    if(!drag || e.pointerId!==drag.pointerId)return;
+    if(!drag || e.pointerId!==drag.pointerId) return;
     e.preventDefault();
 
     drag.ghost.style.left=(e.clientX-drag.offsetX)+"px";
     drag.ghost.style.top=(e.clientY-drag.offsetY)+"px";
 
-    const body=document.getElementById("body");
+    const body=document.getElementById("bottleBody");
     const br=body.getBoundingClientRect();
     const inside=
       e.clientX>=br.left && e.clientX<=br.right &&
       e.clientY>=br.top && e.clientY<=br.bottom;
 
     document.getElementById("zoneA").classList.toggle(
-      "active",
-      inside && drag.group==="a"
+      "active", inside && drag.group==="a"
     );
     document.getElementById("zoneB").classList.toggle(
-      "active",
-      inside && drag.group==="b"
+      "active", inside && drag.group==="b"
     );
   }
 
-  function clearDragVisuals(){
+  function cleanupDrag(){
     document.getElementById("zoneA").classList.remove("active");
     document.getElementById("zoneB").classList.remove("active");
 
-    if(drag && drag.ghost && drag.ghost.parentNode){
-      drag.ghost.parentNode.removeChild(drag.ghost);
-    }
+    if(drag?.ghost?.parentNode) drag.ghost.remove();
 
     document.removeEventListener("pointermove",moveDrag);
     document.removeEventListener("pointerup",endDrag);
     document.removeEventListener("pointercancel",cancelDrag);
   }
 
-  function cancelDrag(e){
-    if(!drag)return;
-    clearDragVisuals();
+  function cancelDrag(){
+    cleanupDrag();
     drag=null;
   }
 
   function endDrag(e){
-    if(!drag || e.pointerId!==drag.pointerId)return;
+    if(!drag || e.pointerId!==drag.pointerId) return;
     e.preventDefault();
 
-    const body=document.getElementById("body");
+    const body=document.getElementById("bottleBody");
     const br=body.getBoundingClientRect();
 
-    // Position du centre de la molécule au relâchement.
-    const centerX=e.clientX-br.left;
-    const centerY=e.clientY-br.top;
-
-    const insideBottle=
+    const inside=
       e.clientX>=br.left && e.clientX<=br.right &&
       e.clientY>=br.top && e.clientY<=br.bottom;
 
-    if(insideBottle){
-      // À ce moment seulement, l'original passe réellement dans la bouteille.
-      if(drag.el.parentElement!==body){
-        body.appendChild(drag.el);
-        drag.el.classList.remove("pool-mol");
-      }
+    if(inside){
+      const w=32,h=32;
+      let x=e.clientX-br.left-(w/2);
+      let y=e.clientY-br.top-(h/2);
 
-      const w=drag.el.offsetWidth || 32;
-      const h=drag.el.offsetHeight || 32;
+      x=Math.max(5,Math.min(body.clientWidth-w-5,x));
 
-      let x=centerX-(w/2);
-      let y=centerY-(h/2);
-
-      const maxX=body.clientWidth-w-3;
-      x=Math.max(3,Math.min(maxX,x));
-
-      // Les molécules a restent dans la partie haute,
-      // les molécules b dans la partie basse.
       if(drag.group==="a"){
-        const maxYA=304-h-4;
-        y=Math.max(4,Math.min(maxYA,y));
+        y=Math.max(5,Math.min(DIVIDER_Y-h-5,y));
       }else{
-        const minYB=312;
-        const maxYB=body.clientHeight-h-4;
-        y=Math.max(minYB,Math.min(maxYB,y));
+        y=Math.max(
+          DIVIDER_Y+9,
+          Math.min(body.clientHeight-h-5,y)
+        );
       }
 
-      drag.el.style.position="absolute";
-      drag.el.style.left=x+"px";
-      drag.el.style.top=y+"px";
-      drag.el.style.display="block";
-      drag.el.style.visibility="visible";
-
-      readPositions();
-      success[drag.group]=false;
+      state[drag.group][drag.index]={x:x,y:y};
+      state.success[drag.group]=false;
+      renderOne(drag.group,drag.index);
+      saveLocal();
     }
 
-    // Si on relâche hors de la bouteille, une molécule encore dans sa réserve
-    // y reste simplement. Une molécule déjà dans la bouteille garde sa place.
-    clearDragVisuals();
+    cleanupDrag();
     drag=null;
   }
 
-  function readPositions(){
-    positions={a:[],b:[]};
-    const body=document.getElementById("body");
-    const br=body.getBoundingClientRect();
-    body.querySelectorAll(".mol").forEach(el=>{
-      const r=el.getBoundingClientRect();
-      const cx=r.left-br.left+r.width/2;
-      const cy=r.top-br.top+r.height/2;
-      const group=el.dataset.group;
-      positions[group].push({x:cx,y:cy});
-    });
-  }
-
   function stats(points){
-    if(points.length<2)return null;
-    let nearest=[];
+    if(points.length<2) return null;
+
+    const nearest=[];
     for(let i=0;i<points.length;i++){
       let d=Infinity;
       for(let j=0;j<points.length;j++){
-        if(i===j)continue;
-        const dx=points[i].x-points[j].x;
-        const dy=points[i].y-points[j].y;
-        d=Math.min(d,Math.hypot(dx,dy));
+        if(i===j) continue;
+        d=Math.min(
+          d,
+          Math.hypot(
+            points[i].x-points[j].x,
+            points[i].y-points[j].y
+          )
+        );
       }
       nearest.push(d);
     }
+
     const avgNearest=nearest.reduce((a,b)=>a+b,0)/nearest.length;
-    const xs=points.map(p=>p.x), ys=points.map(p=>p.y);
+    const xs=points.map(p=>p.x);
+    const ys=points.map(p=>p.y);
     const width=Math.max(...xs)-Math.min(...xs);
     const height=Math.max(...ys)-Math.min(...ys);
     const meanY=ys.reduce((a,b)=>a+b,0)/ys.length;
 
-    // Alignment score: points sharing nearly the same x or y with many others.
     let alignedPairs=0,totalPairs=0;
     for(let i=0;i<points.length;i++){
       for(let j=i+1;j<points.length;j++){
         totalPairs++;
-        if(Math.abs(points[i].x-points[j].x)<9 || Math.abs(points[i].y-points[j].y)<9){
+        if(
+          Math.abs(points[i].x-points[j].x)<9 ||
+          Math.abs(points[i].y-points[j].y)<9
+        ){
           alignedPairs++;
         }
       }
     }
-    const alignment=totalPairs?alignedPairs/totalPairs:0;
 
-    return {avgNearest,width,height,meanY,alignment};
+    return {
+      avgNearest,
+      width,
+      height,
+      meanY,
+      alignment:totalPairs ? alignedPairs/totalPairs : 0
+    };
   }
 
   function setFeedback(zone,kind,msg){
-    const el=document.getElementById(zone==="a"?"feedbackA":"feedbackB");
-    el.className="msg "+kind;
-    el.textContent=msg;
+    const e=document.getElementById(zone==="a" ? "feedbackA" : "feedbackB");
+    e.className="msg "+kind;
+    e.textContent=msg;
   }
 
   function validate(){
-    readPositions();
+    const a=state.a.filter(Boolean);
+    const b=state.b.filter(Boolean);
 
-    // Require all 9 molecules of each group to have been dragged into the bottle.
-    const body=document.getElementById("body");
-    const countA=body.querySelectorAll('.mol[data-group="a"]').length;
-    const countB=body.querySelectorAll('.mol[data-group="b"]').length;
+    state.success.a=false;
+    state.success.b=false;
 
-    // Only analyse molecules physically in their intended zone.
-    const a=positions.a.filter(p=>p.y<304);
-    const b=positions.b.filter(p=>p.y>=308);
-
-    success.a=false; success.b=false;
-
-    if(countA<N || a.length<N){
-      errors.a++;
-      setFeedback("a","hint","Zone a : place les 9 molécules dans la partie supérieure de la bouteille.");
+    if(a.length<N){
+      state.errors.a++;
+      setFeedback(
+        "a","hint",
+        `Zone a : place encore ${N-a.length} molécule(s).`
+      );
     }else{
       const s=stats(a);
-      // Gas: well spread through upper region, not in a regular lattice.
-      const ok=s.avgNearest>=62 && s.width>=180 && s.height>=185 && s.alignment<0.34;
-      success.a=ok;
+      const ok=
+        s.avgNearest>=58 &&
+        s.width>=175 &&
+        s.height>=175 &&
+        s.alignment<0.38;
+
+      state.success.a=ok;
+
       if(ok){
-        setFeedback("a","good","✅ Zone a : ton modèle est cohérent. Les molécules sont espacées et désordonnées.");
+        setFeedback(
+          "a","good",
+          "✅ Zone a : ton modèle est cohérent. Les molécules sont espacées et désordonnées."
+        );
       }else{
-        errors.a++;
-        if(s.avgNearest<52){
-          setFeedback("a","hint","💡 Zone a : les molécules sont encore trop proches les unes des autres.");
-        }else if(s.width<160 || s.height<165){
-          setFeedback("a","hint","💡 Zone a : répartis davantage les molécules dans tout le volume disponible.");
+        state.errors.a++;
+        if(s.avgNearest<50){
+          setFeedback(
+            "a","hint",
+            "💡 Zone a : les molécules sont encore trop proches les unes des autres."
+          );
+        }else if(s.width<155 || s.height<155){
+          setFeedback(
+            "a","hint",
+            "💡 Zone a : répartis davantage les molécules dans tout le compartiment."
+          );
         }else{
-          setFeedback("a","hint","💡 Zone a : évite une disposition trop régulière ou alignée.");
+          setFeedback(
+            "a","hint",
+            "💡 Zone a : évite une disposition trop régulière ou alignée."
+          );
         }
       }
     }
 
-    if(countB<N || b.length<N){
-      errors.b++;
-      setFeedback("b","hint","Zone b : place les 9 molécules dans la partie inférieure de la bouteille.");
+    if(b.length<N){
+      state.errors.b++;
+      setFeedback(
+        "b","hint",
+        `Zone b : place encore ${N-b.length} molécule(s).`
+      );
     }else{
       const s=stats(b);
-      // Liquid: close together, low in zone b, but not too regularly aligned.
-      const ok=s.avgNearest<=54 && s.height<=115 && s.meanY>=365 && s.alignment<0.46;
-      success.b=ok;
+      const ok=
+        s.avgNearest<=55 &&
+        s.height<=118 &&
+        s.meanY>=350 &&
+        s.alignment<0.50;
+
+      state.success.b=ok;
+
       if(ok){
-        setFeedback("b","good","✅ Zone b : ton modèle est cohérent. Les molécules sont proches et désordonnées.");
+        setFeedback(
+          "b","good",
+          "✅ Zone b : ton modèle est cohérent. Les molécules sont proches et désordonnées."
+        );
       }else{
-        errors.b++;
-        if(s.avgNearest>60){
-          setFeedback("b","hint","💡 Zone b : rapproche davantage les molécules.");
-        }else if(s.meanY<350){
-          setFeedback("b","hint","💡 Zone b : un liquide occupe le bas de son récipient.");
-        }else if(s.alignment>=0.46){
-          setFeedback("b","hint","💡 Zone b : les molécules sont trop régulièrement rangées pour un liquide.");
+        state.errors.b++;
+        if(s.avgNearest>62){
+          setFeedback(
+            "b","hint",
+            "💡 Zone b : rapproche davantage les molécules."
+          );
+        }else if(s.meanY<342){
+          setFeedback(
+            "b","hint",
+            "💡 Zone b : place davantage les molécules vers le fond du compartiment."
+          );
+        }else if(s.alignment>=0.50){
+          setFeedback(
+            "b","hint",
+            "💡 Zone b : les molécules sont trop régulièrement rangées."
+          );
         }else{
-          setFeedback("b","hint","💡 Zone b : regroupe-les près du fond tout en gardant une disposition désordonnée.");
+          setFeedback(
+            "b","hint",
+            "💡 Zone b : garde-les proches tout en conservant une disposition désordonnée."
+          );
         }
       }
     }
 
+    saveLocal();
     sendValue();
-    setTimeout(setHeight,50);
+    setTimeout(setHeight,40);
   }
 
-  document.getElementById("reset").addEventListener("click",()=>{
-    errors={a:0,b:0};
-    buildPools();
+  function resetAll(){
+    state=freshState();
+    try{sessionStorage.removeItem(storageKey())}catch(e){}
+    renderAll();
+    renderFeedbackFromState();
     sendValue();
-  });
+  }
+
+  function init(newGeneration,newStorageId){
+    const changed=
+      !initialized ||
+      generation!==newGeneration ||
+      storageId!==newStorageId;
+
+    generation=newGeneration;
+    storageId=newStorageId || "default";
+
+    if(changed){
+      state=loadLocal();
+      buildDom();
+      initialized=true;
+    }else{
+      setHeight();
+    }
+  }
+
+  document.getElementById("reset").addEventListener("click",resetAll);
   document.getElementById("check").addEventListener("click",validate);
 
   window.addEventListener("message",(event)=>{
     const data=event.data || {};
     if(data.type==="streamlit:render"){
-      args=data.args || {};
-      setHeight();
+      const args=data.args || {};
+      init(
+        Number(args.generation || 0),
+        String(args.storage_id || "default")
+      );
     }
   });
 
   sendReady();
-  buildPools();
-  setHeight();
+
+  // Permet aussi de tester le module HTML seul hors Streamlit.
+  setTimeout(()=>{
+    if(!initialized) init(0,"standalone");
+  },250);
 })();
 </script>
 </body>
@@ -6108,15 +6169,24 @@ def _ex4_dragdrop_component():
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX4_DRAGDROP_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex4_dragdrop_model",
+        "ex4_dragdrop_model_v27",
         path=str(component_dir),
     )
 
 
 def render_ex4_dragdrop_model(generation):
     component = _ex4_dragdrop_component()
+
+    student = st.session_state.get("app_student") or {}
+    storage_id = str(
+        student.get("id")
+        or st.session_state.get("teacher_id")
+        or "prototype"
+    )
+
     return component(
         generation=int(generation),
+        storage_id=storage_id,
         key=f"ex4_dragdrop_{generation}",
         default={
             "zone_a": False,
