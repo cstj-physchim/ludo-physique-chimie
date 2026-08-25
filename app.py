@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE5_Q3_REASONING_V34
+# VERSION_UI_2026_08_25_EXERCISE5_LARGER_INPUT_TEXT_V35
 import re
 import base64
 import json
@@ -7189,6 +7189,26 @@ def page_exercise5_seawater_mixture():
             border-radius:15px;
             padding:.9rem 1rem .4rem 1rem;
             margin:1rem 0;
+        }
+
+        /* Champs de réponse plus lisibles pour les élèves */
+        div[data-testid="stTextInput"] input {
+            font-size:1.15rem !important;
+            line-height:1.5 !important;
+            min-height:3.15rem !important;
+            padding:.72rem .9rem !important;
+        }
+
+        div[data-testid="stTextArea"] textarea {
+            font-size:1.15rem !important;
+            line-height:1.55 !important;
+            padding:.8rem .9rem !important;
+        }
+
+        div[data-testid="stTextInput"] label,
+        div[data-testid="stTextArea"] label {
+            font-size:1rem !important;
+            font-weight:700 !important;
         }
         </style>
         """,
