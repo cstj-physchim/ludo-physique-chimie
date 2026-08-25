@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_EX13_UNIFORM_IMAGES_V60
+# VERSION_UI_2026_08_26_MOLECULE_COMMON_SCALE_V61
 import re
 import base64
 import json
@@ -13598,12 +13598,19 @@ def _exercise_image(candidates):
 @st.cache_data(show_spinner=False)
 def _uniform_molecule_image_bytes(path_string):
     """
-    Prépare un modèle moléculaire pour un affichage homogène.
+    Prépare les modèles moléculaires avec une véritable échelle visuelle commune.
 
-    Les images sources n'ont pas toutes les mêmes marges blanches.
-    On détecte le fond, on rogne les marges inutiles, puis on recentre
-    la molécule sur un canevas identique. Les zones de réponse situées
-    sous les images restent ainsi parfaitement alignées.
+    La version précédente redimensionnait chaque molécule pour remplir presque
+    toute la zone disponible. Cela alignait bien les cadres, mais une molécule
+    diatomique pouvait paraître beaucoup plus grosse qu'une autre.
+
+    Ici :
+    - les marges blanches des fichiers sources sont d'abord retirées ;
+    - chaque famille de modèle reçoit ensuite une taille cible adaptée ;
+    - les molécules diatomiques H2, N2 et Cl2 utilisent exactement la même
+      largeur cible ;
+    - les modèles à 3 ou 5 atomes occupent naturellement davantage de place ;
+    - tous les fichiers sont finalement placés sur le même canevas.
     """
     path = Path(path_string)
 
@@ -13612,7 +13619,7 @@ def _uniform_molecule_image_bytes(path_string):
 
     width, height = image.size
 
-    # Couleur moyenne des quatre coins : elle représente le fond de l'image.
+    # Détermination du fond à partir des quatre coins.
     corners = [
         image.getpixel((0, 0)),
         image.getpixel((max(0, width - 1), 0)),
@@ -13627,19 +13634,17 @@ def _uniform_molecule_image_bytes(path_string):
     background = Image.new("RGB", image.size, background_rgb)
     difference = ImageChops.difference(image, background).convert("L")
 
-    # Les très faibles différences correspondent au fond / aux artefacts.
+    # On élimine le fond quasi blanc tout en gardant les ombres utiles.
     mask = difference.point(lambda value: 255 if value > 12 else 0)
     bbox = mask.getbbox()
 
     if bbox:
         left, top, right, bottom = bbox
-
         detected_w = max(1, right - left)
         detected_h = max(1, bottom - top)
 
-        # Petite marge autour de la molécule pour ne pas rogner les ombres.
-        pad_x = max(10, int(detected_w * 0.05))
-        pad_y = max(10, int(detected_h * 0.05))
+        pad_x = max(10, int(detected_w * 0.045))
+        pad_y = max(10, int(detected_h * 0.045))
 
         left = max(0, left - pad_x)
         top = max(0, top - pad_y)
@@ -13650,15 +13655,45 @@ def _uniform_molecule_image_bytes(path_string):
     else:
         molecule = image
 
-    # Tous les modèles utilisent exactement le même support 16:9.
-    canvas_w, canvas_h = 760, 430
-    max_content_w, max_content_h = 650, 330
+    # --------------------------------------------------------
+    # ÉCHELLE COMMUNE
+    # --------------------------------------------------------
+    # Les dimensions ci-dessous ne cherchent PAS à donner la même largeur
+    # à toutes les molécules. Elles cherchent à donner une taille comparable
+    # aux boules représentant les atomes.
+    #
+    # H2, N2 et Cl2 sont diatomiques : même largeur cible.
+    # CO2 est linéaire avec 3 atomes : il est donc plus large.
+    # H2O est coudée : largeur intermédiaire.
+    # CH4 est tridimensionnelle : largeur intermédiaire et hauteur plus grande.
+    filename = path.name.lower()
 
-    molecule.thumbnail(
-        (max_content_w, max_content_h),
+    target_sizes = {
+        "h2.png":  (300, 190),
+        "n2.png":  (300, 190),
+        "cl2.png": (300, 190),
+        "co2.png": (430, 190),
+        "h2o.png": (330, 230),
+        "ch4.png": (335, 270),
+    }
+
+    target_w, target_h = target_sizes.get(filename, (340, 230))
+
+    # On conserve strictement les proportions de l'image source.
+    scale = min(
+        target_w / max(1, molecule.width),
+        target_h / max(1, molecule.height),
+    )
+    new_w = max(1, int(round(molecule.width * scale)))
+    new_h = max(1, int(round(molecule.height * scale)))
+
+    molecule = molecule.resize(
+        (new_w, new_h),
         Image.Resampling.LANCZOS,
     )
 
+    # Même canevas pour tous : cela garantit l'alignement des champs.
+    canvas_w, canvas_h = 760, 430
     canvas = Image.new("RGB", (canvas_w, canvas_h), (255, 255, 255))
 
     x = (canvas_w - molecule.width) // 2
@@ -13672,12 +13707,12 @@ def _uniform_molecule_image_bytes(path_string):
 
 def _render_uniform_molecule_image(image_path):
     """
-    Affiche les modèles avec la même hauteur visuelle.
-    Comme les deux colonnes ont la même largeur et que le canevas est identique,
-    les champs de réponses commencent exactement au même niveau.
+    Affiche les modèles sur un canevas identique.
+    Les champs Nom/Formule restent donc parfaitement alignés entre colonnes.
     """
     image_bytes = _uniform_molecule_image_bytes(str(image_path))
     st.image(image_bytes, use_container_width=True)
+
 
 
 def _chem_name_norm(value):
