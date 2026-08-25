@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_DRAGDROP_ROBUST_V25
+# VERSION_UI_2026_08_25_EX4_DRAGDROP_GHOST_V26
 import re
 import base64
 import json
@@ -5546,6 +5546,12 @@ EX4_DRAGDROP_HTML = r"""
     box-shadow:0 5px 12px rgba(0,0,0,.25);
     z-index:50;
   }
+  .body > .mol{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    z-index:30;
+  }
   .pool-mol{
     position:relative;
     display:inline-block;
@@ -5820,64 +5826,80 @@ EX4_DRAGDROP_HTML = r"""
     e.preventDefault();
 
     const el=e.currentTarget;
-    const body=document.getElementById("body");
-    const bodyRect=body.getBoundingClientRect();
     const rect=el.getBoundingClientRect();
 
-    // If the molecule is still in the side pool, move it into the bottle
-    // immediately, while preserving its position under the pointer.
-    if(el.parentElement!==body){
-      body.appendChild(el);
-      el.classList.remove("pool-mol");
+    // On ne déplace plus l'élément original dès le clic.
+    // On utilise un "fantôme" visible qui suit le pointeur.
+    // L'original n'est déplacé dans la bouteille qu'au relâchement.
+    const ghost=el.cloneNode(true);
+    ghost.removeAttribute("id");
+    ghost.classList.remove("pool-mol");
+    ghost.classList.add("dragging");
+    ghost.style.position="fixed";
+    ghost.style.left=rect.left+"px";
+    ghost.style.top=rect.top+"px";
+    ghost.style.width=rect.width+"px";
+    ghost.style.height=rect.height+"px";
+    ghost.style.pointerEvents="none";
+    ghost.style.zIndex="9999";
+    document.body.appendChild(ghost);
 
-      const initialX=e.clientX-bodyRect.left-(rect.width/2);
-      const initialY=e.clientY-bodyRect.top-(rect.height/2);
-      el.style.left=initialX+"px";
-      el.style.top=initialY+"px";
-    }
-
-    const currentRect=el.getBoundingClientRect();
     drag={
       el,
+      ghost,
       group:el.dataset.group,
       index:Number(el.dataset.index),
       pointerId:e.pointerId,
-      offsetX:e.clientX-currentRect.left,
-      offsetY:e.clientY-currentRect.top
+      offsetX:e.clientX-rect.left,
+      offsetY:e.clientY-rect.top,
+      wasInBottle:el.parentElement===document.getElementById("body")
     };
 
-    el.classList.add("dragging");
-
-    // Listening on document is much more reliable inside a Streamlit iframe
-    // than keeping the move/up listeners only on the dragged element.
     document.addEventListener("pointermove",moveDrag,{passive:false});
     document.addEventListener("pointerup",endDrag,{passive:false});
-    document.addEventListener("pointercancel",endDrag,{passive:false});
+    document.addEventListener("pointercancel",cancelDrag,{passive:false});
   }
 
   function moveDrag(e){
     if(!drag || e.pointerId!==drag.pointerId)return;
     e.preventDefault();
 
+    drag.ghost.style.left=(e.clientX-drag.offsetX)+"px";
+    drag.ghost.style.top=(e.clientY-drag.offsetY)+"px";
+
     const body=document.getElementById("body");
     const br=body.getBoundingClientRect();
+    const inside=
+      e.clientX>=br.left && e.clientX<=br.right &&
+      e.clientY>=br.top && e.clientY<=br.bottom;
 
-    let x=e.clientX-br.left-drag.offsetX;
-    let y=e.clientY-br.top-drag.offsetY;
+    document.getElementById("zoneA").classList.toggle(
+      "active",
+      inside && drag.group==="a"
+    );
+    document.getElementById("zoneB").classList.toggle(
+      "active",
+      inside && drag.group==="b"
+    );
+  }
 
-    const maxX=body.clientWidth-drag.el.offsetWidth;
-    const maxY=body.clientHeight-drag.el.offsetHeight;
+  function clearDragVisuals(){
+    document.getElementById("zoneA").classList.remove("active");
+    document.getElementById("zoneB").classList.remove("active");
 
-    // Keep the molecule fully inside the bottle.
-    x=Math.max(3,Math.min(maxX-3,x));
-    y=Math.max(3,Math.min(maxY-3,y));
+    if(drag && drag.ghost && drag.ghost.parentNode){
+      drag.ghost.parentNode.removeChild(drag.ghost);
+    }
 
-    drag.el.style.left=x+"px";
-    drag.el.style.top=y+"px";
+    document.removeEventListener("pointermove",moveDrag);
+    document.removeEventListener("pointerup",endDrag);
+    document.removeEventListener("pointercancel",cancelDrag);
+  }
 
-    // Highlight the destination zone belonging to this molecule.
-    document.getElementById("zoneA").classList.toggle("active",drag.group==="a");
-    document.getElementById("zoneB").classList.toggle("active",drag.group==="b");
+  function cancelDrag(e){
+    if(!drag)return;
+    clearDragVisuals();
+    drag=null;
   }
 
   function endDrag(e){
@@ -5885,38 +5907,56 @@ EX4_DRAGDROP_HTML = r"""
     e.preventDefault();
 
     const body=document.getElementById("body");
-    let x=parseFloat(drag.el.style.left || "0");
-    let y=parseFloat(drag.el.style.top || "0");
+    const br=body.getBoundingClientRect();
 
-    const maxX=body.clientWidth-drag.el.offsetWidth;
+    // Position du centre de la molécule au relâchement.
+    const centerX=e.clientX-br.left;
+    const centerY=e.clientY-br.top;
 
-    x=Math.max(3,Math.min(maxX-3,x));
+    const insideBottle=
+      e.clientX>=br.left && e.clientX<=br.right &&
+      e.clientY>=br.top && e.clientY<=br.bottom;
 
-    // Molecules from pool a belong to the upper compartment.
-    // Molecules from pool b belong to the lower compartment.
-    // We still leave the pupil complete freedom inside the relevant zone.
-    if(drag.group==="a"){
-      const maxYA=304-drag.el.offsetHeight-4;
-      y=Math.max(4,Math.min(maxYA,y));
-    }else{
-      const minYB=312;
-      const maxYB=body.clientHeight-drag.el.offsetHeight-4;
-      y=Math.max(minYB,Math.min(maxYB,y));
+    if(insideBottle){
+      // À ce moment seulement, l'original passe réellement dans la bouteille.
+      if(drag.el.parentElement!==body){
+        body.appendChild(drag.el);
+        drag.el.classList.remove("pool-mol");
+      }
+
+      const w=drag.el.offsetWidth || 32;
+      const h=drag.el.offsetHeight || 32;
+
+      let x=centerX-(w/2);
+      let y=centerY-(h/2);
+
+      const maxX=body.clientWidth-w-3;
+      x=Math.max(3,Math.min(maxX,x));
+
+      // Les molécules a restent dans la partie haute,
+      // les molécules b dans la partie basse.
+      if(drag.group==="a"){
+        const maxYA=304-h-4;
+        y=Math.max(4,Math.min(maxYA,y));
+      }else{
+        const minYB=312;
+        const maxYB=body.clientHeight-h-4;
+        y=Math.max(minYB,Math.min(maxYB,y));
+      }
+
+      drag.el.style.position="absolute";
+      drag.el.style.left=x+"px";
+      drag.el.style.top=y+"px";
+      drag.el.style.display="block";
+      drag.el.style.visibility="visible";
+
+      readPositions();
+      success[drag.group]=false;
     }
 
-    drag.el.style.left=x+"px";
-    drag.el.style.top=y+"px";
-    drag.el.classList.remove("dragging");
-
-    document.getElementById("zoneA").classList.remove("active");
-    document.getElementById("zoneB").classList.remove("active");
-
-    document.removeEventListener("pointermove",moveDrag);
-    document.removeEventListener("pointerup",endDrag);
-    document.removeEventListener("pointercancel",endDrag);
-
-    readPositions();
-    success[drag.group]=false;
+    // Si on relâche hors de la bouteille, une molécule encore dans sa réserve
+    // y reste simplement. Une molécule déjà dans la bouteille garde sa place.
+    clearDragVisuals();
     drag=null;
   }
 
