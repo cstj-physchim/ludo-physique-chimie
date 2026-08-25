@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_CONTENTS_BY_CHAPTERS
+# VERSION_UI_2026_08_25_STUDENT_TRACKING_V1
 import re
 import base64
 import json
@@ -1291,6 +1291,12 @@ def reset_results():
     redis_write_json(teacher_key("results"), [])
 
 
+def reset_tracking():
+    """Supprime le suivi d'entraînement et les préparations d'évaluation."""
+    redis_write_json(teacher_key("activity_log"), [])
+    redis_write_json(teacher_key("evaluation_preparations"), [])
+
+
 def reset_students():
     """Supprime uniquement les élèves. Les classes sont conservées."""
     redis_write_json(teacher_key("students"), [])
@@ -1309,6 +1315,8 @@ def reset_database():
     redis_write_json(teacher_key("students"), [])
     redis_write_json(teacher_key("challenges"), [])
     redis_write_json(teacher_key("results"), [])
+    redis_write_json(teacher_key("activity_log"), [])
+    redis_write_json(teacher_key("evaluation_preparations"), [])
 
 
 # ============================================================
@@ -1663,6 +1671,137 @@ def find_open_challenge(code, teacher_id):
             return found
 
     return None
+
+
+
+# ============================================================
+# SUIVI PÉDAGOGIQUE
+# ============================================================
+
+def activity_log_key(teacher_id=None):
+    return teacher_key("activity_log", teacher_id)
+
+
+def get_activity_log(teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        return []
+    return redis_read_json(activity_log_key(teacher_id), [])
+
+
+def save_activity_log(rows, teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        raise RuntimeError("Aucun professeur associé au suivi.")
+    redis_write_json(activity_log_key(teacher_id), rows)
+
+
+def register_student_login(student):
+    """Enregistre uniquement la dernière connexion utile au suivi pédagogique."""
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    students = redis_read_json(teacher_key("students", teacher_id), [])
+    changed = False
+    now = datetime.now().isoformat(timespec="seconds")
+
+    for stored in students:
+        if stored.get("id") == student.get("id"):
+            stored["last_login_at"] = now
+            changed = True
+            break
+
+    if changed:
+        redis_write_json(teacher_key("students", teacher_id), students)
+
+
+def record_training_result(
+    student,
+    resource_id,
+    score_percent,
+    completed_items,
+    total_items,
+    errors=0,
+):
+    """Enregistre une réalisation d'exercice sans transformer l'entraînement en note."""
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    rows = get_activity_log(teacher_id)
+    now = datetime.now().isoformat(timespec="seconds")
+
+    previous = [
+        row for row in rows
+        if row.get("student_id") == student.get("id")
+        and row.get("resource_id") == resource_id
+        and row.get("activity_kind") == "training"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": resource_id,
+        "resource_label": PILOT_CONTENTS.get(resource_id, {}).get("label", resource_id),
+        "chapter": PILOT_CONTENTS.get(resource_id, {}).get("chapter", ""),
+        "score_percent": int(score_percent),
+        "completed_items": int(completed_items),
+        "total_items": int(total_items),
+        "errors": int(errors),
+        "attempt_number": len(previous) + 1,
+        "finished_at": now,
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def evaluation_preparations_key(teacher_id=None):
+    return teacher_key("evaluation_preparations", teacher_id)
+
+
+def get_evaluation_preparations(teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        return []
+    return redis_read_json(evaluation_preparations_key(teacher_id), [])
+
+
+def save_evaluation_preparations(preparations, teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        raise RuntimeError("Aucun professeur associé aux préparations.")
+    redis_write_json(evaluation_preparations_key(teacher_id), preparations)
+
+
+def tracked_exercise_ids():
+    """Ressources dont la réalisation produit déjà un résultat exploitable."""
+    return ["exercise_states_matter"]
+
+
+def latest_training_by_student_resource(rows):
+    latest = {}
+    for row in rows:
+        if row.get("activity_kind") != "training":
+            continue
+        key = (row.get("student_id"), row.get("resource_id"))
+        current = latest.get(key)
+        if current is None or str(row.get("finished_at", "")) > str(current.get("finished_at", "")):
+            latest[key] = row
+    return latest
+
+
+def format_short_datetime(value):
+    if not value:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(str(value))
+        return dt.strftime("%d/%m/%Y %H:%M")
+    except Exception:
+        return str(value)
 
 
 # ============================================================
@@ -3532,9 +3671,15 @@ def page_exercise_topics():
 
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
-        if str(key).startswith("states_q_") or str(key).startswith("states_checked_"):
+        if (
+            str(key).startswith("states_q_")
+            or str(key).startswith("states_checked_")
+            or str(key).startswith("states_last_wrong_")
+        ):
             st.session_state.pop(key, None)
     st.session_state.pop("states_completed", None)
+    st.session_state.pop("states_error_count", None)
+    st.session_state.pop("states_result_saved", None)
 
 
 def page_states_matter_training():
@@ -3577,6 +3722,14 @@ def page_states_matter_training():
 
         if st.button("Valider", key=f"validate_states_{i}", disabled=selected == "— Choisir —"):
             st.session_state[checked_key] = True
+            if selected != item["answer"]:
+                wrong_token = f"{i}:{selected}"
+                last_wrong_key = f"states_last_wrong_{i}"
+                if st.session_state.get(last_wrong_key) != wrong_token:
+                    st.session_state["states_error_count"] = int(
+                        st.session_state.get("states_error_count", 0)
+                    ) + 1
+                    st.session_state[last_wrong_key] = wrong_token
 
         checked = st.session_state.get(checked_key, False)
 
@@ -3600,6 +3753,29 @@ def page_states_matter_training():
     if correct_count == len(STATES_MATTER_QUESTIONS):
         st.success("🎉 Bravo ! Tu as réussi tout l'entraînement « États de la matière ».")
         st.session_state.states_completed = True
+
+        # Le résultat n'est enregistré qu'une fois par réalisation complète.
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("states_result_saved", False)
+        ):
+            errors = int(st.session_state.get("states_error_count", 0))
+            # Indicateur de maîtrise : 100 % sans erreur, puis baisse progressive.
+            score = round(
+                100 * len(STATES_MATTER_QUESTIONS)
+                / (len(STATES_MATTER_QUESTIONS) + errors)
+            )
+            record_training_result(
+                student,
+                "exercise_states_matter",
+                score,
+                len(STATES_MATTER_QUESTIONS),
+                len(STATES_MATTER_QUESTIONS),
+                errors=errors,
+            )
+            st.session_state.states_result_saved = True
 
     if st.button("🔄 Recommencer tout l'entraînement", use_container_width=False):
         reset_states_matter_training()
@@ -4115,7 +4291,7 @@ def teacher_dashboard():
         unsafe_allow_html=True,
     )
 
-    cols = st.columns(4 if pilot_contents else 3)
+    cols = st.columns(5 if pilot_contents else 3)
 
     cards = [
         (
@@ -4148,10 +4324,18 @@ def teacher_dashboard():
         cards.insert(1, (
             "📚",
             "Contenus",
-            "Choisissez les notions visibles pour chacune de vos classes.",
-            "Prototype personnel",
+            "Choisissez les ressources visibles pour chacune de vos classes.",
+            "Pilotage par classe",
             "card-green",
             "contents",
+        ))
+        cards.insert(2, (
+            "👀",
+            "Suivi des élèves",
+            "Distinguez l'entraînement courant de la préparation aux évaluations.",
+            f"{len(get_activity_log())} activité(s) enregistrée(s)",
+            "card-cyan",
+            "tracking",
         ))
 
     for i, (icon, title, text_card, count, color, section) in enumerate(cards):
@@ -4182,6 +4366,7 @@ def teacher_dashboard():
             [
                 "Défis",
                 "Résultats",
+                "Suivi pédagogique",
                 "Élèves",
                 "Classes et élèves",
                 "Toutes les données",
@@ -4208,6 +4393,15 @@ def teacher_dashboard():
                     "Les classes, élèves et défis seront conservés."
                 ),
                 "success": "Tous les résultats ont été supprimés.",
+            },
+            "Suivi pédagogique": {
+                "phrase": "SUPPRIMER LE SUIVI",
+                "button": "🗑️ Supprimer le suivi pédagogique",
+                "message": (
+                    "Les réalisations d'exercices et les préparations d'évaluation seront supprimées. "
+                    "Les élèves, contenus, défis et résultats des défis seront conservés."
+                ),
+                "success": "Le suivi pédagogique a été supprimé.",
             },
             "Élèves": {
                 "phrase": "SUPPRIMER LES ELEVES",
@@ -4256,6 +4450,8 @@ def teacher_dashboard():
                 reset_challenges()
             elif reset_choice == "Résultats":
                 reset_results()
+            elif reset_choice == "Suivi pédagogique":
+                reset_tracking()
             elif reset_choice == "Élèves":
                 reset_students()
             elif reset_choice == "Classes et élèves":
@@ -5012,6 +5208,288 @@ def teacher_challenges():
                 st.dataframe(rows, use_container_width=True, hide_index=True)
 
 
+
+def teacher_tracking():
+    teacher_header("Suivi des élèves")
+
+    if not content_pilot_enabled_for_teacher():
+        st.info("Le suivi pédagogique est actuellement en phase de test sur un seul compte professeur.")
+        return
+
+    st.markdown(
+        '<div class="section-title">👀 Suivi des élèves</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Ce tableau sert au suivi pédagogique de la Ludothèque. "
+        "Il distingue l'entraînement libre de la préparation volontaire d'une évaluation."
+    )
+
+    training_tab, evaluation_tab = st.tabs([
+        "📚 Entraînement",
+        "🎯 Préparation des évaluations",
+    ])
+
+    students = get_students()
+    rows = get_activity_log()
+
+    with training_tab:
+        st.markdown("### Entraînement courant")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            class_filter = st.selectbox(
+                "Classe",
+                ["Toutes"] + get_classes(),
+                key="tracking_class_filter",
+            )
+
+        chapters = [
+            chapter for chapter in PROGRESSION_CHAPTERS
+            if chapter != "Autres contenus déjà prêts"
+        ]
+        with c2:
+            chapter_filter = st.selectbox(
+                "Chapitre",
+                ["Tous"] + chapters,
+                key="tracking_chapter_filter",
+            )
+
+        exercise_options = {
+            info["label"]: content_id
+            for content_id, info in PILOT_CONTENTS.items()
+            if content_id in tracked_exercise_ids()
+        }
+        with c3:
+            exercise_label = st.selectbox(
+                "Exercice",
+                ["Tous"] + list(exercise_options.keys()),
+                key="tracking_exercise_filter",
+            )
+
+        filtered_rows = [
+            row for row in rows
+            if row.get("activity_kind") == "training"
+            and (class_filter == "Toutes" or row.get("class_name") == class_filter)
+            and (
+                chapter_filter == "Tous"
+                or row.get("chapter") == chapter_filter
+            )
+            and (
+                exercise_label == "Tous"
+                or row.get("resource_id") == exercise_options.get(exercise_label)
+            )
+        ]
+
+        latest = latest_training_by_student_resource(filtered_rows)
+
+        selected_students = [
+            s for s in students
+            if class_filter == "Toutes" or s.get("class_name") == class_filter
+        ]
+
+        if exercise_label != "Tous":
+            resource_ids = [exercise_options[exercise_label]]
+        elif chapter_filter != "Tous":
+            resource_ids = [
+                cid for cid in tracked_exercise_ids()
+                if PILOT_CONTENTS.get(cid, {}).get("chapter") == chapter_filter
+            ]
+        else:
+            resource_ids = tracked_exercise_ids()
+
+        table = []
+        for student in sorted(
+            selected_students,
+            key=lambda s: (s.get("class_name", ""), s.get("first_name", "").lower()),
+        ):
+            student_rows = [
+                latest[(student.get("id"), rid)]
+                for rid in resource_ids
+                if (student.get("id"), rid) in latest
+            ]
+
+            if student_rows:
+                best = max(int(r.get("score_percent", 0)) for r in student_rows)
+                done = len(student_rows)
+                last_activity = max(
+                    str(r.get("finished_at", "")) for r in student_rows
+                )
+                attempts = sum(int(r.get("attempt_number", 1)) for r in student_rows)
+                status = "✅ Actif" if done == len(resource_ids) and resource_ids else "🟠 En cours"
+                result_text = f"{best} %"
+            else:
+                done = 0
+                attempts = 0
+                last_activity = ""
+                status = "⚪ Non commencé"
+                result_text = "—"
+
+            table.append({
+                "Élève": f"{student.get('first_name', '')} {student.get('last_initial', '')}.",
+                "Classe": student.get("class_name", ""),
+                "Activité": status,
+                "Exercices faits": f"{done}/{len(resource_ids)}" if resource_ids else "—",
+                "Résultat": result_text,
+                "Tentatives": attempts if attempts else "—",
+                "Dernière activité": format_short_datetime(last_activity),
+                "Dernière connexion": format_short_datetime(student.get("last_login_at")),
+            })
+
+        if table:
+            st.dataframe(table, use_container_width=True, hide_index=True)
+        else:
+            st.info("Aucun élève ne correspond à ces filtres.")
+
+    with evaluation_tab:
+        st.markdown("### Préparation des évaluations")
+        st.caption(
+            "Le professeur choisit les exercices qui constituent la préparation. "
+            "La Ludothèque indique ensuite l'avancement et une éventuelle éligibilité au bonus ; "
+            "le professeur reste seul décisionnaire."
+        )
+
+        with st.expander("➕ Créer une préparation d'évaluation"):
+            prep_class = st.selectbox(
+                "Classe",
+                get_classes(),
+                key="prep_class",
+            )
+
+            prep_chapter = st.selectbox(
+                "Chapitre",
+                [
+                    chapter for chapter in PROGRESSION_CHAPTERS
+                    if chapter != "Autres contenus déjà prêts"
+                ],
+                key="prep_chapter",
+            )
+
+            eligible = {
+                info["label"]: cid
+                for cid, info in PILOT_CONTENTS.items()
+                if cid in tracked_exercise_ids()
+                and info.get("chapter") == prep_chapter
+            }
+
+            prep_name = st.text_input(
+                "Nom de la préparation",
+                placeholder="Ex. Évaluation — Chapitre 1",
+                key="prep_name",
+            )
+
+            selected_labels = st.multiselect(
+                "Exercices à refaire",
+                list(eligible.keys()),
+                key="prep_exercises",
+            )
+
+            threshold = st.slider(
+                "Seuil indicatif pour « +1 possible »",
+                min_value=50,
+                max_value=100,
+                value=80,
+                step=5,
+                key="prep_threshold",
+            )
+
+            if st.button(
+                "Créer la préparation",
+                type="primary",
+                use_container_width=True,
+                disabled=not prep_name.strip() or not selected_labels,
+            ):
+                preparations = get_evaluation_preparations()
+                preparations.append({
+                    "id": secrets.token_urlsafe(10),
+                    "name": prep_name.strip(),
+                    "class_name": prep_class,
+                    "chapter": prep_chapter,
+                    "resource_ids": [eligible[label] for label in selected_labels],
+                    "threshold": int(threshold),
+                    "active": True,
+                    "created_at": datetime.now().isoformat(timespec="seconds"),
+                })
+                save_evaluation_preparations(preparations)
+                st.success("Préparation créée.")
+                st.rerun()
+
+        preparations = get_evaluation_preparations()
+        if not preparations:
+            st.info("Aucune préparation d'évaluation n'est encore créée.")
+        else:
+            prep_labels = {
+                f"{p['name']} — {p['class_name']}": p["id"]
+                for p in preparations
+            }
+            selected_prep_label = st.selectbox(
+                "Préparation à consulter",
+                list(prep_labels.keys()),
+                key="prep_tracking_select",
+            )
+            prep = next(
+                p for p in preparations
+                if p["id"] == prep_labels[selected_prep_label]
+            )
+
+            target_students = [
+                s for s in students
+                if s.get("class_name") == prep.get("class_name")
+            ]
+            latest_all = latest_training_by_student_resource(rows)
+            required = prep.get("resource_ids", [])
+            threshold = int(prep.get("threshold", 80))
+
+            prep_table = []
+            for student in sorted(
+                target_students,
+                key=lambda s: s.get("first_name", "").lower(),
+            ):
+                done_rows = [
+                    latest_all[(student.get("id"), rid)]
+                    for rid in required
+                    if (student.get("id"), rid) in latest_all
+                ]
+                done = len(done_rows)
+                total = len(required)
+
+                if done == 0:
+                    status = "❌ Non commencée"
+                    result = "—"
+                    bonus = "—"
+                else:
+                    average = round(
+                        sum(int(r.get("score_percent", 0)) for r in done_rows)
+                        / len(done_rows)
+                    )
+                    result = f"{average} %"
+
+                    if done == total:
+                        status = "✅ Terminée"
+                        bonus = "+1 possible" if average >= threshold else "—"
+                    else:
+                        status = "🟠 Partielle"
+                        bonus = "—"
+
+                prep_table.append({
+                    "Élève": f"{student.get('first_name', '')} {student.get('last_initial', '')}.",
+                    "Préparation": status,
+                    "Exercices faits": f"{done}/{total}",
+                    "Résultat": result,
+                    "Bonus": bonus,
+                })
+
+            st.markdown(
+                f"**{prep['name']}** · {prep['chapter']} · "
+                f"seuil indicatif : **{threshold} %**"
+            )
+            st.dataframe(
+                prep_table,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+
 def teacher_results():
     teacher_header("Résultats")
 
@@ -5133,6 +5611,8 @@ def page_teacher():
         teacher_classes_students()
     elif section == "contents":
         teacher_contents()
+    elif section == "tracking":
+        teacher_tracking()
     elif section == "challenges":
         teacher_challenges()
     elif section == "results":
@@ -5153,6 +5633,7 @@ def page_entry_gate():
     if qr_student_code:
         student = find_student_by_code(str(qr_student_code))
         if student:
+            register_student_login(student)
             st.session_state.app_authenticated = True
             st.session_state.app_user_type = "student"
             st.session_state.app_student = student
@@ -5167,6 +5648,7 @@ def page_entry_gate():
     if legacy_student_id:
         student = find_student_by_id(str(legacy_student_id))
         if student and not student.get("code_regenerated_at"):
+            register_student_login(student)
             st.session_state.app_authenticated = True
             st.session_state.app_user_type = "student"
             st.session_state.app_student = student
@@ -5345,6 +5827,7 @@ def page_entry_gate():
                     student = find_student_by_code(entered_code)
 
                     if student:
+                        register_student_login(student)
                         st.session_state.app_authenticated = True
                         st.session_state.app_user_type = "student"
                         st.session_state.app_student = student
