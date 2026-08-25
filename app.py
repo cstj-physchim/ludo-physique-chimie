@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_EX9_FIRST_CHOICE_LOCKED_V55
+# VERSION_UI_2026_08_26_EX10_EX11_V56
 import re
 import base64
 import json
@@ -194,6 +194,20 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 32,
         "description": "Distinguer un symbole d’élément d’une formule moléculaire, notamment CO et Co.",
+        "resource_ready": True,
+    },
+    "exercise10_ethanol": {
+        "label": "Exercice 10 — Éthanol",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 34,
+        "description": "Lire un modèle moléculaire, déterminer sa composition et écrire la formule de l’éthanol.",
+        "resource_ready": True,
+    },
+    "exercise11_nitrous_oxide": {
+        "label": "Exercice 11 — Protoxyde d’azote",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 36,
+        "description": "Réinvestir symbole, formule, modèle moléculaire et composition autour de l’azote.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -2103,6 +2117,8 @@ def tracked_exercise_ids():
         "exercise7_solid_mixtures_alloys",
         "exercise8_element_symbols",
         "exercise9_atom_or_molecule",
+        "exercise10_ethanol",
+        "exercise11_nitrous_oxide",
         "exercise_states_matter",
     ]
 
@@ -4088,6 +4104,28 @@ def page_exercise_topics():
             "color": "card-cyan",
             "page": "exercise9_atom_or_molecule",
             "key": "start_ex9_atom_or_molecule",
+        })
+
+    if resource_is_available_for_current_user("exercise10_ethanol"):
+        exercises.append({
+            "session": session2,
+            "icon": "🧪",
+            "title": "Exercice 10 — Éthanol",
+            "description": "Observe le modèle moléculaire de l’éthanol, compte les atomes puis écris sa formule.",
+            "color": "card-purple",
+            "page": "exercise10_ethanol",
+            "key": "start_ex10_ethanol",
+        })
+
+    if resource_is_available_for_current_user("exercise11_nitrous_oxide"):
+        exercises.append({
+            "session": session2,
+            "icon": "💨",
+            "title": "Exercice 11 — Protoxyde d’azote",
+            "description": "Travaille sur l’azote, le diazote, le dioxyde d’azote et le protoxyde d’azote.",
+            "color": "card-green",
+            "page": "exercise11_nitrous_oxide",
+            "key": "start_ex11_nitrous_oxide",
         })
 
     if states_matter_available_for_current_user():
@@ -11775,6 +11813,1349 @@ def page_exercise9_atom_or_molecule():
 
 
 
+
+# ============================================================
+# EXERCICE 10 — ÉTHANOL
+# ============================================================
+
+EXERCISE10_IMAGE_CANDIDATES = [
+    Path("assets/chapitre_1/exercice 10/Ethanol.png"),
+    Path("assets/chapitre_1/exercice_10/Ethanol.png"),
+    Path("assets/chapitre_1/exercice 10/ethanol.png"),
+    Path("assets/chapitre_1/exercice_10/ethanol.png"),
+]
+
+
+def _ex10_find_image():
+    for candidate in EXERCISE10_IMAGE_CANDIDATES:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _chem_formula_norm(value):
+    value = str(value or "").strip()
+    sub_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+    value = value.translate(sub_map)
+    value = value.replace(" ", "").replace("·", "")
+    return value
+
+
+def _ex10_int(value):
+    try:
+        return int(str(value).strip())
+    except Exception:
+        return None
+
+
+def _ex10_validate_q1():
+    generation = int(st.session_state.get("ex10_generation", 0))
+    c = _ex10_int(st.session_state.get(f"ex10_q1_c_{generation}", ""))
+    h = _ex10_int(st.session_state.get(f"ex10_q1_h_{generation}", ""))
+    o = _ex10_int(st.session_state.get(f"ex10_q1_o_{generation}", ""))
+
+    if c is None or h is None or o is None:
+        st.session_state["ex10_q1_feedback"] = "empty"
+        return
+
+    if (c, h, o) == (2, 6, 1):
+        st.session_state["ex10_q1_correct"] = True
+        st.session_state["ex10_q1_feedback"] = "correct"
+    else:
+        st.session_state["ex10_q1_correct"] = False
+        st.session_state["ex10_q1_errors"] = int(
+            st.session_state.get("ex10_q1_errors", 0)
+        ) + 1
+        st.session_state["ex10_q1_feedback"] = "wrong"
+
+
+def _ex10_validate_q2():
+    generation = int(st.session_state.get("ex10_generation", 0))
+    value = _chem_formula_norm(
+        st.session_state.get(f"ex10_q2_{generation}", "")
+    )
+
+    if not value:
+        st.session_state["ex10_q2_feedback"] = "empty"
+        return
+
+    if value in {"C2H6O", "C2H5OH"}:
+        st.session_state["ex10_q2_correct"] = True
+        st.session_state["ex10_q2_feedback"] = "correct"
+    else:
+        st.session_state["ex10_q2_correct"] = False
+        st.session_state["ex10_q2_errors"] = int(
+            st.session_state.get("ex10_q2_errors", 0)
+        ) + 1
+        st.session_state["ex10_q2_feedback"] = "wrong"
+
+
+def _ex10_feedback(question):
+    feedback = st.session_state.get(f"ex10_q{question}_feedback")
+    errors = int(st.session_state.get(f"ex10_q{question}_errors", 0))
+
+    if feedback == "correct":
+        if question == 1:
+            st.success(
+                "✅ Bonne composition : 2 atomes de carbone, "
+                "6 atomes d’hydrogène et 1 atome d’oxygène."
+            )
+        else:
+            st.success("✅ Bonne formule : C₂H₆O.")
+        return
+
+    if feedback == "empty":
+        st.warning("✏️ Complète la réponse avant de valider.")
+        return
+
+    if feedback != "wrong":
+        return
+
+    if question == 1:
+        if errors == 1:
+            st.warning(
+                "💡 Recompte séparément les boules noires, blanches et rouges du modèle."
+            )
+        else:
+            st.warning(
+                "🔎 Utilise la légende : noir = carbone, blanc = hydrogène, rouge = oxygène."
+            )
+    else:
+        if errors == 1:
+            st.warning(
+                "💡 Ta formule doit traduire le nombre d’atomes de chaque élément "
+                "que tu viens de compter."
+            )
+        else:
+            st.warning(
+                "🔎 Repars de ta composition : C, H et O doivent apparaître avec "
+                "les bons indices."
+            )
+
+
+def _ex10_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    generation = int(st.session_state.get("ex10_generation", 0))
+    touched = any(
+        str(st.session_state.get(key, "")).strip()
+        for key in [
+            f"ex10_q1_c_{generation}",
+            f"ex10_q1_h_{generation}",
+            f"ex10_q1_o_{generation}",
+            f"ex10_q2_{generation}",
+        ]
+    )
+    if not touched:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        r for r in rows
+        if r.get("student_id") == student.get("id")
+        and r.get("resource_id") == "exercise10_ethanol"
+        and r.get("activity_kind") == "training"
+    ]
+
+    total_errors = int(st.session_state.get("ex10_q1_errors", 0)) + int(
+        st.session_state.get("ex10_q2_errors", 0)
+    )
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise10_ethanol",
+        "resource_label": PILOT_CONTENTS["exercise10_ethanol"]["label"],
+        "chapter": PILOT_CONTENTS["exercise10_ethanol"]["chapter"],
+        "score_percent": None,
+        "completed_items": 0,
+        "total_items": 2,
+        "errors": total_errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise10():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex10_"):
+            st.session_state.pop(key, None)
+
+
+def _ex10_restart():
+    _ex10_record_restart_if_needed()
+    generation = int(st.session_state.get("ex10_generation", 0))
+    reset_exercise10()
+    st.session_state["ex10_generation"] = generation + 1
+
+
+def page_exercise10_ethanol():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise10_ethanol"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex10-box{
+            background:#f5f9ff;border:1px solid #cfe0fb;border-radius:16px;
+            padding:1rem 1.1rem;margin:.7rem 0 1rem;font-size:1.08rem;
+            line-height:1.55;color:#314b69;
+        }
+        .chem-legend{
+            display:flex;gap:18px;flex-wrap:wrap;align-items:center;
+            padding:.65rem .8rem;border:1px solid #dbe5ef;border-radius:12px;
+            background:#fff;margin:.5rem 0 1rem;
+        }
+        .chem-dot{
+            display:inline-block;width:18px;height:18px;border-radius:50%;
+            vertical-align:middle;margin-right:6px;border:1px solid #718096;
+        }
+        div[data-testid="stTextInput"] input{
+            font-size:1.12rem!important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Séance 2 › Éthanol</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">🧪 Exercice 10 — Éthanol</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="ex10-box"><strong>Objectif :</strong> lire un modèle moléculaire, '
+        'déterminer la composition d’une molécule et écrire sa formule.</div>',
+        unsafe_allow_html=True,
+    )
+
+    image_path = _ex10_find_image()
+    left, right = st.columns([1.15, 1], gap="large")
+
+    with left:
+        st.markdown("### Modèle moléculaire de l’éthanol")
+        if image_path is not None:
+            st.image(str(image_path), width=430)
+        else:
+            st.warning(
+                "Image manquante : ajoute « Ethanol.png » dans "
+                "assets/chapitre_1/exercice 10/."
+            )
+
+    with right:
+        st.markdown(
+            """
+            <div class="chem-legend">
+              <span><span class="chem-dot" style="background:#15191f"></span><strong>Carbone</strong></span>
+              <span><span class="chem-dot" style="background:#ffffff"></span><strong>Hydrogène</strong></span>
+              <span><span class="chem-dot" style="background:#e53935"></span><strong>Oxygène</strong></span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            "Observe attentivement le modèle et compte chaque sorte d’atome."
+        )
+
+    generation = int(st.session_state.get("ex10_generation", 0))
+
+    st.markdown("### 1. Indique la composition de la molécule d’éthanol.")
+    c1, c2, c3 = st.columns(3, gap="medium")
+    with c1:
+        st.text_input(
+            "Nombre d’atomes de carbone",
+            key=f"ex10_q1_c_{generation}",
+            placeholder="Ex. 2",
+            disabled=bool(st.session_state.get("ex10_q1_correct", False)),
+        )
+    with c2:
+        st.text_input(
+            "Nombre d’atomes d’hydrogène",
+            key=f"ex10_q1_h_{generation}",
+            placeholder="Ex. 6",
+            disabled=bool(st.session_state.get("ex10_q1_correct", False)),
+        )
+    with c3:
+        st.text_input(
+            "Nombre d’atomes d’oxygène",
+            key=f"ex10_q1_o_{generation}",
+            placeholder="Ex. 1",
+            disabled=bool(st.session_state.get("ex10_q1_correct", False)),
+        )
+
+    st.button(
+        "Valider la composition",
+        key="ex10_validate_q1",
+        use_container_width=True,
+        type="primary",
+        on_click=_ex10_validate_q1,
+        disabled=bool(st.session_state.get("ex10_q1_correct", False)),
+    )
+    _ex10_feedback(1)
+
+    st.markdown("### 2. Écris la formule de la molécule d’éthanol.")
+    st.text_input(
+        "Formule",
+        key=f"ex10_q2_{generation}",
+        placeholder="Écris la formule ici",
+        disabled=bool(st.session_state.get("ex10_q2_correct", False)),
+    )
+    st.button(
+        "Valider la formule",
+        key="ex10_validate_q2",
+        use_container_width=True,
+        on_click=_ex10_validate_q2,
+        disabled=bool(st.session_state.get("ex10_q2_correct", False)),
+    )
+    _ex10_feedback(2)
+
+    completed = sum(
+        int(bool(st.session_state.get(f"ex10_q{i}_correct", False)))
+        for i in (1, 2)
+    )
+
+    st.markdown("### Ton avancement")
+    st.progress(completed / 2)
+    st.write(f"**{completed} / 2 parties réussies**")
+
+    c_reset, _ = st.columns([1.3, 4.7])
+    with c_reset:
+        if st.button(
+            "↻ Recommencer",
+            key="restart_ex10",
+            use_container_width=True,
+        ):
+            _ex10_restart()
+            st.rerun()
+
+    if completed == 2:
+        st.success(
+            "🎉 Exercice terminé : tu sais passer du modèle moléculaire "
+            "à la composition puis à la formule."
+        )
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex10_result_saved", False)
+        ):
+            errors = int(st.session_state.get("ex10_q1_errors", 0)) + int(
+                st.session_state.get("ex10_q2_errors", 0)
+            )
+            score = round(100 * 2 / max(2, 2 + errors))
+            record_training_result(
+                student,
+                "exercise10_ethanol",
+                score,
+                2,
+                2,
+                errors=errors,
+            )
+            st.session_state["ex10_result_saved"] = True
+
+
+# ============================================================
+# EXERCICE 11 — PROTOXYDE D'AZOTE
+# ============================================================
+
+def _ex11_norm_text(value):
+    return _ex8_norm(value)
+
+
+def _ex11_validate_simple(question, validator):
+    generation = int(st.session_state.get("ex11_generation", 0))
+    value = st.session_state.get(f"ex11_q{question}_{generation}", "")
+
+    if not str(value).strip():
+        st.session_state[f"ex11_q{question}_feedback"] = "empty"
+        return
+
+    if validator(value):
+        st.session_state[f"ex11_q{question}_correct"] = True
+        st.session_state[f"ex11_q{question}_feedback"] = "correct"
+    else:
+        st.session_state[f"ex11_q{question}_correct"] = False
+        st.session_state[f"ex11_q{question}_errors"] = int(
+            st.session_state.get(f"ex11_q{question}_errors", 0)
+        ) + 1
+        st.session_state[f"ex11_q{question}_feedback"] = "wrong"
+
+
+def _ex11_validate_q1():
+    _ex11_validate_simple(
+        1,
+        lambda v: str(v or "").strip() == "N",
+    )
+
+
+def _ex11_validate_q2():
+    _ex11_validate_simple(
+        2,
+        lambda v: _chem_formula_norm(v) == "N2",
+    )
+
+
+def _ex11_validate_q4():
+    def ok(value):
+        v = _ex11_norm_text(value)
+        return (
+            "air" in v
+            or "atmosphere" in v
+            or "atmospherique" in v
+        )
+    _ex11_validate_simple(4, ok)
+
+
+def _ex11_validate_q6():
+    _ex11_validate_simple(
+        6,
+        lambda v: _chem_formula_norm(v) == "N2O",
+    )
+
+
+def _ex11_feedback(question):
+    feedback = st.session_state.get(f"ex11_q{question}_feedback")
+    errors = int(st.session_state.get(f"ex11_q{question}_errors", 0))
+
+    if feedback == "correct":
+        messages = {
+            1: "✅ Le symbole de l’azote est N.",
+            2: "✅ La formule du diazote est N₂.",
+            4: "✅ Oui. Le diazote est présent en grande quantité dans l’air.",
+            6: "✅ Le modèle contient 2 atomes d’azote et 1 atome d’oxygène : N₂O.",
+        }
+        st.success(messages.get(question, "✅ Bonne réponse."))
+        return
+
+    if feedback == "empty":
+        st.warning("✏️ Rédige une réponse avant de valider.")
+        return
+
+    if feedback != "wrong":
+        return
+
+    if question == 1:
+        st.warning(
+            "💡 Consulte le tableau périodique et retrouve l’élément « azote »."
+        )
+    elif question == 2:
+        if errors == 1:
+            st.warning("💡 Le préfixe « di- » donne une indication sur le nombre d’atomes.")
+        else:
+            st.warning("🔎 Pars du symbole N et indique qu’il y a deux atomes.")
+    elif question == 4:
+        if errors == 1:
+            st.warning("💡 Pense au mélange gazeux que nous respirons.")
+        else:
+            st.warning("🔎 Le diazote est le principal constituant de l’air.")
+    elif question == 6:
+        if errors == 1:
+            st.warning("💡 Compte les boules bleues et rouges du modèle.")
+        else:
+            st.warning("🔎 Bleu = azote (N) ; rouge = oxygène (O).")
+
+
+# ---------- Q3 : choix Atome / Molécule, premier choix définitif ----------
+
+EX11_Q3_HTML = r"""
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;color:#17345f;background:#fff}
+.wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:2px 0 6px}
+button{
+  min-height:58px;border-radius:12px;border:1px solid #cbd8e8;background:#fff;
+  color:#17345f;font-size:16px;font-weight:850;cursor:pointer;transition:.15s ease
+}
+button:hover:not(:disabled){background:#eef6ff;border-color:#7caee2}
+button.correct{background:#e9f8ee;border-color:#62bb7a;color:#24623a}
+button.wrong{background:#fff0f0;border-color:#e37272;color:#a93232}
+button:disabled{cursor:default}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <button id="atom">Atome</button>
+  <button id="molecule">Molécule</button>
+</div>
+<script>
+(function(){
+  let initialized=false;
+  let generation=0;
+  let storageId="prototype";
+  let state={complete:false,correct_first_try:false,selected:"",errors:0};
+
+  function ready(){
+    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:componentReady",apiVersion:1},"*");
+  }
+  function setHeight(){
+    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setFrameHeight",height:72},"*");
+  }
+  function key(){return "ludo_ex11_q3_v1_"+storageId+"_"+String(generation)}
+  function load(){
+    try{
+      const p=JSON.parse(sessionStorage.getItem(key())||"null");
+      return p||{complete:false,correct_first_try:false,selected:"",errors:0};
+    }catch(e){return{complete:false,correct_first_try:false,selected:"",errors:0}}
+  }
+  function save(){try{sessionStorage.setItem(key(),JSON.stringify(state))}catch(e){}}
+  function send(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,type:"streamlit:setComponentValue",
+      value:state
+    },"*");
+  }
+  function render(){
+    const a=document.getElementById("atom");
+    const m=document.getElementById("molecule");
+    a.className="";m.className="";
+    if(state.complete){
+      m.classList.add("correct");
+      if(state.selected==="Atome")a.classList.add("wrong");
+      a.disabled=true;m.disabled=true;
+    }
+    setHeight();
+  }
+  function choose(label){
+    if(state.complete)return;
+    state.complete=true;
+    state.selected=label;
+    state.correct_first_try=(label==="Molécule");
+    if(!state.correct_first_try)state.errors=1;
+    save();render();send();
+  }
+  document.getElementById("atom").onclick=()=>choose("Atome");
+  document.getElementById("molecule").onclick=()=>choose("Molécule");
+
+  window.addEventListener("message",(event)=>{
+    const d=event.data||{};
+    if(d.type!=="streamlit:render")return;
+    const args=d.args||{};
+    const ng=Number(args.generation||0);
+    const ns=String(args.storage_id||"prototype");
+    const changed=!initialized||ng!==generation||ns!==storageId;
+    generation=ng;storageId=ns;
+    if(changed){state=load();render();initialized=true}else setHeight();
+  });
+  ready();
+})();
+</script>
+</body>
+</html>
+"""
+
+
+@st.cache_resource
+def _ex11_q3_component():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex11_q3_component_v1"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "index.html").write_text(EX11_Q3_HTML, encoding="utf-8")
+    return components.declare_component(
+        "ex11_dinitrogen_atom_molecule_v1",
+        path=str(component_dir),
+    )
+
+
+def render_ex11_q3(generation):
+    component = _ex11_q3_component()
+    student = st.session_state.get("app_student") or {}
+    storage_id = str(
+        student.get("id")
+        or st.session_state.get("teacher_id")
+        or "prototype"
+    )
+    return component(
+        generation=int(generation),
+        storage_id=storage_id,
+        key=f"ex11_q3_v1_{generation}",
+        default={
+            "complete": False,
+            "correct_first_try": False,
+            "selected": "",
+            "errors": 0,
+        },
+    )
+
+
+# ---------- Q5 : constructeur moléculaire ----------
+
+EX11_BUILDER_HTML = r"""
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;color:#17345f;background:#fff}
+.wrap{width:100%;padding:2px 0 8px}
+.info{
+  padding:10px 12px;border:1px solid #cfe0fb;border-radius:12px;background:#f5f9ff;
+  font-size:13px;line-height:1.45;color:#4c6481;margin-bottom:10px
+}
+.palette{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;
+  padding:12px;border:1px solid #dbe5ef;border-radius:14px;background:#f8fafc
+}
+.tool{
+  width:54px;height:54px;border-radius:50%;border:3px solid rgba(0,0,0,.22);
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;
+  user-select:none;touch-action:none;cursor:grab;box-shadow:0 3px 8px rgba(0,0,0,.12)
+}
+.tool.h{background:#fff;color:#425466}
+.tool.c{background:#15191f;color:#fff}
+.tool.n{background:#2c8be6;color:#fff}
+.tool.o{background:#e53935;color:#fff}
+.tool.cl{background:#37a85b;color:#fff}
+.tool.bond{
+  width:78px;height:32px;border-radius:9px;background:#e9eef4;color:#34495e;
+  border:2px solid #9aa8b7;font-size:22px
+}
+.model-shell{
+  margin-top:12px;padding:14px;border:1px solid #cfdbe8;border-radius:15px;background:#fff
+}
+.model-title{text-align:center;font-weight:850;margin-bottom:10px}
+.track-wrap{overflow-x:auto;padding:5px 0}
+.track{
+  min-width:510px;display:flex;align-items:center;justify-content:center;gap:6px
+}
+.atom-slot{
+  width:64px;height:64px;border:2px dashed #aebfd2;border-radius:50%;background:#f9fbfd;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  color:#7a8da4;font-size:12px;cursor:pointer
+}
+.atom-slot.filled{
+  border-style:solid;font-weight:900;font-size:17px;color:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,.12)
+}
+.atom-slot.H{background:#fff;color:#425466;border-color:#9aa8b7}
+.atom-slot.C{background:#15191f;border-color:#15191f}
+.atom-slot.N{background:#2c8be6;border-color:#1e6db5}
+.atom-slot.O{background:#e53935;border-color:#b62825}
+.atom-slot.Cl{background:#37a85b;border-color:#247840}
+.bond-slot{
+  width:48px;height:18px;border:2px dashed #b2c0cf;border-radius:7px;background:#f9fbfd;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;cursor:pointer
+}
+.bond-slot.filled{
+  border-style:solid;background:#8392a3;border-color:#657383
+}
+.bond-slot.filled::after{
+  content:"";display:block;width:36px;height:6px;border-radius:4px;background:#34495e
+}
+.formula-row{
+  display:grid;grid-template-columns:1fr 180px;gap:10px;margin-top:12px;align-items:end
+}
+.formula-row label{display:block;font-size:13px;font-weight:800;margin-bottom:5px}
+.formula-row input{
+  width:100%;height:48px;border:2px solid #8fbceb;border-radius:11px;background:#edf6ff;
+  padding:0 12px;font-size:17px;font-weight:750;color:#17345f;outline:none
+}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.action{
+  min-height:48px;border-radius:11px;border:1px solid #a9c8eb;background:#fff;color:#175aa8;
+  font-weight:850;padding:0 14px;cursor:pointer
+}
+.action.primary{background:#2878d4;border-color:#2878d4;color:#fff}
+.feedback{
+  margin-top:10px;padding:10px 12px;border-radius:11px;border:1px solid #dfe6ef;
+  background:#f7f9fc;color:#61738b;font-size:13px;font-weight:750;min-height:42px
+}
+.feedback.ok{background:#eaf8ef;border-color:#b8e2c4;color:#24623a}
+.feedback.bad{background:#fff5df;border-color:#f0cf84;color:#8a5a00}
+.ghost{
+  position:fixed;z-index:99999;pointer-events:none;opacity:.92;transform:translate(-50%,-50%);
+}
+@media(max-width:700px){
+  .track{min-width:350px;gap:3px}
+  .atom-slot{width:46px;height:46px}
+  .bond-slot{width:25px;height:14px}
+  .bond-slot.filled::after{width:20px;height:5px}
+  .formula-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="info">
+    Fais glisser des <strong>atomes</strong> et des <strong>barres de liaison</strong>
+    dans la zone de construction. Plusieurs éléments sont proposés : à toi de choisir.
+    Clique sur un élément déjà placé pour le retirer.
+  </div>
+
+  <div class="palette">
+    <div class="tool h" data-kind="atom" data-value="H">H</div>
+    <div class="tool c" data-kind="atom" data-value="C">C</div>
+    <div class="tool n" data-kind="atom" data-value="N">N</div>
+    <div class="tool o" data-kind="atom" data-value="O">O</div>
+    <div class="tool cl" data-kind="atom" data-value="Cl">Cl</div>
+    <div class="tool bond" data-kind="bond" data-value="bond">—</div>
+  </div>
+
+  <div class="model-shell">
+    <div class="model-title">Ton modèle du dioxyde d’azote</div>
+    <div class="track-wrap">
+      <div class="track">
+        <div class="atom-slot" data-slot="0"></div>
+        <div class="bond-slot" data-bond="0"></div>
+        <div class="atom-slot" data-slot="1"></div>
+        <div class="bond-slot" data-bond="1"></div>
+        <div class="atom-slot" data-slot="2"></div>
+        <div class="bond-slot" data-bond="2"></div>
+        <div class="atom-slot" data-slot="3"></div>
+        <div class="bond-slot" data-bond="3"></div>
+        <div class="atom-slot" data-slot="4"></div>
+      </div>
+    </div>
+
+    <div class="formula-row">
+      <div>
+        <label for="formula">Formule du dioxyde d’azote</label>
+        <input id="formula" type="text" placeholder="Écris la formule" autocomplete="off">
+      </div>
+      <div class="actions">
+        <button class="action" id="clearBtn" type="button">↻ Effacer</button>
+        <button class="action primary" id="checkBtn" type="button">Vérifier</button>
+      </div>
+    </div>
+    <div class="feedback" id="feedback">Construis ton modèle puis vérifie ta réponse.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let initialized=false;
+  let generation=0;
+  let storageId="prototype";
+  let state={slots:["","","","",""],bonds:[false,false,false,false],formula:"",errors:0,success:false};
+  let drag=null;
+
+  function ready(){
+    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:componentReady",apiVersion:1},"*");
+  }
+  function setHeight(){
+    const wrap=document.querySelector(".wrap");
+    const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+12:520;
+    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setFrameHeight",height:h},"*");
+  }
+  function key(){return "ludo_ex11_builder_v1_"+storageId+"_"+String(generation)}
+  function fresh(){
+    return{slots:["","","","",""],bonds:[false,false,false,false],formula:"",errors:0,success:false};
+  }
+  function load(){
+    try{
+      const p=JSON.parse(sessionStorage.getItem(key())||"null");
+      if(!p)return fresh();
+      return{
+        slots:Array.from({length:5},(_,i)=>String(p.slots?.[i]||"")),
+        bonds:Array.from({length:4},(_,i)=>Boolean(p.bonds?.[i])),
+        formula:String(p.formula||""),
+        errors:Number(p.errors||0),
+        success:Boolean(p.success)
+      };
+    }catch(e){return fresh()}
+  }
+  function save(){try{sessionStorage.setItem(key(),JSON.stringify(state))}catch(e){}}
+  function send(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,type:"streamlit:setComponentValue",
+      value:{success:state.success,errors:state.errors,slots:state.slots,bonds:state.bonds,formula:state.formula}
+    },"*");
+  }
+  function normFormula(v){
+    const map={"₀":"0","₁":"1","₂":"2","₃":"3","₄":"4","₅":"5","₆":"6","₇":"7","₈":"8","₉":"9"};
+    return String(v||"").trim().split("").map(ch=>map[ch]||ch).join("").replace(/\s+/g,"");
+  }
+  function render(){
+    document.querySelectorAll(".atom-slot").forEach(el=>{
+      const i=Number(el.dataset.slot);
+      const sym=state.slots[i]||"";
+      el.className="atom-slot"+(sym?" filled "+sym:"");
+      el.textContent=sym;
+    });
+    document.querySelectorAll(".bond-slot").forEach(el=>{
+      const i=Number(el.dataset.bond);
+      el.className="bond-slot"+(state.bonds[i]?" filled":"");
+    });
+    const input=document.getElementById("formula");
+    input.value=state.formula;
+    input.disabled=state.success;
+    document.getElementById("checkBtn").disabled=state.success;
+    document.querySelectorAll(".tool").forEach(t=>t.style.pointerEvents=state.success?"none":"auto");
+    setTimeout(setHeight,20);
+  }
+
+  function consecutiveONO(){
+    const occupied=state.slots.map((s,i)=>s?i:-1).filter(i=>i>=0);
+    if(occupied.length!==3)return {ok:false,composition:false};
+
+    const syms=occupied.map(i=>state.slots[i]);
+    const counts={
+      O:syms.filter(x=>x==="O").length,
+      N:syms.filter(x=>x==="N").length
+    };
+    const composition=counts.O===2&&counts.N===1&&syms.every(x=>x==="O"||x==="N");
+
+    if(!composition)return {ok:false,composition:false};
+
+    const consecutive=occupied[1]===occupied[0]+1&&occupied[2]===occupied[1]+1;
+    if(!consecutive)return {ok:false,composition:true};
+
+    const ordered=
+      state.slots[occupied[0]]==="O"&&
+      state.slots[occupied[1]]==="N"&&
+      state.slots[occupied[2]]==="O";
+
+    if(!ordered)return {ok:false,composition:true};
+
+    const neededBond1=occupied[0];
+    const neededBond2=occupied[1];
+    const bondsOk=state.bonds[neededBond1]&&state.bonds[neededBond2];
+
+    const extraBond=state.bonds.some((v,i)=>v&&i!==neededBond1&&i!==neededBond2);
+
+    return {ok:bondsOk&&!extraBond,composition:true,ordered:true,bondsOk:bondsOk&&!extraBond};
+  }
+
+  function check(){
+    if(state.success)return;
+    state.formula=document.getElementById("formula").value;
+    const model=consecutiveONO();
+    const formulaOk=normFormula(state.formula)==="NO2";
+    const fb=document.getElementById("feedback");
+
+    if(model.ok&&formulaOk){
+      state.success=true;
+      fb.className="feedback ok";
+      fb.textContent="✅ Modèle et formule cohérents.";
+    }else{
+      state.errors+=1;
+      fb.className="feedback bad";
+
+      if(model.composition && !model.ok){
+        fb.textContent="💡 Tu as choisi les bons types et nombres d’atomes, mais leur organisation ou les liaisons ne correspondent pas encore au modèle attendu.";
+      }else if(model.ok && !formulaOk){
+        fb.textContent="💡 Ton modèle convient. Vérifie maintenant la formule que tu as écrite.";
+      }else if(state.errors===1){
+        fb.textContent="💡 Observe le nom « dioxyde d’azote » : il donne des informations sur les éléments présents et leur nombre.";
+      }else{
+        fb.textContent="🔎 Le préfixe « di- » donne une indication importante sur le nombre d’atomes d’oxygène.";
+      }
+    }
+
+    save();render();send();
+  }
+
+  function clearAll(){
+    if(state.success)return;
+    state.slots=["","","","",""];
+    state.bonds=[false,false,false,false];
+    state.formula="";
+    document.getElementById("feedback").className="feedback";
+    document.getElementById("feedback").textContent="Construis ton modèle puis vérifie ta réponse.";
+    save();render();send();
+  }
+
+  function ghostFor(tool){
+    const g=tool.cloneNode(true);
+    g.classList.add("ghost");
+    const r=tool.getBoundingClientRect();
+    g.style.width=r.width+"px";g.style.height=r.height+"px";
+    document.body.appendChild(g);
+    return g;
+  }
+
+  function nearest(selector,x,y,maxD){
+    let best=null,bestD=Infinity;
+    document.querySelectorAll(selector).forEach(el=>{
+      const r=el.getBoundingClientRect();
+      const cx=r.left+r.width/2,cy=r.top+r.height/2;
+      const d=Math.hypot(x-cx,y-cy);
+      if(d<bestD){bestD=d;best=el}
+    });
+    return bestD<=maxD?best:null;
+  }
+
+  function startDrag(e,tool){
+    if(state.success)return;
+    e.preventDefault();
+    const ghost=ghostFor(tool);
+    drag={
+      pointerId:e.pointerId,
+      kind:tool.dataset.kind,
+      value:tool.dataset.value,
+      ghost
+    };
+    ghost.style.left=e.clientX+"px";
+    ghost.style.top=e.clientY+"px";
+    tool.setPointerCapture?.(e.pointerId);
+  }
+
+  function moveDrag(e){
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    drag.ghost.style.left=e.clientX+"px";
+    drag.ghost.style.top=e.clientY+"px";
+  }
+
+  function endDrag(e){
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    e.preventDefault();
+
+    if(drag.kind==="atom"){
+      const target=nearest(".atom-slot",e.clientX,e.clientY,60);
+      if(target){
+        const i=Number(target.dataset.slot);
+        state.slots[i]=drag.value;
+      }
+    }else{
+      const target=nearest(".bond-slot",e.clientX,e.clientY,55);
+      if(target){
+        const i=Number(target.dataset.bond);
+        state.bonds[i]=true;
+      }
+    }
+
+    drag.ghost.remove();
+    drag=null;
+    save();render();send();
+  }
+
+  document.querySelectorAll(".tool").forEach(tool=>{
+    tool.addEventListener("pointerdown",e=>startDrag(e,tool));
+  });
+  document.addEventListener("pointermove",moveDrag);
+  document.addEventListener("pointerup",endDrag);
+  document.addEventListener("pointercancel",endDrag);
+
+  document.querySelectorAll(".atom-slot").forEach(el=>{
+    el.addEventListener("click",()=>{
+      if(state.success)return;
+      state.slots[Number(el.dataset.slot)]="";
+      save();render();send();
+    });
+  });
+  document.querySelectorAll(".bond-slot").forEach(el=>{
+    el.addEventListener("click",()=>{
+      if(state.success)return;
+      state.bonds[Number(el.dataset.bond)]=false;
+      save();render();send();
+    });
+  });
+
+  document.getElementById("formula").addEventListener("input",e=>{
+    if(state.success)return;
+    state.formula=e.target.value;
+    save();send();
+  });
+  document.getElementById("checkBtn").onclick=check;
+  document.getElementById("clearBtn").onclick=clearAll;
+
+  window.addEventListener("message",(event)=>{
+    const d=event.data||{};
+    if(d.type!=="streamlit:render")return;
+    const args=d.args||{};
+    const ng=Number(args.generation||0);
+    const ns=String(args.storage_id||"prototype");
+    const changed=!initialized||ng!==generation||ns!==storageId;
+    generation=ng;storageId=ns;
+    if(changed){
+      state=load();
+      render();
+      initialized=true;
+    }else setHeight();
+  });
+
+  ready();
+})();
+</script>
+</body>
+</html>
+"""
+
+
+@st.cache_resource
+def _ex11_builder_component():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex11_builder_component_v1"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "index.html").write_text(
+        EX11_BUILDER_HTML,
+        encoding="utf-8",
+    )
+    return components.declare_component(
+        "ex11_no2_builder_v1",
+        path=str(component_dir),
+    )
+
+
+def render_ex11_builder(generation):
+    component = _ex11_builder_component()
+    student = st.session_state.get("app_student") or {}
+    storage_id = str(
+        student.get("id")
+        or st.session_state.get("teacher_id")
+        or "prototype"
+    )
+    return component(
+        generation=int(generation),
+        storage_id=storage_id,
+        key=f"ex11_builder_v1_{generation}",
+        default={
+            "success": False,
+            "errors": 0,
+            "slots": [],
+            "bonds": [],
+            "formula": "",
+        },
+    )
+
+
+def _ex11_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    generation = int(st.session_state.get("ex11_generation", 0))
+    q3_state = st.session_state.get("ex11_q3_component_state") or {}
+    q5_state = st.session_state.get("ex11_q5_component_state") or {}
+
+    touched = bool(
+        any(
+            str(st.session_state.get(f"ex11_q{i}_{generation}", "")).strip()
+            for i in (1, 2, 4, 6)
+        )
+        or q3_state.get("complete")
+        or q5_state.get("errors")
+        or any(q5_state.get("slots") or [])
+        or str(q5_state.get("formula", "")).strip()
+    )
+    if not touched:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        r for r in rows
+        if r.get("student_id") == student.get("id")
+        and r.get("resource_id") == "exercise11_nitrous_oxide"
+        and r.get("activity_kind") == "training"
+    ]
+
+    errors = sum(
+        int(st.session_state.get(f"ex11_q{i}_errors", 0))
+        for i in (1, 2, 4, 6)
+    )
+    errors += int(q3_state.get("errors", 0) or 0)
+    errors += int(q5_state.get("errors", 0) or 0)
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise11_nitrous_oxide",
+        "resource_label": PILOT_CONTENTS["exercise11_nitrous_oxide"]["label"],
+        "chapter": PILOT_CONTENTS["exercise11_nitrous_oxide"]["chapter"],
+        "score_percent": None,
+        "completed_items": 0,
+        "total_items": 6,
+        "errors": errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise11():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex11_"):
+            st.session_state.pop(key, None)
+
+
+def _ex11_restart():
+    _ex11_record_restart_if_needed()
+    generation = int(st.session_state.get("ex11_generation", 0))
+    reset_exercise11()
+    st.session_state["ex11_generation"] = generation + 1
+
+
+def _ex11_n2o_model_html():
+    return """
+    <div style="
+      display:flex;justify-content:center;align-items:center;
+      padding:1.1rem;margin:.6rem 0 1rem;border:1px solid #dbe5ef;
+      border-radius:14px;background:#f8fafc;">
+      <div style="width:72px;height:72px;border-radius:50%;background:#2c8be6;
+                  border:3px solid #1e6db5;box-shadow:0 4px 10px rgba(0,0,0,.12)"></div>
+      <div style="width:34px;height:8px;background:#657383;border-radius:5px"></div>
+      <div style="width:72px;height:72px;border-radius:50%;background:#2c8be6;
+                  border:3px solid #1e6db5;box-shadow:0 4px 10px rgba(0,0,0,.12)"></div>
+      <div style="width:34px;height:8px;background:#657383;border-radius:5px"></div>
+      <div style="width:72px;height:72px;border-radius:50%;background:#e53935;
+                  border:3px solid #b62825;box-shadow:0 4px 10px rgba(0,0,0,.12)"></div>
+    </div>
+    """
+
+
+def page_exercise11_nitrous_oxide():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise11_nitrous_oxide"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex11-context{
+            background:#f5f9ff;border:1px solid #cfe0fb;border-radius:16px;
+            padding:1rem 1.1rem;margin:.7rem 0 1rem;font-size:1.08rem;
+            line-height:1.55;color:#314b69;
+        }
+        .ex11-rule{
+            display:flex;gap:16px;flex-wrap:wrap;align-items:center;
+            padding:.65rem .8rem;border:1px solid #dbe5ef;border-radius:12px;
+            background:#fff;margin:.5rem 0 1rem;
+        }
+        div[data-testid="stTextInput"] input,
+        div[data-testid="stTextArea"] textarea{
+            font-size:1.12rem!important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Séance 2 › Protoxyde d’azote</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">💨 Exercice 11 — Protoxyde d’azote</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        """
+        <div class="ex11-context">
+          Le <strong>protoxyde d’azote</strong>, parfois appelé « gaz hilarant »,
+          est un gaz incolore utilisé notamment dans certains usages médicaux et
+          techniques. C’est également un gaz à effet de serre. Il contient de
+          l’<strong>azote</strong>.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    generation = int(st.session_state.get("ex11_generation", 0))
+
+    # Q1
+    st.markdown("### 1. Donne le symbole chimique de l’azote.")
+    st.text_input(
+        "Symbole de l’azote",
+        key=f"ex11_q1_{generation}",
+        placeholder="Symbole",
+        disabled=bool(st.session_state.get("ex11_q1_correct", False)),
+    )
+    st.button(
+        "Valider la question 1",
+        key="ex11_validate_q1",
+        use_container_width=True,
+        on_click=_ex11_validate_q1,
+        disabled=bool(st.session_state.get("ex11_q1_correct", False)),
+    )
+    _ex11_feedback(1)
+
+    # Q2
+    st.markdown("### 2. Donne la formule du diazote.")
+    st.text_input(
+        "Formule du diazote",
+        key=f"ex11_q2_{generation}",
+        placeholder="Formule",
+        disabled=bool(st.session_state.get("ex11_q2_correct", False)),
+    )
+    st.button(
+        "Valider la question 2",
+        key="ex11_validate_q2",
+        use_container_width=True,
+        on_click=_ex11_validate_q2,
+        disabled=bool(st.session_state.get("ex11_q2_correct", False)),
+    )
+    _ex11_feedback(2)
+
+    # Q3
+    st.markdown("### 3. Le diazote est-il un atome ou une molécule ?")
+    q3_state = render_ex11_q3(generation)
+    if isinstance(q3_state, dict):
+        st.session_state["ex11_q3_component_state"] = q3_state
+        st.session_state["ex11_q3_correct"] = bool(q3_state.get("complete"))
+
+        if q3_state.get("complete"):
+            if q3_state.get("correct_first_try"):
+                st.success("✅ Bonne réponse : le diazote est une molécule.")
+            else:
+                st.warning(
+                    "❌ Ton premier choix était faux. Le diazote est une molécule : "
+                    "il est constitué de deux atomes d’azote."
+                )
+
+    # Q4
+    st.markdown("### 4. Où peut-on trouver du diazote ?")
+    st.text_area(
+        "Ta réponse",
+        key=f"ex11_q4_{generation}",
+        height=90,
+        placeholder="Indique où le diazote est présent.",
+        disabled=bool(st.session_state.get("ex11_q4_correct", False)),
+    )
+    st.button(
+        "Valider la question 4",
+        key="ex11_validate_q4",
+        use_container_width=True,
+        on_click=_ex11_validate_q4,
+        disabled=bool(st.session_state.get("ex11_q4_correct", False)),
+    )
+    _ex11_feedback(4)
+
+    # Q5
+    st.markdown(
+        "### 5. Construis un modèle du dioxyde d’azote et donne sa formule."
+    )
+    st.caption(
+        "Pour cette première version, le modèle attendu doit aussi respecter "
+        "l’organisation des atomes et les liaisons représentées."
+    )
+    q5_state = render_ex11_builder(generation)
+    if isinstance(q5_state, dict):
+        st.session_state["ex11_q5_component_state"] = q5_state
+        st.session_state["ex11_q5_correct"] = bool(q5_state.get("success"))
+        if q5_state.get("success"):
+            st.success("✅ Modèle construit et formule correcte.")
+
+    # Q6
+    st.markdown(
+        "### 6. Le modèle ci-dessous représente le protoxyde d’azote. "
+        "Écris sa formule."
+    )
+    st.markdown(
+        """
+        <div class="ex11-rule">
+          <span><strong style="color:#2c8be6">●</strong> bleu = azote</span>
+          <span><strong style="color:#e53935">●</strong> rouge = oxygène</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(_ex11_n2o_model_html(), unsafe_allow_html=True)
+
+    st.text_input(
+        "Formule du protoxyde d’azote",
+        key=f"ex11_q6_{generation}",
+        placeholder="Formule",
+        disabled=bool(st.session_state.get("ex11_q6_correct", False)),
+    )
+    st.button(
+        "Valider la question 6",
+        key="ex11_validate_q6",
+        use_container_width=True,
+        on_click=_ex11_validate_q6,
+        disabled=bool(st.session_state.get("ex11_q6_correct", False)),
+    )
+    _ex11_feedback(6)
+
+    completed = sum(
+        [
+            int(bool(st.session_state.get("ex11_q1_correct", False))),
+            int(bool(st.session_state.get("ex11_q2_correct", False))),
+            int(bool(st.session_state.get("ex11_q3_correct", False))),
+            int(bool(st.session_state.get("ex11_q4_correct", False))),
+            int(bool(st.session_state.get("ex11_q5_correct", False))),
+            int(bool(st.session_state.get("ex11_q6_correct", False))),
+        ]
+    )
+
+    st.markdown("### Ton avancement")
+    st.progress(completed / 6)
+    st.write(f"**{completed} / 6 questions terminées**")
+
+    c_reset, _ = st.columns([1.3, 4.7])
+    with c_reset:
+        if st.button(
+            "↻ Recommencer",
+            key="restart_ex11",
+            use_container_width=True,
+        ):
+            _ex11_restart()
+            st.rerun()
+
+    if completed == 6:
+        q3_final = st.session_state.get("ex11_q3_component_state") or {}
+        q5_final = st.session_state.get("ex11_q5_component_state") or {}
+
+        total_errors = sum(
+            int(st.session_state.get(f"ex11_q{i}_errors", 0))
+            for i in (1, 2, 4, 6)
+        )
+        total_errors += int(q3_final.get("errors", 0) or 0)
+        total_errors += int(q5_final.get("errors", 0) or 0)
+
+        if total_errors == 0:
+            st.success("🎉 Exercice terminé sans erreur.")
+        else:
+            st.warning(
+                f"📊 Exercice terminé avec {total_errors} erreur(s) au cours du travail."
+            )
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex11_result_saved", False)
+        ):
+            score = round(100 * 6 / max(6, 6 + total_errors))
+            record_training_result(
+                student,
+                "exercise11_nitrous_oxide",
+                score,
+                6,
+                6,
+                errors=total_errors,
+            )
+            st.session_state["ex11_result_saved"] = True
+
+
+
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
         if (
@@ -14064,6 +15445,10 @@ elif page == "exercise8_element_symbols":
     page_exercise8_element_symbols()
 elif page == "exercise9_atom_or_molecule":
     page_exercise9_atom_or_molecule()
+elif page == "exercise10_ethanol":
+    page_exercise10_ethanol()
+elif page == "exercise11_nitrous_oxide":
+    page_exercise11_nitrous_oxide()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
