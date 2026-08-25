@@ -1,4 +1,7 @@
-# VERSION_UI_2026_08_25_EXERCISE3_TRUE_EMPTY_RESTART_V18n
+# VERSION_UI_2026_08_25_EXERCISE3_TRUE_EMPTY_RESTART_V18_FIXED
+import re
+import base64
+import json
 import random
 import textwrap
 import secrets
@@ -5044,6 +5047,7 @@ def _ex3_record_restart_if_needed():
     total = len(EXERCISE3_MODELS)
 
     generation = int(st.session_state.get("ex3_generation", 0))
+
     for model_key in EXERCISE3_MODELS:
         if str(st.session_state.get(f"ex3_answer_{generation}_{model_key}", "")).strip():
             touched += 1
@@ -5093,10 +5097,11 @@ def reset_exercise3_particle_models():
 def _ex3_start_new_attempt():
     _ex3_record_restart_if_needed()
 
-    # Nouvelle génération de widgets : cela garantit que les champs de saisie
-    # repartent réellement vides après « Recommencer ».
     current_generation = int(st.session_state.get("ex3_generation", 0))
     reset_exercise3_particle_models()
+
+    # Une nouvelle clé de widget est créée à chaque tentative :
+    # les champs de saisie repartent donc réellement vides.
     st.session_state["ex3_generation"] = current_generation + 1
 
     order = list(EXERCISE3_MODELS.keys())
@@ -5222,6 +5227,7 @@ def page_exercise3_particle_models():
                 st.warning(f"Image manquante : {path.name}")
 
             generation = int(st.session_state.get("ex3_generation", 0))
+
             st.text_input(
                 "Quel état de la matière est représenté ?",
                 key=f"ex3_answer_{generation}_{model_key}",
