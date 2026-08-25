@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_DRAGDROP_BOTTLE_V23
+# VERSION_UI_2026_08_25_EX4_DRAGDROP_HELPERS_RESTORED_V24
 import re
 import base64
 import json
@@ -6081,6 +6081,118 @@ EXERCISE4_PROPERTIES = [
         "explanation": "Dans un liquide et dans un gaz, les molécules sont mobiles.",
     },
 ]
+
+
+def _ex4_prop_state(index, state_name):
+    return st.session_state.get(f"ex4_prop_{index}_{state_name}", "idle")
+
+
+def _ex4_handle_prop_click(index, state_name, answers):
+    key = f"ex4_prop_{index}_{state_name}"
+    current = st.session_state.get(key, "idle")
+    st.session_state[key] = "selected" if current != "selected" else "idle"
+
+    st.session_state.pop(f"ex4_prop_feedback_{index}", None)
+    st.session_state.pop(f"ex4_prop_complete_{index}", None)
+
+
+def _ex4_validate_prop_row(index, answers):
+    mapping = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}
+
+    selected = {
+        human
+        for state_name, human in mapping.items()
+        if st.session_state.get(f"ex4_prop_{index}_{state_name}") == "selected"
+    }
+
+    if not selected:
+        st.session_state[f"ex4_prop_feedback_{index}"] = "empty"
+        return
+
+    if selected == set(answers):
+        st.session_state[f"ex4_prop_complete_{index}"] = True
+        st.session_state[f"ex4_prop_feedback_{index}"] = "correct"
+    else:
+        st.session_state[f"ex4_prop_complete_{index}"] = False
+        err_key = f"ex4_prop_errors_{index}"
+        st.session_state[err_key] = int(st.session_state.get(err_key, 0)) + 1
+        st.session_state[f"ex4_prop_feedback_{index}"] = "wrong"
+
+
+def _ex4_render_prop_button(index, state_name, answers):
+    state = _ex4_prop_state(index, state_name)
+    human = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}[state_name]
+    selected = state == "selected"
+
+    st.button(
+        f"✓ {human}" if selected else human,
+        key=f"ex4_prop_btn_{index}_{state_name}",
+        use_container_width=True,
+        type="primary" if selected else "secondary",
+        on_click=_ex4_handle_prop_click,
+        args=(index, state_name, answers),
+    )
+    st.markdown(
+        f'<div class="{"ex4-choice-selected" if selected else "ex4-choice-idle"}"></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _normalize_oxygen_zone(value):
+    value = str(value or "").strip().lower()
+    value = (
+        value.replace("é", "e")
+        .replace("è", "e")
+        .replace("ê", "e")
+        .replace("ë", "e")
+        .replace("à", "a")
+        .replace("â", "a")
+        .replace("ä", "a")
+        .replace("î", "i")
+        .replace("ï", "i")
+        .replace("ô", "o")
+        .replace("ö", "o")
+        .replace("ù", "u")
+        .replace("û", "u")
+        .replace("ü", "u")
+        .replace("ç", "c")
+        .replace("’", "'")
+    )
+    value = " ".join(value.split())
+
+    aliases = {
+        "dioxygene gazeux": "gaz",
+        "dioxygene gaz": "gaz",
+        "gaz": "gaz",
+        "gazeux": "gaz",
+        "etat gazeux": "gaz",
+        "etat gaz": "gaz",
+        "dioxygene liquide": "liquide",
+        "liquide": "liquide",
+        "etat liquide": "liquide",
+    }
+    return aliases.get(value, value)
+
+
+def _ex4_validate_zone(zone):
+    generation = int(st.session_state.get("ex4_generation", 0))
+    answer_key = f"ex4_zone_{generation}_{zone}"
+    given = _normalize_oxygen_zone(st.session_state.get(answer_key, ""))
+    expected = "gaz" if zone == "a" else "liquide"
+
+    if not given:
+        st.session_state[f"ex4_zone_empty_{zone}"] = True
+        return
+
+    st.session_state[f"ex4_zone_empty_{zone}"] = False
+
+    if given == expected:
+        st.session_state[f"ex4_zone_correct_{zone}"] = True
+    else:
+        st.session_state[f"ex4_zone_correct_{zone}"] = False
+        key = f"ex4_zone_errors_{zone}"
+        st.session_state[key] = int(st.session_state.get(key, 0)) + 1
+
 
 def _ex4_record_restart_if_needed():
     student = st.session_state.get("app_student")
