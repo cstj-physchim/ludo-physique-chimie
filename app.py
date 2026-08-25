@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE1_IMMEDIATE_CELL_FEEDBACK_V7
+# VERSION_UI_2026_08_25_EXERCISE1_PER_QUESTION_BUTTONS_V8
 import re
 import base64
 import json
@@ -4043,14 +4043,20 @@ def _ex1_handle_cell_click(index, state_name, correct_states):
 def _ex1_render_answer_button(index, state_name, correct_states):
     state = _ex1_cell_state(index, state_name)
 
+    state_label = {
+        "solid": "Solide",
+        "liquid": "Liquide",
+        "gas": "Gazeux",
+    }[state_name]
+
     if state == "idle":
-        label = "Cliquer"
+        label = state_label
         button_type = "secondary"
     elif state == "correct":
-        label = "Bonne réponse"
+        label = f"✓ {state_label}"
         button_type = "primary"
     else:
-        label = "Réponse fausse"
+        label = f"✕ {state_label}"
         button_type = "secondary"
 
     st.button(
@@ -4062,17 +4068,16 @@ def _ex1_render_answer_button(index, state_name, correct_states):
         args=(index, state_name, correct_states),
     )
 
-    # Ajout d'une classe ciblable via wrapper HTML voisin.
     state_class = {
         "idle": "ex1-choice-idle",
         "correct": "ex1-choice-correct",
         "wrong": "ex1-choice-wrong",
     }[state]
+
     st.markdown(
         f'<div class="{state_class}" data-ex1="{index}-{state_name}"></div>',
         unsafe_allow_html=True,
     )
-
 
 def page_exercise1_states_water():
     hero()
@@ -4093,101 +4098,94 @@ def page_exercise1_states_water():
             color: #324a68;
             margin: .4rem 0 1rem 0;
         }
-        .ex1-header-cell {
-            background: #eef3f9;
-            border: 1px solid #dbe4ef;
-            min-height: 54px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            color: #16335f;
-            font-size: 1rem;
-        }
-        .ex1-header-left {
-            justify-content: flex-start;
-            padding-left: 1rem;
-            border-top-left-radius: 14px;
-        }
-        .ex1-header-right {
-            border-top-right-radius: 14px;
-        }
-        .ex1-row-label {
-            min-height: 58px;
-            display: flex;
-            align-items: center;
-            padding: 0 1rem;
+
+        .ex1-question-card {
             background: #f1f3f6;
             border: 1px solid #dfe6ef;
-            color: #162b4d;
-            font-weight: 750;
-            font-size: .98rem;
-            box-sizing: border-box;
+            border-radius: 16px;
+            padding: .85rem 1rem .95rem 1rem;
+            margin-bottom: .75rem;
+            box-shadow: 0 3px 10px rgba(31, 55, 90, .04);
         }
+
+        .ex1-question-title {
+            font-weight: 800;
+            color: #162b4d;
+            font-size: 1.02rem;
+            margin-bottom: .55rem;
+        }
+
         .ex1-feedback-hint {
             background: #fff7e6;
             border: 1px solid #f4d69b;
             border-radius: 12px;
             padding: .65rem .8rem;
-            margin: .25rem 0 .7rem 0;
+            margin: .45rem 0 0 0;
             color: #73541c;
         }
+
         .ex1-feedback-correction {
             background: #fff1f1;
             border: 1px solid #f0c8c8;
             border-radius: 12px;
             padding: .65rem .8rem;
-            margin: .25rem 0 .7rem 0;
+            margin: .45rem 0 0 0;
             color: #7b2c2c;
         }
+
         .ex1-feedback-ok {
             background: #eefaf2;
             border: 1px solid #cdebd6;
             border-radius: 12px;
             padding: .6rem .8rem;
-            margin: .25rem 0 .7rem 0;
+            margin: .45rem 0 0 0;
             color: #24623a;
         }
 
-        /* Boutons de réponses : état blanc / vert / rouge */
+        /* Boutons des réponses */
         div[data-testid="stButton"] button {
-            min-height: 48px;
+            min-height: 46px;
             font-weight: 800;
+            border-radius: 12px;
         }
 
-        /* Boutons de choix au repos */
+        /* Choix au repos */
         div[data-testid="stButton"] button[kind="secondary"] {
             background: #ffffff;
             border: 2px solid #cfd8e6;
             color: #18345d;
         }
 
-        /* Les bons choix utilisent le primaire vert défini par l'application */
+        /* Bon choix */
         div[data-testid="stButton"] button[kind="primary"] {
             background: #2fb05b !important;
             border-color: #268f4b !important;
-            color: white !important;
+            color: #ffffff !important;
         }
 
-        /* On recolore en rouge le bouton qui précède immédiatement notre marqueur wrong */
+        /* Mauvais choix */
         div[data-testid="stButton"]:has(+ .ex1-choice-wrong) button {
             background: #e05656 !important;
             border-color: #bd3d3d !important;
-            color: white !important;
+            color: #ffffff !important;
         }
 
-        /* Le bouton blanc au repos */
+        /* Repos */
         div[data-testid="stButton"]:has(+ .ex1-choice-idle) button {
             background: #ffffff !important;
             border-color: #cfd8e6 !important;
             color: #18345d !important;
         }
 
-        /* Le bouton correct */
+        /* Correct */
         div[data-testid="stButton"]:has(+ .ex1-choice-correct) button {
             background: #2fb05b !important;
             border-color: #268f4b !important;
-            color: white !important;
+            color: #ffffff !important;
+        }
+
+        .ex1-reset-row {
+            margin-top: .75rem;
         }
         </style>
         """,
@@ -4208,46 +4206,38 @@ def page_exercise1_states_water():
     st.markdown(
         """
         <div class="ex1-instruction">
-            <strong>ℹ️ Consigne :</strong> Clique directement sur l’état ou les états physiques qui correspondent à chaque proposition.<br>
-            <span style="opacity:.82;">La correction apparaît immédiatement.</span>
+            <strong>ℹ️ Consigne :</strong> Pour chaque proposition, clique sur l’état ou les états physiques correspondants.<br>
+            <span style="opacity:.82;">La correction apparaît immédiatement. Certaines propositions peuvent avoir plusieurs bonnes réponses.</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    h1, h2, h3, h4 = st.columns([3.2, 1.2, 1.2, 1.2], gap="small")
-    with h1:
-        st.markdown('<div class="ex1-header-cell ex1-header-left">Proposition</div>', unsafe_allow_html=True)
-    with h2:
-        st.markdown('<div class="ex1-header-cell">❄️&nbsp;&nbsp;Solide</div>', unsafe_allow_html=True)
-    with h3:
-        st.markdown('<div class="ex1-header-cell">💧&nbsp;&nbsp;Liquide</div>', unsafe_allow_html=True)
-    with h4:
-        st.markdown('<div class="ex1-header-cell ex1-header-right">☁️&nbsp;&nbsp;Gazeux</div>', unsafe_allow_html=True)
-
     for index, item in enumerate(EXERCISE1_STATES_WATER):
-        c1, c2, c3, c4 = st.columns([3.2, 1.2, 1.2, 1.2], gap="small")
+        st.markdown(
+            f'<div class="ex1-question-card"><div class="ex1-question-title">{item["label"]}</div>',
+            unsafe_allow_html=True,
+        )
+
+        c1, c2, c3 = st.columns(3, gap="small")
 
         with c1:
-            st.markdown(
-                f'<div class="ex1-row-label">{item["label"]}</div>',
-                unsafe_allow_html=True,
-            )
+            _ex1_render_answer_button(index, "solid", item["answers"])
 
         with c2:
-            _ex1_render_answer_button(index, "solid", item["answers"])
-        with c3:
             _ex1_render_answer_button(index, "liquid", item["answers"])
-        with c4:
+
+        with c3:
             _ex1_render_answer_button(index, "gas", item["answers"])
 
-        # Feedback pédagogique immédiat
+        st.markdown("</div>", unsafe_allow_html=True)
+
         error_count = int(st.session_state.get(f"ex1_water_errors_{index}", 0))
         row_complete = bool(st.session_state.get(f"ex1_water_row_complete_{index}", False))
 
         if row_complete:
             st.markdown(
-                f'<div class="ex1-feedback-ok">✅ <strong>{item["label"]}</strong> : ligne réussie.</div>',
+                f'<div class="ex1-feedback-ok">✅ <strong>{item["label"]}</strong> : bonne réponse.</div>',
                 unsafe_allow_html=True,
             )
         elif error_count == 1:
@@ -4265,7 +4255,7 @@ def page_exercise1_states_water():
                 unsafe_allow_html=True,
             )
 
-    st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div class='ex1-reset-row'></div>", unsafe_allow_html=True)
 
     reset_col, spacer = st.columns([1.4, 3.6])
     with reset_col:
@@ -4277,7 +4267,6 @@ def page_exercise1_states_water():
             reset_exercise1_states_water()
             st.rerun()
 
-    # Avancement global
     total = len(EXERCISE1_STATES_WATER)
     complete_rows = sum(
         1
@@ -4288,7 +4277,7 @@ def page_exercise1_states_water():
     if complete_rows:
         st.markdown("### Ton avancement")
         st.progress(complete_rows / total)
-        st.write(f"**{complete_rows} / {total} lignes réussies**")
+        st.write(f"**{complete_rows} / {total} propositions réussies**")
 
         if complete_rows == total:
             st.success("🎉 Bravo ! Toutes tes réponses sont correctes.")
@@ -4303,9 +4292,11 @@ def page_exercise1_states_water():
                     int(st.session_state.get(f"ex1_water_errors_{i}", 0))
                     for i in range(total)
                 )
+
                 mastery_score = round(
                     100 * total / max(total, total + total_errors)
                 )
+
                 record_training_result(
                     student,
                     "exercise1_states_water",
