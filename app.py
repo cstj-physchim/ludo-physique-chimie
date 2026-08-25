@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_LIQUID_CONTACT_DETECTION_V28
+# VERSION_UI_2026_08_25_EX4_PROGRESSIVE_FEEDBACK_THREE_RESETS_V29
 import re
 import base64
 import json
@@ -5662,7 +5662,9 @@ EX4_DRAGDROP_HTML = r"""
   </div>
 
   <div class="controls">
-    <button id="reset">↻ Remettre les molécules à côté</button>
+    <button id="resetA">↻ Remettre les molécules de A</button>
+    <button id="resetB">↻ Remettre les molécules de B</button>
+    <button id="resetAll">↻ Remettre A et B</button>
     <button class="primary" id="check">Vérifier mon modèle</button>
   </div>
 
@@ -6043,24 +6045,25 @@ EX4_DRAGDROP_HTML = r"""
       if(ok){
         setFeedback(
           "a","good",
-          "✅ Zone a : ton modèle est cohérent. Les molécules sont espacées et désordonnées."
+          "✅ Zone a : ton modèle est cohérent."
         );
       }else{
         state.errors.a++;
-        if(s.avgNearest<50){
+
+        if(state.errors.a===1){
           setFeedback(
             "a","hint",
-            "💡 Zone a : les molécules sont encore trop proches les unes des autres."
+            "💡 Zone a : ce modèle ne correspond pas encore à l’état attendu. Observe la disposition de tes molécules et réessaie."
           );
-        }else if(s.width<155 || s.height<155){
+        }else if(state.errors.a===2){
           setFeedback(
             "a","hint",
-            "💡 Zone a : répartis davantage les molécules dans tout le compartiment."
+            "💡 Zone a : repense aux deux critères du cours : les molécules sont-elles proches ou espacées ? ordonnées ou désordonnées ?"
           );
         }else{
           setFeedback(
             "a","hint",
-            "💡 Zone a : évite une disposition trop régulière ou alignée."
+            "💡 Zone a : relis les propriétés de l’état que tu as identifié dans la partie précédente, puis modifie ton modèle."
           );
         }
       }
@@ -6086,29 +6089,25 @@ EX4_DRAGDROP_HTML = r"""
       if(ok){
         setFeedback(
           "b","good",
-          "✅ Zone b : ton modèle est cohérent. Les molécules sont proches et désordonnées."
+          "✅ Zone b : ton modèle est cohérent."
         );
       }else{
         state.errors.b++;
-        if(s.closeFraction<0.78 || s.avgNearest>42){
+
+        if(state.errors.b===1){
           setFeedback(
             "b","hint",
-            "💡 Zone b : les molécules sont trop espacées. Dans un liquide, elles doivent être proches les unes des autres, presque au contact."
+            "💡 Zone b : ce modèle ne correspond pas encore à l’état attendu. Observe la disposition de tes molécules et réessaie."
           );
-        }else if(s.meanY<342){
+        }else if(state.errors.b===2){
           setFeedback(
             "b","hint",
-            "💡 Zone b : place davantage les molécules vers le fond du compartiment."
-          );
-        }else if(s.alignment>=0.50){
-          setFeedback(
-            "b","hint",
-            "💡 Zone b : les molécules sont trop régulièrement rangées."
+            "💡 Zone b : repense aux deux critères du cours : les molécules sont-elles proches ou espacées ? ordonnées ou désordonnées ?"
           );
         }else{
           setFeedback(
             "b","hint",
-            "💡 Zone b : garde-les proches tout en conservant une disposition désordonnée."
+            "💡 Zone b : relis les propriétés de l’état que tu as identifié dans la partie précédente, puis modifie ton modèle."
           );
         }
       }
@@ -6119,11 +6118,37 @@ EX4_DRAGDROP_HTML = r"""
     setTimeout(setHeight,40);
   }
 
+  function resetZone(group){
+    state[group]=Array(N).fill(null);
+    state.success[group]=false;
+
+    for(let i=0;i<N;i++){
+      renderOne(group,i);
+    }
+
+    setFeedback(
+      group,
+      "neutral",
+      `Zone ${group} : modèle remis à zéro.`
+    );
+
+    saveLocal();
+    sendValue();
+  }
+
   function resetAll(){
-    state=freshState();
-    try{sessionStorage.removeItem(storageKey())}catch(e){}
+    // On remet les positions à zéro mais on conserve le nombre
+    // d'erreurs de cette tentative.
+    state.a=Array(N).fill(null);
+    state.b=Array(N).fill(null);
+    state.success.a=false;
+    state.success.b=false;
+
     renderAll();
-    renderFeedbackFromState();
+    setFeedback("a","neutral","Zone a : modèle remis à zéro.");
+    setFeedback("b","neutral","Zone b : modèle remis à zéro.");
+
+    saveLocal();
     sendValue();
   }
 
@@ -6145,7 +6170,9 @@ EX4_DRAGDROP_HTML = r"""
     }
   }
 
-  document.getElementById("reset").addEventListener("click",resetAll);
+  document.getElementById("resetA").addEventListener("click",()=>resetZone("a"));
+  document.getElementById("resetB").addEventListener("click",()=>resetZone("b"));
+  document.getElementById("resetAll").addEventListener("click",resetAll);
   document.getElementById("check").addEventListener("click",validate);
 
   window.addEventListener("message",(event)=>{
