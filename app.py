@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE5_SEAWATER_MIXTURE_V32
+# VERSION_UI_2026_08_25_EXERCISE5_DIAGRAM_AND_FEEDBACK_V33
 import re
 import base64
 import json
@@ -6816,7 +6816,9 @@ def _ex5_q1_justification_ok(value):
 
     strong_phrases = [
         "eau et sel",
-        "eau + sel",
+        "eau et du sel",
+        "eau avec du sel",
+        "eau avec le sel",
         "plusieurs substances",
         "plusieurs constituants",
         "plusieurs especes",
@@ -6829,11 +6831,11 @@ def _ex5_q1_justification_ok(value):
     if any(p in v for p in strong_phrases):
         return True
 
-    words = set(v.split())
-    return (
-        ("sel" in words or "sels" in words)
-        and ("eau" in words or "substance" in words or "constituants" in words)
-    )
+    # Accepte aussi les formulations naturelles du type :
+    # "il y a de l'eau et du sel", "l'eau contient du sel", etc.
+    has_water = "eau" in v
+    has_salt = "sel" in v or "sels" in v
+    return has_water and has_salt
 
 
 def _ex5_q3_justification_ok(value):
@@ -6858,6 +6860,11 @@ def _ex5_q3_justification_ok(value):
 
     # Formulations du type « il y a du vert et de l'orange »
     return ("vert" in v and "orange" in v)
+
+
+def _ex5_clear_question_feedback(question):
+    """Masque l'ancien retour dès que l'élève modifie sa réponse."""
+    st.session_state.pop(f"ex5_q{question}_feedback", None)
 
 
 def _ex5_validate_q1():
@@ -7126,10 +7133,11 @@ def page_exercise5_seawater_mixture():
         .ex5-ines {background:#8242b3;}
         .ex5-feedback {
             border-radius:12px;
-            padding:.72rem .88rem;
-            margin:.45rem 0 .8rem 0;
-            font-weight:650;
+            padding:.82rem 1rem;
+            margin:.5rem 0 .9rem 0;
+            font-weight:700;
             line-height:1.45;
+            font-size:1rem;
         }
         .ex5-ok {
             background:#eefaf2;
@@ -7176,24 +7184,30 @@ def page_exercise5_seawater_mixture():
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        """
-        <div class="ex5-names">
-            <div class="ex5-name ex5-lucas">Lucas</div>
-            <div class="ex5-name ex5-ines">Inès</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     image_path = Path(EXERCISE5_SEAWATER_IMAGE)
-    if image_path.exists():
-        st.image(str(image_path), use_container_width=True)
-    else:
-        st.warning(
-            "Image manquante : ajoute « schéma melange eau de mer.png » dans "
-            "assets/chapitre_1/exercice 5/."
+
+    # Schéma volontairement limité en largeur : il doit être lisible sans
+    # occuper tout l'écran. Les prénoms restent alignés avec les deux béchers.
+    image_left, image_center, image_right = st.columns([1.2, 4.6, 1.2])
+
+    with image_center:
+        st.markdown(
+            """
+            <div class="ex5-names">
+                <div class="ex5-name ex5-lucas">Lucas</div>
+                <div class="ex5-name ex5-ines">Inès</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
+
+        if image_path.exists():
+            st.image(str(image_path), use_container_width=True)
+        else:
+            st.warning(
+                "Image manquante : ajoute « schéma melange eau de mer.png » dans "
+                "assets/chapitre_1/exercice 5/."
+            )
 
     generation = int(st.session_state.get("ex5_generation", 0))
 
@@ -7206,6 +7220,8 @@ def page_exercise5_seawater_mixture():
         key=f"ex5_q1_answer_{generation}",
         placeholder="Écris : corps pur ou mélange",
         disabled=bool(st.session_state.get("ex5_q1_correct", False)),
+        on_change=_ex5_clear_question_feedback,
+        args=(1,),
     )
     st.text_area(
         "Ta justification",
@@ -7213,6 +7229,8 @@ def page_exercise5_seawater_mixture():
         placeholder="Explique en une phrase pourquoi.",
         height=90,
         disabled=bool(st.session_state.get("ex5_q1_correct", False)),
+        on_change=_ex5_clear_question_feedback,
+        args=(1,),
     )
     st.button(
         "Valider la question 1",
@@ -7238,6 +7256,8 @@ def page_exercise5_seawater_mixture():
             key=f"ex5_q2_lucas_{generation}",
             placeholder="Corps pur ou mélange ?",
             disabled=bool(st.session_state.get("ex5_q2_correct", False)),
+            on_change=_ex5_clear_question_feedback,
+            args=(2,),
         )
     with c2:
         st.text_input(
@@ -7245,6 +7265,8 @@ def page_exercise5_seawater_mixture():
             key=f"ex5_q2_ines_{generation}",
             placeholder="Corps pur ou mélange ?",
             disabled=bool(st.session_state.get("ex5_q2_correct", False)),
+            on_change=_ex5_clear_question_feedback,
+            args=(2,),
         )
 
     st.button(
@@ -7268,6 +7290,8 @@ def page_exercise5_seawater_mixture():
         key=f"ex5_q3_student_{generation}",
         placeholder="Lucas ou Inès",
         disabled=bool(st.session_state.get("ex5_q3_correct", False)),
+        on_change=_ex5_clear_question_feedback,
+        args=(3,),
     )
     st.text_area(
         "Ton explication",
@@ -7275,6 +7299,8 @@ def page_exercise5_seawater_mixture():
         placeholder="Explique ce que tu observes dans son modèle.",
         height=90,
         disabled=bool(st.session_state.get("ex5_q3_correct", False)),
+        on_change=_ex5_clear_question_feedback,
+        args=(3,),
     )
 
     st.button(
