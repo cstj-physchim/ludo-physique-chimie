@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE5_DIAGRAM_AND_FEEDBACK_V33
+# VERSION_UI_2026_08_25_EXERCISE5_Q3_REASONING_V34
 import re
 import base64
 import json
@@ -6839,10 +6839,18 @@ def _ex5_q1_justification_ok(value):
 
 
 def _ex5_q3_justification_ok(value):
-    """Accepte une justification montrant que le bon modèle contient plusieurs sortes de particules."""
+    """Accepte plusieurs raisonnements corrects pour justifier le choix d’Inès.
+
+    Deux types de justification sont admis :
+    1) l’élève s’appuie directement sur le modèle microscopique
+       (plusieurs sortes de particules) ;
+    2) l’élève relie ses réponses précédentes :
+       l’eau de mer est un mélange et le modèle d’Inès représente un mélange.
+    """
     v = _ex5_normalize(value)
 
-    phrases = [
+    # Raisonnement fondé directement sur l'observation des particules.
+    particle_phrases = [
         "deux sortes",
         "plusieurs sortes",
         "deux types",
@@ -6855,11 +6863,32 @@ def _ex5_q3_justification_ok(value):
         "vertes et orange",
         "vert et orange",
     ]
-    if any(p in v for p in phrases):
+    if any(p in v for p in particle_phrases):
         return True
 
-    # Formulations du type « il y a du vert et de l'orange »
-    return ("vert" in v and "orange" in v)
+    if "vert" in v and "orange" in v:
+        return True
+
+    # Raisonnement logique à partir des questions précédentes, par exemple :
+    # « L’eau de mer est un mélange et Inès a représenté un mélange. »
+    mentions_seawater = (
+        "eau de mer" in v
+        or ("eau" in v and "mer" in v)
+    )
+    mentions_mixture = "melange" in v
+    links_to_model = any(
+        term in v
+        for term in [
+            "ines",
+            "modele",
+            "represente",
+            "representation",
+            "elle",
+            "son modele",
+        ]
+    )
+
+    return mentions_seawater and mentions_mixture and links_to_model
 
 
 def _ex5_clear_question_feedback(question):
@@ -7076,8 +7105,8 @@ def _ex5_feedback_box(question):
     else:
         if errors == 1:
             msg = (
-                "💡 Compare le modèle de l’élève choisi avec ce que tu as établi "
-                "dans les deux questions précédentes."
+                "💡 Appuie-toi sur ce que tu as établi dans les deux questions précédentes "
+                "ou sur ce que tu observes dans le modèle choisi."
             )
         elif errors == 2:
             msg = (
