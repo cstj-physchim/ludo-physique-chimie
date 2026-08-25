@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_EX8_INTERACTIVE_TABLE_V52
+# VERSION_UI_2026_08_26_EX8_EX9_INTERACTIVE_V53
 import re
 import base64
 import json
@@ -10089,7 +10089,7 @@ body{
 }
 .header.help-head{justify-content:center}
 .cell{
-  min-height:60px;
+  min-height:72px;
   border-radius:12px;
   display:flex;
   align-items:center;
@@ -10132,9 +10132,12 @@ body{
 .answer:focus-within{
   box-shadow:0 0 0 3px rgba(59,130,246,.12);
 }
+.answer{
+  padding-bottom:18px;
+}
 .answer input{
   width:100%;
-  height:56px;
+  height:52px;
   border:0;
   outline:0;
   background:transparent;
@@ -10155,9 +10158,24 @@ body{
 }
 .answer.correct .status::after{content:"✓";color:#258343}
 .answer.wrong .status::after{content:"✕";color:#c34242}
+.correction{
+  position:absolute;
+  left:14px;
+  right:38px;
+  bottom:4px;
+  min-height:14px;
+  font-size:11px;
+  line-height:1.2;
+  font-weight:800;
+  color:#b23a3a;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.answer:not(.wrong) .correction{display:none}
 .table-btn{
   width:100%;
-  min-height:60px;
+  min-height:72px;
   border:1px solid #a9c8eb;
   border-radius:12px;
   background:#fff;
@@ -10184,73 +10202,13 @@ body{
   color:#24623a;
 }
 
-/* Fenêtre modale du tableau périodique */
-.modal{
-  position:fixed;
-  inset:0;
-  z-index:99999;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-  background:rgba(18,31,49,.72);
-}
-.modal.open{display:flex}
-.modal-card{
-  width:min(1180px,96vw);
-  height:min(860px,92vh);
-  background:#fff;
-  border-radius:16px;
-  overflow:hidden;
-  box-shadow:0 24px 80px rgba(0,0,0,.28);
-  display:flex;
-  flex-direction:column;
-}
-.modal-head{
-  min-height:54px;
-  padding:8px 12px 8px 17px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  border-bottom:1px solid #dbe5ef;
-  color:#17345f;
-  font-weight:850;
-}
-.close{
-  border:1px solid #cdd8e5;
-  background:#fff;
-  border-radius:9px;
-  padding:7px 11px;
-  cursor:pointer;
-  color:#17345f;
-  font-weight:800;
-}
-.viewer{flex:1;min-height:0;background:#f3f6fa}
-.viewer iframe{
-  display:block;
-  width:100%;
-  height:100%;
-  border:0;
-}
-.no-pdf{
-  height:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:24px;
-  text-align:center;
-  color:#7b4d22;
-  background:#fff8e8;
-  font-weight:700;
-}
-
 @media(max-width:700px){
   .grid{
     grid-template-columns:minmax(0,1fr) minmax(0,1fr) 70px;
     gap:6px;
   }
   .header{padding:0 9px;font-size:12px}
-  .cell,.table-btn{min-height:56px}
+  .cell,.table-btn{min-height:66px}
   .fixed{padding:7px 9px}
   .fixed-value,.answer input{font-size:15px}
   .fixed-label{font-size:9px}
@@ -10279,16 +10237,6 @@ body{
   <div class="progress" id="progress">0 réponse correcte</div>
 </div>
 
-<div class="modal" id="modal" aria-hidden="true">
-  <div class="modal-card">
-    <div class="modal-head">
-      <span>🧪 Tableau périodique des éléments</span>
-      <button class="close" id="closeModal">Fermer ✕</button>
-    </div>
-    <div class="viewer" id="viewer"></div>
-  </div>
-</div>
-
 <script>
 (function(){
   let initialized=false;
@@ -10307,15 +10255,17 @@ body{
   }
 
   function setHeight(){
+    const wrap=document.querySelector(".wrap");
+    const h=wrap ? Math.ceil(wrap.getBoundingClientRect().height)+12 : 700;
     window.parent.postMessage({
       isStreamlitMessage:true,
       type:"streamlit:setFrameHeight",
-      height:document.documentElement.scrollHeight+8
+      height:h
     },"*");
   }
 
   function storageKey(){
-    return "ludo_ex8_table_v2_"+storageId+"_"+String(generation);
+    return "ludo_ex8_table_v3_"+storageId+"_"+String(generation);
   }
 
   function fresh(){
@@ -10410,6 +10360,9 @@ body{
     const status=document.createElement("span");
     status.className="status";
 
+    const correction=document.createElement("div");
+    correction.className="correction";
+
     input.addEventListener("input",()=>{
       state.answers[index]=input.value;
       // Toute modification remet la case en bleu jusqu'à la prochaine validation.
@@ -10442,6 +10395,7 @@ body{
 
     box.appendChild(input);
     box.appendChild(status);
+    box.appendChild(correction);
     return box;
   }
 
@@ -10450,15 +10404,44 @@ body{
     button.className="table-btn";
     button.type="button";
     button.innerHTML="🧪 Tableau";
-    button.addEventListener("click",openModal);
+
+    button.addEventListener("click",()=>{
+      if(!pdfData){
+        alert("Le tableau périodique n’est pas encore disponible dans les assets.");
+        return;
+      }
+
+      try{
+        const binary=atob(pdfData);
+        const bytes=new Uint8Array(binary.length);
+        for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+
+        const blob=new Blob([bytes],{type:"application/pdf"});
+        const url=URL.createObjectURL(blob);
+        window.open(url,"_blank","noopener,noreferrer");
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+      }catch(e){
+        alert("Impossible d’ouvrir le tableau périodique.");
+      }
+    });
+
     return button;
   }
 
   function updateCell(index){
     const box=document.querySelector('.answer[data-index="'+index+'"]');
     if(!box)return;
+
     box.classList.remove("correct","wrong");
     if(state.statuses[index])box.classList.add(state.statuses[index]);
+
+    const correction=box.querySelector(".correction");
+    if(correction){
+      correction.textContent=
+        state.statuses[index]==="wrong"
+          ? "Correction : "+String(rows[index].answer||"")
+          : "";
+    }
   }
 
   function validateOne(index,countError){
@@ -10524,42 +10507,10 @@ body{
 
     rows.forEach((_,i)=>updateCell(i));
     updateProgress();
-    prepareViewer();
     setTimeout(setHeight,50);
   }
 
-  function prepareViewer(){
-    const viewer=document.getElementById("viewer");
-    if(pdfData){
-      viewer.innerHTML=
-        '<iframe title="Tableau périodique" '+
-        'src="data:application/pdf;base64,'+pdfData+
-        '#toolbar=1&navpanes=0&view=FitH"></iframe>';
-    }else{
-      viewer.innerHTML=
-        '<div class="no-pdf">Le fichier du tableau périodique n’est pas encore disponible dans les assets.</div>';
-    }
-  }
 
-  function openModal(){
-    const modal=document.getElementById("modal");
-    modal.classList.add("open");
-    modal.setAttribute("aria-hidden","false");
-  }
-
-  function closeModal(){
-    const modal=document.getElementById("modal");
-    modal.classList.remove("open");
-    modal.setAttribute("aria-hidden","true");
-  }
-
-  document.getElementById("closeModal").addEventListener("click",closeModal);
-  document.getElementById("modal").addEventListener("click",(event)=>{
-    if(event.target.id==="modal")closeModal();
-  });
-  document.addEventListener("keydown",(event)=>{
-    if(event.key==="Escape")closeModal();
-  });
 
   window.addEventListener("message",(event)=>{
     const d=event.data||{};
@@ -10587,8 +10538,7 @@ body{
       build();
       initialized=true;
     }else{
-      prepareViewer();
-      setHeight();
+        setHeight();
     }
   });
 
@@ -10601,21 +10551,21 @@ body{
 
 
 @st.cache_resource
-def _ex8_table_component_v2():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex8_table_component_v2"
+def _ex8_table_component_v3():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex8_table_component_v3"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(
         EX8_INTERACTIVE_TABLE_HTML,
         encoding="utf-8",
     )
     return components.declare_component(
-        "ex8_interactive_periodic_table_v2",
+        "ex8_interactive_periodic_table_v3",
         path=str(component_dir),
     )
 
 
 def render_ex8_interactive_table(generation):
-    component = _ex8_table_component_v2()
+    component = _ex8_table_component_v3()
 
     student = st.session_state.get("app_student") or {}
     storage_id = str(
@@ -10634,7 +10584,7 @@ def render_ex8_interactive_table(generation):
         storage_id=storage_id,
         rows=EXERCISE8_ROWS,
         pdf_data=pdf_data,
-        key=f"ex8_interactive_table_v2_{generation}",
+        key=f"ex8_interactive_table_v3_{generation}",
         default={
             "success": False,
             "correct_count": 0,
@@ -11122,6 +11072,374 @@ EXERCISE9_ITEMS = [
 ]
 
 
+
+EX9_INTERACTIVE_HTML = r"""
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:#17345f;
+  background:#fff;
+}
+.wrap{width:100%;padding:2px 0 8px}
+.help{
+  background:#f5f9ff;
+  border:1px solid #cfe0fb;
+  border-radius:13px;
+  padding:10px 13px;
+  margin-bottom:10px;
+  color:#4d6480;
+  font-size:13px;
+  line-height:1.45;
+}
+.row{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:8px;
+}
+.box{
+  min-height:58px;
+  border-radius:11px;
+  border:1px solid #cfdbe9;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-weight:800;
+  font-size:14px;
+  color:#17345f;
+}
+.formula{
+  background:#f8fafc;
+  font-size:20px;
+  font-weight:900;
+}
+.choice{
+  cursor:pointer;
+  transition:.15s ease;
+}
+.choice:hover:not(:disabled){
+  background:#eef6ff;
+  border-color:#7caee2;
+}
+.choice.correct{
+  background:#e9f8ee;
+  border-color:#62bb7a;
+  color:#24623a;
+}
+.choice.wrong{
+  background:#fff0f0;
+  border-color:#e37272;
+  color:#a93232;
+}
+.choice:disabled{cursor:default}
+.counter{
+  position:sticky;
+  bottom:0;
+  z-index:50;
+  margin-top:10px;
+  padding:11px 13px;
+  border-radius:12px;
+  background:#f7f9fc;
+  border:1px solid #dfe6ef;
+  font-weight:850;
+  display:flex;
+  justify-content:center;
+  gap:30px;
+  flex-wrap:wrap;
+}
+.counter.done{
+  background:#eaf8ef;
+  border-color:#b8e2c4;
+  color:#24623a;
+}
+@media(max-width:700px){
+  .row{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .box{min-height:54px;font-size:12px}
+  .formula{font-size:18px}
+  .counter{gap:14px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="help">
+    Pour chaque écriture, clique sur <strong>Atome</strong> ou <strong>Molécule</strong>.
+    La correction est immédiate : vert = correct, rouge = faux.
+  </div>
+  <div id="rows"></div>
+  <div class="counter" id="counter">
+    <span id="good">✅ Bonnes réponses : 0 / 0</span>
+    <span id="errors">❌ Erreurs : 0</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  let initialized=false;
+  let generation=0;
+  let storageId="prototype";
+  let items=[];
+  let state={solved:[],wrongClicks:[],errors:0};
+
+  function ready(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:componentReady",
+      apiVersion:1
+    },"*");
+  }
+
+  function setHeight(){
+    const wrap=document.querySelector(".wrap");
+    const h=wrap ? Math.ceil(wrap.getBoundingClientRect().height)+12 : 650;
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setFrameHeight",
+      height:h
+    },"*");
+  }
+
+  function storageKey(){
+    return "ludo_ex9_click_v1_"+storageId+"_"+String(generation);
+  }
+
+  function fresh(){
+    return{
+      solved:Array(items.length).fill(false),
+      wrongClicks:Array.from({length:items.length},()=>[]),
+      errors:0
+    };
+  }
+
+  function load(){
+    try{
+      const raw=sessionStorage.getItem(storageKey());
+      if(!raw)return fresh();
+      const p=JSON.parse(raw);
+      return{
+        solved:Array.from({length:items.length},(_,i)=>Boolean(p.solved?.[i])),
+        wrongClicks:Array.from(
+          {length:items.length},
+          (_,i)=>Array.isArray(p.wrongClicks?.[i])?p.wrongClicks[i]:[]
+        ),
+        errors:Number(p.errors||0)
+      };
+    }catch(e){return fresh()}
+  }
+
+  function save(){
+    try{sessionStorage.setItem(storageKey(),JSON.stringify(state))}catch(e){}
+  }
+
+  function send(){
+    const correct=state.solved.filter(Boolean).length;
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setComponentValue",
+      value:{
+        success:correct===items.length,
+        correct_count:correct,
+        total:items.length,
+        errors:state.errors,
+        solved:state.solved
+      }
+    },"*");
+  }
+
+  function choiceButton(index,label){
+    const b=document.createElement("button");
+    b.className="box choice";
+    b.type="button";
+    b.textContent=label;
+    b.dataset.index=String(index);
+    b.dataset.label=label;
+    b.addEventListener("click",()=>choose(index,label));
+    return b;
+  }
+
+  function formulaBox(formula){
+    const d=document.createElement("div");
+    d.className="box formula";
+    d.innerHTML=formula;
+    return d;
+  }
+
+  function choose(index,label){
+    if(state.solved[index])return;
+
+    const answer=items[index][1];
+    if(label===answer){
+      state.solved[index]=true;
+    }else{
+      if(!state.wrongClicks[index].includes(label)){
+        state.wrongClicks[index].push(label);
+        state.errors+=1;
+      }
+    }
+
+    save();
+    renderGroup(index);
+    updateCounter();
+    send();
+  }
+
+  function groupButtons(index){
+    return [
+      ...document.querySelectorAll(
+        '.choice[data-index="'+index+'"]'
+      )
+    ];
+  }
+
+  function renderGroup(index){
+    const answer=items[index][1];
+    const solved=state.solved[index];
+
+    groupButtons(index).forEach(btn=>{
+      const label=btn.dataset.label;
+      btn.classList.remove("correct","wrong");
+
+      if(solved && label===answer){
+        btn.classList.add("correct");
+      }else if(state.wrongClicks[index].includes(label)){
+        btn.classList.add("wrong");
+      }
+
+      btn.disabled=solved;
+    });
+  }
+
+  function updateCounter(){
+    const correct=state.solved.filter(Boolean).length;
+    document.getElementById("good").textContent=
+      "✅ Bonnes réponses : "+correct+" / "+items.length;
+    document.getElementById("errors").textContent=
+      "❌ Erreurs : "+state.errors;
+
+    const counter=document.getElementById("counter");
+    counter.classList.toggle("done",correct===items.length && items.length>0);
+  }
+
+  function build(){
+    const host=document.getElementById("rows");
+    host.innerHTML="";
+
+    for(let i=0;i<items.length;i+=2){
+      const row=document.createElement("div");
+      row.className="row";
+
+      const first=items[i];
+      row.appendChild(formulaBox(first[0]));
+      row.appendChild(choiceButton(i,"Atome"));
+      row.appendChild(choiceButton(i,"Molécule"));
+
+      if(i+1<items.length){
+        const second=items[i+1];
+        row.appendChild(formulaBox(second[0]));
+        row.appendChild(choiceButton(i+1,"Atome"));
+        row.appendChild(choiceButton(i+1,"Molécule"));
+      }else{
+        for(let k=0;k<3;k++){
+          const empty=document.createElement("div");
+          empty.className="box";
+          empty.style.visibility="hidden";
+          row.appendChild(empty);
+        }
+      }
+
+      host.appendChild(row);
+    }
+
+    items.forEach((_,i)=>renderGroup(i));
+    updateCounter();
+    setTimeout(setHeight,40);
+  }
+
+  window.addEventListener("message",(event)=>{
+    const d=event.data||{};
+    if(d.type!=="streamlit:render")return;
+
+    const args=d.args||{};
+    const ng=Number(args.generation||0);
+    const ns=String(args.storage_id||"prototype");
+    const nextItems=Array.isArray(args.items)?args.items:[];
+
+    const changed=
+      !initialized ||
+      ng!==generation ||
+      ns!==storageId ||
+      JSON.stringify(nextItems)!==JSON.stringify(items);
+
+    generation=ng;
+    storageId=ns;
+    items=nextItems;
+
+    if(changed){
+      state=load();
+      build();
+      initialized=true;
+    }else{
+      setHeight();
+    }
+  });
+
+  ready();
+})();
+</script>
+</body>
+</html>
+"""
+
+
+@st.cache_resource
+def _ex9_component_v1():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex9_click_component_v1"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "index.html").write_text(
+        EX9_INTERACTIVE_HTML,
+        encoding="utf-8",
+    )
+    return components.declare_component(
+        "ex9_atom_molecule_click_v1",
+        path=str(component_dir),
+    )
+
+
+def render_ex9_interactive(generation):
+    component = _ex9_component_v1()
+
+    student = st.session_state.get("app_student") or {}
+    storage_id = str(
+        student.get("id")
+        or st.session_state.get("teacher_id")
+        or "prototype"
+    )
+
+    items = _ex9_order(generation)
+
+    return component(
+        generation=int(generation),
+        storage_id=storage_id,
+        items=items,
+        key=f"ex9_atom_molecule_click_v1_{generation}",
+        default={
+            "success": False,
+            "correct_count": 0,
+            "total": len(items),
+            "errors": 0,
+            "solved": [],
+        },
+    )
+
 def _ex9_order(generation):
     items = list(EXERCISE9_ITEMS)
     rng = random.Random(9107 + int(generation))
@@ -11224,9 +11542,10 @@ def _ex9_record_restart_if_needed():
         return
 
     generation = int(st.session_state.get("ex9_generation", 0))
-    touched = any(
-        st.session_state.get(f"ex9_answer_{i}_{generation}")
-        for i in range(len(EXERCISE9_ITEMS))
+    ex9_state = st.session_state.get("ex9_component_state") or {}
+    touched = bool(
+        ex9_state.get("correct_count")
+        or ex9_state.get("errors")
     )
     if not touched:
         return
@@ -11286,24 +11605,6 @@ def page_exercise9_atom_or_molecule():
         return
 
     st.markdown(
-        """
-        <style>
-        .ex9-formula{
-            border:1px solid #dbe5ef;border-radius:14px;background:#fff;
-            padding:.65rem .8rem;text-align:center;font-size:1.55rem;
-            font-weight:850;color:#173b70;margin:.35rem 0 .15rem;
-        }
-        .ex9-note{
-            background:#f5f9ff;border:1px solid #cfe0fb;border-radius:14px;
-            padding:.9rem 1rem;margin:.7rem 0 1rem;font-size:1.06rem;
-            line-height:1.5;color:#314b69;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
         '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
         'Chapitre 1 › Séance 2 › Atome ou molécule</div>',
         unsafe_allow_html=True,
@@ -11313,55 +11614,26 @@ def page_exercise9_atom_or_molecule():
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<div class="ex9-note"><strong>Consigne :</strong> pour chaque écriture, '
-        'indique s’il s’agit d’un <strong>atome</strong> ou d’une '
-        '<strong>molécule</strong>. Valide seulement lorsque tu as tout classé.</div>',
+        """
+        <div style="
+            background:#f5f9ff;border:1px solid #cfe0fb;border-radius:14px;
+            padding:.9rem 1rem;margin:.7rem 0 1rem;font-size:1.06rem;
+            line-height:1.5;color:#314b69;">
+          <strong>Consigne :</strong> pour chaque écriture, indique s’il s’agit
+          d’un <strong>atome</strong> ou d’une <strong>molécule</strong>.
+          La correction est immédiate.
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
     generation = int(st.session_state.get("ex9_generation", 0))
-    items = _ex9_order(generation)
+    state = render_ex9_interactive(generation)
 
-    for start_i in range(0, len(items), 2):
-        cols = st.columns(2, gap="large")
-        for offset, col in enumerate(cols):
-            i = start_i + offset
-            if i >= len(items):
-                continue
-
-            formula, _ = items[i]
-
-            with col:
-                st.markdown(
-                    f'<div class="ex9-formula">{formula}</div>',
-                    unsafe_allow_html=True,
-                )
-                st.radio(
-                    f"Classement de {formula}",
-                    ["Atome", "Molécule"],
-                    index=None,
-                    horizontal=True,
-                    key=f"ex9_answer_{i}_{generation}",
-                    label_visibility="collapsed",
-                    disabled=bool(st.session_state.get("ex9_correct", False)),
-                )
-
-    st.button(
-        "Valider mes classements",
-        key="ex9_validate",
-        use_container_width=True,
-        type="primary",
-        on_click=_ex9_validate,
-        disabled=bool(st.session_state.get("ex9_correct", False)),
-    )
-
-    _ex9_feedback()
-
-    if st.session_state.get("ex9_correct", False):
-        st.info(
-            "🔎 À retenir : **CO** contient deux symboles, C et O : c’est une molécule. "
-            "**Co** est le symbole du cobalt : il représente ici un atome de cobalt."
-        )
+    if isinstance(state, dict):
+        st.session_state["ex9_component_state"] = state
+        st.session_state["ex9_correct"] = bool(state.get("success"))
+        st.session_state["ex9_errors"] = int(state.get("errors", 0) or 0)
 
     c_reset, _ = st.columns([1.3, 4.7])
     with c_reset:
@@ -11374,6 +11646,14 @@ def page_exercise9_atom_or_molecule():
             st.rerun()
 
     if st.session_state.get("ex9_correct", False):
+        st.success(
+            "🎉 Bravo ! Toutes les écritures ont été correctement classées."
+        )
+        st.info(
+            "🔎 À retenir : **CO** contient les symboles C et O : c’est une molécule. "
+            "**Co** est le symbole du cobalt : il représente ici un atome de cobalt."
+        )
+
         student = st.session_state.get("app_student")
         if (
             st.session_state.get("app_user_type") == "student"
@@ -11383,7 +11663,10 @@ def page_exercise9_atom_or_molecule():
             total_errors = int(st.session_state.get("ex9_errors", 0))
             score = round(
                 100 * len(EXERCISE9_ITEMS)
-                / max(len(EXERCISE9_ITEMS), len(EXERCISE9_ITEMS) + total_errors)
+                / max(
+                    len(EXERCISE9_ITEMS),
+                    len(EXERCISE9_ITEMS) + total_errors,
+                )
             )
             record_training_result(
                 student,
@@ -11394,6 +11677,7 @@ def page_exercise9_atom_or_molecule():
                 errors=total_errors,
             )
             st.session_state["ex9_result_saved"] = True
+
 
 
 def reset_states_matter_training():
