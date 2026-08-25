@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE6_NARROWER_BEAKER_V42
+# VERSION_UI_2026_08_25_EXERCISE6_NARROWER_12WATER_V43
 import re
 import base64
 import json
@@ -7763,7 +7763,7 @@ body{
   color:#6e7c90;
   margin:-3px 0 8px
 }
-.final-beaker-wrap{max-width:330px;margin:auto}
+.final-beaker-wrap{max-width:255px;margin:auto}
 .final-beaker{
   position:relative;
   height:310px;
@@ -7860,7 +7860,7 @@ button.primary{
 
     <div class="tray">
       <h4>État initial — eau</h4>
-      <p>10 pastilles bleues du modèle</p>
+      <p>12 pastilles bleues du modèle</p>
       <div class="pool" id="waterPool"></div>
     </div>
 
@@ -7890,14 +7890,14 @@ button.primary{
   </div>
 
   <div id="feedback" class="feedback neutral">
-    Place les 14 pastilles dans le récipient final, puis vérifie ton modèle.
+    Place les 16 pastilles dans le récipient final, puis vérifie ton modèle.
   </div>
 
 </div>
 
 <script>
 (function(){
-  const NW=10, NA=4;
+  const NW=12, NA=4;
   let generation=0, storageId="prototype", initialized=false, drag=null;
   let state=fresh();
 
@@ -7911,7 +7911,7 @@ button.primary{
   }
 
   function storageKey(){
-    return "ludo_ex6_symbolic_v5_"+storageId+"_"+String(generation);
+    return "ludo_ex6_symbolic_v6_"+storageId+"_"+String(generation);
   }
 
   function save(){
@@ -8178,7 +8178,7 @@ button.primary{
       meanY>=140;
 
     const mixed=
-      waterNearAlcohol>=0.60 &&
+      waterNearAlcohol>=0.55 &&
       alcoholNearWater>=0.75;
 
     if(compact&&mixed){
@@ -8224,7 +8224,7 @@ button.primary{
     }else{
       setFeedback(
         "neutral",
-        "Place les 14 pastilles dans le récipient final, puis vérifie ton modèle."
+        "Place les 16 pastilles dans le récipient final, puis vérifie ton modèle."
       );
     }
   }
@@ -8311,18 +8311,18 @@ button.primary{
 
 
 @st.cache_resource
-def _ex6_component_v5():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_symbolic_component_v5"
+def _ex6_component_v6():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_symbolic_component_v6"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX6_MIXTURE_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex6_water_alcohol_symbolic_v5",
+        "ex6_water_alcohol_symbolic_v6",
         path=str(component_dir),
     )
 
 
 def render_ex6_model(generation):
-    component = _ex6_component_v5()
+    component = _ex6_component_v6()
 
     student = st.session_state.get("app_student") or {}
     storage_id = str(
@@ -8334,7 +8334,7 @@ def render_ex6_model(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex6_symbolic_v5_{generation}",
+        key=f"ex6_symbolic_v6_{generation}",
         default={
             "success": False,
             "errors": 0,
