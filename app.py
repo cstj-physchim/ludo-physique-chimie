@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_EX8_LOCKED_RESULTS_SEARCH_V54
+# VERSION_UI_2026_08_26_EX9_FIRST_CHOICE_LOCKED_V55
 import re
 import base64
 import json
@@ -11235,8 +11235,10 @@ body{
 <body>
 <div class="wrap">
   <div class="help">
-    Pour chaque écriture, clique sur <strong>Atome</strong> ou <strong>Molécule</strong>.
-    La correction est immédiate : vert = correct, rouge = faux.
+    Pour chaque écriture, clique une seule fois sur <strong>Atome</strong> ou
+    <strong>Molécule</strong>. Le premier choix est définitif :
+    <strong>vert</strong> = bonne réponse ; si tu te trompes, ton choix reste
+    <strong>rouge</strong> et la bonne réponse apparaît en <strong>vert</strong>.
   </div>
   <div id="rows"></div>
   <div class="counter" id="counter">
@@ -11251,7 +11253,7 @@ body{
   let generation=0;
   let storageId="prototype";
   let items=[];
-  let state={solved:[],wrongClicks:[],errors:0};
+  let state={answered:[],correctFirstTry:[],selected:[],errors:0};
 
   function ready(){
     window.parent.postMessage({
@@ -11272,13 +11274,14 @@ body{
   }
 
   function storageKey(){
-    return "ludo_ex9_click_v1_"+storageId+"_"+String(generation);
+    return "ludo_ex9_click_v2_"+storageId+"_"+String(generation);
   }
 
   function fresh(){
     return{
-      solved:Array(items.length).fill(false),
-      wrongClicks:Array.from({length:items.length},()=>[]),
+      answered:Array(items.length).fill(false),
+      correctFirstTry:Array(items.length).fill(false),
+      selected:Array(items.length).fill(""),
       errors:0
     };
   }
@@ -11289,11 +11292,9 @@ body{
       if(!raw)return fresh();
       const p=JSON.parse(raw);
       return{
-        solved:Array.from({length:items.length},(_,i)=>Boolean(p.solved?.[i])),
-        wrongClicks:Array.from(
-          {length:items.length},
-          (_,i)=>Array.isArray(p.wrongClicks?.[i])?p.wrongClicks[i]:[]
-        ),
+        answered:Array.from({length:items.length},(_,i)=>Boolean(p.answered?.[i])),
+        correctFirstTry:Array.from({length:items.length},(_,i)=>Boolean(p.correctFirstTry?.[i])),
+        selected:Array.from({length:items.length},(_,i)=>String(p.selected?.[i]||"")),
         errors:Number(p.errors||0)
       };
     }catch(e){return fresh()}
@@ -11304,16 +11305,21 @@ body{
   }
 
   function send(){
-    const correct=state.solved.filter(Boolean).length;
+    const answered=state.answered.filter(Boolean).length;
+    const correct=state.correctFirstTry.filter(Boolean).length;
     window.parent.postMessage({
       isStreamlitMessage:true,
       type:"streamlit:setComponentValue",
       value:{
-        success:correct===items.length,
+        success:answered===items.length,
+        complete:answered===items.length,
+        answered_count:answered,
         correct_count:correct,
         total:items.length,
         errors:state.errors,
-        solved:state.solved
+        answered:state.answered,
+        correct_first_try:state.correctFirstTry,
+        selected:state.selected
       }
     },"*");
   }
@@ -11337,16 +11343,18 @@ body{
   }
 
   function choose(index,label){
-    if(state.solved[index])return;
+    // Un seul choix possible : le premier clic est définitif.
+    if(state.answered[index])return;
 
     const answer=items[index][1];
+    state.answered[index]=true;
+    state.selected[index]=label;
+
     if(label===answer){
-      state.solved[index]=true;
+      state.correctFirstTry[index]=true;
     }else{
-      if(!state.wrongClicks[index].includes(label)){
-        state.wrongClicks[index].push(label);
-        state.errors+=1;
-      }
+      state.correctFirstTry[index]=false;
+      state.errors+=1;
     }
 
     save();
@@ -11365,31 +11373,40 @@ body{
 
   function renderGroup(index){
     const answer=items[index][1];
-    const solved=state.solved[index];
+    const answered=state.answered[index];
+    const selected=state.selected[index];
 
     groupButtons(index).forEach(btn=>{
       const label=btn.dataset.label;
       btn.classList.remove("correct","wrong");
 
-      if(solved && label===answer){
-        btn.classList.add("correct");
-      }else if(state.wrongClicks[index].includes(label)){
-        btn.classList.add("wrong");
+      if(answered){
+        // Toujours montrer la bonne réponse en vert.
+        if(label===answer){
+          btn.classList.add("correct");
+        }
+
+        // Si le premier choix était faux, le montrer en rouge.
+        if(selected && selected!==answer && label===selected){
+          btn.classList.add("wrong");
+        }
       }
 
-      btn.disabled=solved;
+      btn.disabled=answered;
     });
   }
 
   function updateCounter(){
-    const correct=state.solved.filter(Boolean).length;
+    const answered=state.answered.filter(Boolean).length;
+    const correct=state.correctFirstTry.filter(Boolean).length;
+
     document.getElementById("good").textContent=
       "✅ Bonnes réponses : "+correct+" / "+items.length;
     document.getElementById("errors").textContent=
       "❌ Erreurs : "+state.errors;
 
     const counter=document.getElementById("counter");
-    counter.classList.toggle("done",correct===items.length && items.length>0);
+    counter.classList.toggle("done",answered===items.length && items.length>0);
   }
 
   function build(){
@@ -11464,21 +11481,21 @@ body{
 
 
 @st.cache_resource
-def _ex9_component_v1():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex9_click_component_v1"
+def _ex9_component_v2():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex9_click_component_v2"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(
         EX9_INTERACTIVE_HTML,
         encoding="utf-8",
     )
     return components.declare_component(
-        "ex9_atom_molecule_click_v1",
+        "ex9_atom_molecule_click_v2",
         path=str(component_dir),
     )
 
 
 def render_ex9_interactive(generation):
-    component = _ex9_component_v1()
+    component = _ex9_component_v2()
 
     student = st.session_state.get("app_student") or {}
     storage_id = str(
@@ -11493,13 +11510,17 @@ def render_ex9_interactive(generation):
         generation=int(generation),
         storage_id=storage_id,
         items=items,
-        key=f"ex9_atom_molecule_click_v1_{generation}",
+        key=f"ex9_atom_molecule_click_v2_{generation}",
         default={
             "success": False,
+            "complete": False,
+            "answered_count": 0,
             "correct_count": 0,
             "total": len(items),
             "errors": 0,
-            "solved": [],
+            "answered": [],
+            "correct_first_try": [],
+            "selected": [],
         },
     )
 
@@ -11695,7 +11716,7 @@ def page_exercise9_atom_or_molecule():
 
     if isinstance(state, dict):
         st.session_state["ex9_component_state"] = state
-        st.session_state["ex9_correct"] = bool(state.get("success"))
+        st.session_state["ex9_correct"] = bool(state.get("complete") or state.get("success"))
         st.session_state["ex9_errors"] = int(state.get("errors", 0) or 0)
 
     c_reset, _ = st.columns([1.3, 4.7])
@@ -11709,9 +11730,19 @@ def page_exercise9_atom_or_molecule():
             st.rerun()
 
     if st.session_state.get("ex9_correct", False):
-        st.success(
-            "🎉 Bravo ! Toutes les écritures ont été correctement classées."
-        )
+        ex9_state = st.session_state.get("ex9_component_state") or {}
+        correct_count = int(ex9_state.get("correct_count", 0) or 0)
+        total_count = int(ex9_state.get("total", len(EXERCISE9_ITEMS)) or len(EXERCISE9_ITEMS))
+        error_count = int(ex9_state.get("errors", 0) or 0)
+
+        if correct_count == total_count:
+            st.success(f"🎉 Bravo ! {correct_count} / {total_count} bonnes réponses, sans erreur.")
+        else:
+            st.warning(
+                f"📊 Exercice terminé : {correct_count} / {total_count} bonnes réponses "
+                f"et {error_count} erreur(s)."
+            )
+
         st.info(
             "🔎 À retenir : **CO** contient les symboles C et O : c’est une molécule. "
             "**Co** est le symbole du cobalt : il représente ici un atome de cobalt."
@@ -11723,20 +11754,21 @@ def page_exercise9_atom_or_molecule():
             and student
             and not st.session_state.get("ex9_result_saved", False)
         ):
-            total_errors = int(st.session_state.get("ex9_errors", 0))
-            score = round(
-                100 * len(EXERCISE9_ITEMS)
-                / max(
-                    len(EXERCISE9_ITEMS),
-                    len(EXERCISE9_ITEMS) + total_errors,
-                )
+            ex9_state_final = st.session_state.get("ex9_component_state") or {}
+            correct_count = int(ex9_state_final.get("correct_count", 0) or 0)
+            total_count = int(
+                ex9_state_final.get("total", len(EXERCISE9_ITEMS))
+                or len(EXERCISE9_ITEMS)
             )
+            total_errors = int(ex9_state_final.get("errors", 0) or 0)
+            score = round(100 * correct_count / max(1, total_count))
+
             record_training_result(
                 student,
                 "exercise9_atom_or_molecule",
                 score,
-                len(EXERCISE9_ITEMS),
-                len(EXERCISE9_ITEMS),
+                correct_count,
+                total_count,
                 errors=total_errors,
             )
             st.session_state["ex9_result_saved"] = True
