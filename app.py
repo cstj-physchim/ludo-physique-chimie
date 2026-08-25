@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_COMPONENT_CACHE_BUST_V30
+# VERSION_UI_2026_08_25_EX4_8_MOLECULES_PRECISE_DROP_V31
 import re
 import base64
 import json
@@ -5621,8 +5621,8 @@ EX4_DRAGDROP_HTML = r"""
 <div class="wrap">
   <div class="intro">
     <strong>Modélise le contenu de la bouteille.</strong>
-    Fais glisser les 9 molécules de la zone <strong>a</strong> dans la partie supérieure
-    et les 9 molécules de la zone <strong>b</strong> dans la partie inférieure.
+    Fais glisser les 8 molécules de la zone <strong>a</strong> dans la partie supérieure
+    et les 8 molécules de la zone <strong>b</strong> dans la partie inférieure.
     Une fois placées, tu peux reprendre chaque molécule et la déplacer librement
     dans son compartiment.
   </div>
@@ -5630,7 +5630,7 @@ EX4_DRAGDROP_HTML = r"""
   <div class="layout">
     <div class="tray">
       <h4>Molécules pour la zone a</h4>
-      <p>9 molécules à placer</p>
+      <p>8 molécules à placer</p>
       <div class="pool" id="poolA"></div>
     </div>
 
@@ -5656,12 +5656,12 @@ EX4_DRAGDROP_HTML = r"""
 
     <div class="tray">
       <h4>Molécules pour la zone b</h4>
-      <p>9 molécules à placer</p>
+      <p>8 molécules à placer</p>
       <div class="pool" id="poolB"></div>
     </div>
   </div>
 
-  <div style="text-align:center;color:#9aa7b8;font-size:10px;margin-top:4px;">module interactif v30</div>
+  <div style="text-align:center;color:#9aa7b8;font-size:10px;margin-top:4px;">module interactif v31</div>
   <div class="controls">
     <button id="resetA">↻ Remettre les molécules de A</button>
     <button id="resetB">↻ Remettre les molécules de B</button>
@@ -5677,7 +5677,7 @@ EX4_DRAGDROP_HTML = r"""
 
 <script>
 (function(){
-  const N = 9;
+  const N = 8;
   const DIVIDER_Y = 304;
 
   let generation = null;
@@ -5697,7 +5697,7 @@ EX4_DRAGDROP_HTML = r"""
   }
 
   function storageKey(){
-    return "ludo_ex4_dragdrop_v30_" + storageId + "_" + String(generation ?? 0);
+    return "ludo_ex4_dragdrop_v31_" + storageId + "_" + String(generation ?? 0);
   }
 
   function saveLocal(){
@@ -5890,6 +5890,7 @@ EX4_DRAGDROP_HTML = r"""
 
     drag.ghost.style.left=(e.clientX-drag.offsetX)+"px";
     drag.ghost.style.top=(e.clientY-drag.offsetY)+"px";
+    drag.ghost.style.transform="scale(1.08)";
 
     const body=document.getElementById("bottleBody");
     const br=body.getBoundingClientRect();
@@ -5934,21 +5935,44 @@ EX4_DRAGDROP_HTML = r"""
 
     if(inside){
       const w=32,h=32;
-      let x=e.clientX-br.left-(w/2);
-      let y=e.clientY-br.top-(h/2);
 
-      x=Math.max(5,Math.min(body.clientWidth-w-5,x));
+      // Use the exact final position of the visible ghost.
+      // This preserves the point where the pupil grabbed the molecule,
+      // so the real molecule appears exactly where the ghost was released.
+      const ghostRect=drag.ghost.getBoundingClientRect();
+      let x=ghostRect.left-br.left;
+      let y=ghostRect.top-br.top;
+
+      // Keep the molecule fully inside the bottle, with only a tiny margin.
+      x=Math.max(3,Math.min(body.clientWidth-w-3,x));
+
+      // A molecule is accepted only in its intended compartment.
+      // This avoids a large automatic jump across the divider.
+      const centreY=y+(h/2);
 
       if(drag.group==="a"){
-        y=Math.max(5,Math.min(DIVIDER_Y-h-5,y));
+        if(centreY>=DIVIDER_Y){
+          cleanupDrag();
+          drag=null;
+          return;
+        }
+        y=Math.max(3,Math.min(DIVIDER_Y-h-3,y));
       }else{
+        if(centreY<=DIVIDER_Y+4){
+          cleanupDrag();
+          drag=null;
+          return;
+        }
         y=Math.max(
-          DIVIDER_Y+9,
-          Math.min(body.clientHeight-h-5,y)
+          DIVIDER_Y+7,
+          Math.min(body.clientHeight-h-3,y)
         );
       }
 
-      state[drag.group][drag.index]={x:x,y:y};
+      state[drag.group][drag.index]={
+        x:Math.round(x*10)/10,
+        y:Math.round(y*10)/10
+      };
       state.success[drag.group]=false;
       renderOne(drag.group,drag.index);
       saveLocal();
@@ -6201,18 +6225,18 @@ EX4_DRAGDROP_HTML = r"""
 
 
 @st.cache_resource
-def _ex4_dragdrop_component_v30():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex4_dragdrop_component_v30"
+def _ex4_dragdrop_component_v31():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex4_dragdrop_component_v31"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX4_DRAGDROP_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex4_dragdrop_model_v30",
+        "ex4_dragdrop_model_v31",
         path=str(component_dir),
     )
 
 
 def render_ex4_dragdrop_model(generation):
-    component = _ex4_dragdrop_component_v30()
+    component = _ex4_dragdrop_component_v31()
 
     student = st.session_state.get("app_student") or {}
     storage_id = str(
@@ -6224,7 +6248,7 @@ def render_ex4_dragdrop_model(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex4_dragdrop_v30_{generation}",
+        key=f"ex4_dragdrop_v31_{generation}",
         default={
             "zone_a": False,
             "zone_b": False,
