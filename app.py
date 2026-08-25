@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_DRAGDROP_HELPERS_RESTORED_V24
+# VERSION_UI_2026_08_25_EX4_DRAGDROP_ROBUST_V25
 import re
 import base64
 import json
@@ -5536,6 +5536,8 @@ EX4_DRAGDROP_HTML = r"""
     cursor:grab;
     touch-action:none;
     user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
     z-index:10;
   }
   .mol.dragging{
@@ -5702,8 +5704,8 @@ EX4_DRAGDROP_HTML = r"""
 <div class="wrap">
   <div class="intro">
     <strong>Modélise le contenu de la bouteille.</strong>
-    Fais glisser les 9 molécules de la zone <strong>a</strong> et les 9 molécules de la zone <strong>b</strong>
-    directement dans le schéma. Tu peux ensuite les déplacer librement avant de vérifier ton modèle.
+    Fais glisser les 9 molécules de la zone <strong>a</strong> dans la partie supérieure et les 9 molécules de la zone <strong>b</strong>
+    dans la partie inférieure. Une fois déposées, tu peux les déplacer librement dans leur compartiment avant de vérifier ton modèle.
   </div>
 
   <div class="layout">
@@ -5815,61 +5817,103 @@ EX4_DRAGDROP_HTML = r"""
   }
 
   function startDrag(e){
+    e.preventDefault();
+
     const el=e.currentTarget;
+    const body=document.getElementById("body");
+    const bodyRect=body.getBoundingClientRect();
     const rect=el.getBoundingClientRect();
+
+    // If the molecule is still in the side pool, move it into the bottle
+    // immediately, while preserving its position under the pointer.
+    if(el.parentElement!==body){
+      body.appendChild(el);
+      el.classList.remove("pool-mol");
+
+      const initialX=e.clientX-bodyRect.left-(rect.width/2);
+      const initialY=e.clientY-bodyRect.top-(rect.height/2);
+      el.style.left=initialX+"px";
+      el.style.top=initialY+"px";
+    }
+
+    const currentRect=el.getBoundingClientRect();
     drag={
       el,
       group:el.dataset.group,
       index:Number(el.dataset.index),
-      offsetX:e.clientX-rect.left,
-      offsetY:e.clientY-rect.top
+      pointerId:e.pointerId,
+      offsetX:e.clientX-currentRect.left,
+      offsetY:e.clientY-currentRect.top
     };
+
     el.classList.add("dragging");
-    el.setPointerCapture(e.pointerId);
-    el.addEventListener("pointermove",moveDrag);
-    el.addEventListener("pointerup",endDrag,{once:true});
-    el.addEventListener("pointercancel",endDrag,{once:true});
+
+    // Listening on document is much more reliable inside a Streamlit iframe
+    // than keeping the move/up listeners only on the dragged element.
+    document.addEventListener("pointermove",moveDrag,{passive:false});
+    document.addEventListener("pointerup",endDrag,{passive:false});
+    document.addEventListener("pointercancel",endDrag,{passive:false});
   }
 
   function moveDrag(e){
-    if(!drag)return;
+    if(!drag || e.pointerId!==drag.pointerId)return;
+    e.preventDefault();
+
     const body=document.getElementById("body");
     const br=body.getBoundingClientRect();
-    const x=e.clientX-br.left-drag.offsetX;
-    const y=e.clientY-br.top-drag.offsetY;
 
-    if(drag.el.parentElement!==body){
-      body.appendChild(drag.el);
-      drag.el.classList.remove("pool-mol");
+    let x=e.clientX-br.left-drag.offsetX;
+    let y=e.clientY-br.top-drag.offsetY;
+
+    const maxX=body.clientWidth-drag.el.offsetWidth;
+    const maxY=body.clientHeight-drag.el.offsetHeight;
+
+    // Keep the molecule fully inside the bottle.
+    x=Math.max(3,Math.min(maxX-3,x));
+    y=Math.max(3,Math.min(maxY-3,y));
+
+    drag.el.style.left=x+"px";
+    drag.el.style.top=y+"px";
+
+    // Highlight the destination zone belonging to this molecule.
+    document.getElementById("zoneA").classList.toggle("active",drag.group==="a");
+    document.getElementById("zoneB").classList.toggle("active",drag.group==="b");
+  }
+
+  function endDrag(e){
+    if(!drag || e.pointerId!==drag.pointerId)return;
+    e.preventDefault();
+
+    const body=document.getElementById("body");
+    let x=parseFloat(drag.el.style.left || "0");
+    let y=parseFloat(drag.el.style.top || "0");
+
+    const maxX=body.clientWidth-drag.el.offsetWidth;
+
+    x=Math.max(3,Math.min(maxX-3,x));
+
+    // Molecules from pool a belong to the upper compartment.
+    // Molecules from pool b belong to the lower compartment.
+    // We still leave the pupil complete freedom inside the relevant zone.
+    if(drag.group==="a"){
+      const maxYA=304-drag.el.offsetHeight-4;
+      y=Math.max(4,Math.min(maxYA,y));
+    }else{
+      const minYB=312;
+      const maxYB=body.clientHeight-drag.el.offsetHeight-4;
+      y=Math.max(minYB,Math.min(maxYB,y));
     }
 
     drag.el.style.left=x+"px";
     drag.el.style.top=y+"px";
-
-    document.getElementById("zoneA").classList.toggle("active",y<304);
-    document.getElementById("zoneB").classList.toggle("active",y>=304);
-  }
-
-  function endDrag(e){
-    if(!drag)return;
-    const body=document.getElementById("body");
-    const br=body.getBoundingClientRect();
-    const er=drag.el.getBoundingClientRect();
-    let x=er.left-br.left;
-    let y=er.top-br.top;
-
-    const maxX=body.clientWidth-drag.el.offsetWidth;
-    const maxY=body.clientHeight-drag.el.offsetHeight;
-    x=Math.max(2,Math.min(maxX-2,x));
-    y=Math.max(2,Math.min(maxY-2,y));
-
-    drag.el.style.left=x+"px";
-    drag.el.style.top=y+"px";
     drag.el.classList.remove("dragging");
+
     document.getElementById("zoneA").classList.remove("active");
     document.getElementById("zoneB").classList.remove("active");
 
-    drag.el.removeEventListener("pointermove",moveDrag);
+    document.removeEventListener("pointermove",moveDrag);
+    document.removeEventListener("pointerup",endDrag);
+    document.removeEventListener("pointercancel",endDrag);
 
     readPositions();
     success[drag.group]=false;
@@ -6453,7 +6497,7 @@ def page_exercise4_oxygen_bottle():
                 if zone == "a":
                     st.info("💡 Observe la partie supérieure de la bouteille : quel état occupe tout l’espace disponible ?")
                 else:
-                    st.info("💡 Le document précise qu’on entend le bruit caractéristique d’un liquide lorsqu’on déplace la bouteille.")
+                    st.info("💡 Le document précise qu’on entend le bruit caractéristique lorsqu’on déplace la bouteille.")
             elif errors >= 2:
                 expected = "gazeux" if zone == "a" else "liquide"
                 st.error(f"❌ Zone {zone} : le dioxygène y est {expected}.")
