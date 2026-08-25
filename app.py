@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE4_OXYGEN_MODEL_PROTO_V20
+# VERSION_UI_2026_08_25_MULTIANSWER_VALIDATION_AND_EX4_PATH_V21
 import re
 import base64
 import json
@@ -4070,42 +4070,41 @@ def _ex1_cell_state(index, state_name):
 
 
 def _ex1_handle_cell_click(index, state_name, correct_states):
-    """Correction immédiate d'une cellule au clic.
-
-    États possibles :
-    - idle : blanc
-    - correct : vert
-    - wrong : rouge
-    """
+    """Sélection neutre : aucune correction n'est révélée avant validation."""
     key = f"ex1_water_cell_{index}_{state_name}"
-    clicked_label = {
+    current = st.session_state.get(key, "idle")
+    st.session_state[key] = "selected" if current != "selected" else "idle"
+
+    # Toute nouvelle modification invalide l'ancien feedback de la ligne.
+    st.session_state.pop(f"ex1_water_row_feedback_{index}", None)
+    st.session_state.pop(f"ex1_water_row_complete_{index}", None)
+
+
+def _ex1_validate_row(index, correct_states):
+    mapping = {
         "solid": "Solide",
         "liquid": "Liquide",
         "gas": "Gazeux",
-    }[state_name]
+    }
 
-    is_correct = clicked_label in correct_states
+    selected = {
+        human
+        for state_name, human in mapping.items()
+        if st.session_state.get(f"ex1_water_cell_{index}_{state_name}") == "selected"
+    }
 
-    if is_correct:
-        st.session_state[key] = "correct"
-        st.session_state[f"ex1_water_valid_{index}_{state_name}"] = True
+    if not selected:
+        st.session_state[f"ex1_water_row_feedback_{index}"] = "empty"
+        return
+
+    if selected == set(correct_states):
+        st.session_state[f"ex1_water_row_complete_{index}"] = True
+        st.session_state[f"ex1_water_row_feedback_{index}"] = "correct"
     else:
-        st.session_state[key] = "wrong"
+        st.session_state[f"ex1_water_row_complete_{index}"] = False
         err_key = f"ex1_water_errors_{index}"
         st.session_state[err_key] = int(st.session_state.get(err_key, 0)) + 1
-
-    # Une ligne est considérée comme réussie si toutes les bonnes cases ont été trouvées
-    # et qu'aucune mauvaise case n'est actuellement marquée comme juste.
-    required = {
-        "Solide": "solid",
-        "Liquide": "liquid",
-        "Gazeux": "gas",
-    }
-    all_good_found = all(
-        st.session_state.get(f"ex1_water_cell_{index}_{required[label]}") == "correct"
-        for label in correct_states
-    )
-    st.session_state[f"ex1_water_row_complete_{index}"] = all_good_found
+        st.session_state[f"ex1_water_row_feedback_{index}"] = "wrong"
 
 
 def _ex1_render_answer_button(index, state_name, correct_states):
@@ -4117,33 +4116,21 @@ def _ex1_render_answer_button(index, state_name, correct_states):
         "gas": "Gazeux",
     }[state_name]
 
-    if state == "idle":
-        label = state_label
-        button_type = "secondary"
-    elif state == "correct":
-        label = f"✓ {state_label}"
-        button_type = "primary"
-    else:
-        label = f"✕ {state_label}"
-        button_type = "secondary"
+    selected = state == "selected"
+    label = f"✓ {state_label}" if selected else state_label
 
     st.button(
         label,
         key=f"ex1_click_{index}_{state_name}",
         use_container_width=True,
-        type=button_type,
+        type="primary" if selected else "secondary",
         on_click=_ex1_handle_cell_click,
         args=(index, state_name, correct_states),
     )
 
-    state_class = {
-        "idle": "ex1-choice-idle",
-        "correct": "ex1-choice-correct",
-        "wrong": "ex1-choice-wrong",
-    }[state]
-
     st.markdown(
-        f'<div class="{state_class}" data-ex1="{index}-{state_name}"></div>',
+        f'<div class="{"ex1-choice-selected" if selected else "ex1-choice-idle"}" '
+        f'data-ex1="{index}-{state_name}"></div>',
         unsafe_allow_html=True,
     )
 
@@ -4319,21 +4306,15 @@ def page_exercise1_states_water():
             color: #ffffff !important;
         }
 
-        div[data-testid="stButton"]:has(+ .ex1-choice-wrong) button {
-            background: #e05656 !important;
-            border-color: #bd3d3d !important;
-            color: #ffffff !important;
-        }
-
         div[data-testid="stButton"]:has(+ .ex1-choice-idle) button {
             background: #ffffff !important;
             border-color: #cfd8e6 !important;
             color: #18345d !important;
         }
 
-        div[data-testid="stButton"]:has(+ .ex1-choice-correct) button {
-            background: #2fb05b !important;
-            border-color: #268f4b !important;
+        div[data-testid="stButton"]:has(+ .ex1-choice-selected) button {
+            background: #3478e5 !important;
+            border-color: #2764c2 !important;
             color: #ffffff !important;
         }
 
@@ -4382,8 +4363,8 @@ def page_exercise1_states_water():
 
     for index in shuffled_order:
         item = EXERCISE1_STATES_WATER[index]
-        # Proposition + 3 choix + feedback, sur UNE seule ligne.
-        c1, c2, c3, c4, c5 = st.columns([2.1, 1.2, 1.2, 1.2, 2.5], gap="small")
+        # Proposition + 3 choix + validation + feedback, sur UNE seule ligne.
+        c1, c2, c3, c4, c5, c6 = st.columns([2.0, 1.0, 1.0, 1.0, 1.0, 2.4], gap="small")
 
         with c1:
             st.markdown(
@@ -4400,14 +4381,29 @@ def page_exercise1_states_water():
         with c4:
             _ex1_render_answer_button(index, "gas", item["answers"])
 
+        with c5:
+            st.button(
+                "Valider",
+                key=f"ex1_validate_row_{index}",
+                use_container_width=True,
+                on_click=_ex1_validate_row,
+                args=(index, item["answers"]),
+            )
+
         error_count = int(st.session_state.get(f"ex1_water_errors_{index}", 0))
         row_complete = bool(st.session_state.get(f"ex1_water_row_complete_{index}", False))
+        row_feedback = st.session_state.get(f"ex1_water_row_feedback_{index}")
 
-        with c5:
+        with c6:
             if row_complete:
                 feedback_html = (
                     f'<div class="ex1-feedback-mini ex1-feedback-ok">'
                     f'✅ {item["label"]} : bonne réponse.</div>'
+                )
+            elif row_feedback == "empty":
+                feedback_html = (
+                    '<div class="ex1-feedback-mini ex1-feedback-hint">'
+                    'Choisis au moins une réponse.</div>'
                 )
             elif error_count == 1:
                 feedback_html = (
@@ -5452,7 +5448,7 @@ def page_exercise3_particle_models():
 # EXERCICE 4 — PROPRIÉTÉS ET BOUTEILLE DE DIOXYGÈNE
 # ============================================================
 
-EXERCISE4_OXYGEN_IMAGE = "assets/chapitre_1/exercice_4/bouteille d oxygene.png"
+EXERCISE4_OXYGEN_IMAGE = "assets/chapitre_1/exercice 4/bouteille d oxygene.png"
 
 EXERCISE4_PROPERTIES = [
     {
@@ -5499,56 +5495,54 @@ def _ex4_prop_state(index, state_name):
 
 
 def _ex4_handle_prop_click(index, state_name, answers):
-    mapping = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}
-    label = mapping[state_name]
     key = f"ex4_prop_{index}_{state_name}"
+    current = st.session_state.get(key, "idle")
+    st.session_state[key] = "selected" if current != "selected" else "idle"
 
-    if label in answers:
-        st.session_state[key] = "correct"
+    st.session_state.pop(f"ex4_prop_feedback_{index}", None)
+    st.session_state.pop(f"ex4_prop_complete_{index}", None)
+
+
+def _ex4_validate_prop_row(index, answers):
+    mapping = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}
+
+    selected = {
+        human
+        for state_name, human in mapping.items()
+        if st.session_state.get(f"ex4_prop_{index}_{state_name}") == "selected"
+    }
+
+    if not selected:
+        st.session_state[f"ex4_prop_feedback_{index}"] = "empty"
+        return
+
+    if selected == set(answers):
+        st.session_state[f"ex4_prop_complete_{index}"] = True
+        st.session_state[f"ex4_prop_feedback_{index}"] = "correct"
     else:
-        st.session_state[key] = "wrong"
+        st.session_state[f"ex4_prop_complete_{index}"] = False
         err_key = f"ex4_prop_errors_{index}"
         st.session_state[err_key] = int(st.session_state.get(err_key, 0)) + 1
-
-    good_states = [
-        s for s, human in mapping.items()
-        if human in answers
-    ]
-    complete = all(
-        st.session_state.get(f"ex4_prop_{index}_{s}") == "correct"
-        for s in good_states
-    )
-    st.session_state[f"ex4_prop_complete_{index}"] = complete
+        st.session_state[f"ex4_prop_feedback_{index}"] = "wrong"
 
 
 def _ex4_render_prop_button(index, state_name, answers):
     state = _ex4_prop_state(index, state_name)
     human = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}[state_name]
-
-    if state == "correct":
-        label = f"✓ {human}"
-        btype = "primary"
-    elif state == "wrong":
-        label = f"✕ {human}"
-        btype = "secondary"
-    else:
-        label = human
-        btype = "secondary"
+    selected = state == "selected"
 
     st.button(
-        label,
+        f"✓ {human}" if selected else human,
         key=f"ex4_prop_btn_{index}_{state_name}",
         use_container_width=True,
-        type=btype,
+        type="primary" if selected else "secondary",
         on_click=_ex4_handle_prop_click,
         args=(index, state_name, answers),
     )
-    css_class = {
-        "idle": "ex4-choice-idle",
-        "correct": "ex4-choice-correct",
-        "wrong": "ex4-choice-wrong",
-    }[state]
-    st.markdown(f'<div class="{css_class}"></div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="{"ex4-choice-selected" if selected else "ex4-choice-idle"}"></div>',
+        unsafe_allow_html=True,
+    )
 
 
 def _normalize_oxygen_zone(value):
@@ -5828,14 +5822,14 @@ def page_exercise4_oxygen_bottle():
         .ex4-hint {background:#fff7e6;border-color:#f4d69b;color:#73541c;}
         .ex4-bad {background:#fff1f1;border-color:#f0c8c8;color:#7b2c2c;}
 
-        div[data-testid="stButton"]:has(+ .ex4-choice-wrong) button {
-            background:#e05656 !important;
-            border-color:#bd3d3d !important;
-            color:white !important;
+        div[data-testid="stButton"]:has(+ .ex4-choice-idle) button {
+            background:#ffffff !important;
+            border-color:#cfd8e6 !important;
+            color:#18345d !important;
         }
-        div[data-testid="stButton"]:has(+ .ex4-choice-correct) button {
-            background:#2fb05b !important;
-            border-color:#268f4b !important;
+        div[data-testid="stButton"]:has(+ .ex4-choice-selected) button {
+            background:#3478e5 !important;
+            border-color:#2764c2 !important;
             color:white !important;
         }
 
@@ -5868,7 +5862,7 @@ def page_exercise4_oxygen_bottle():
     )
 
     for i, item in enumerate(EXERCISE4_PROPERTIES):
-        c1, c2, c3, c4, c5 = st.columns([2.9, 1, 1, 1, 2.5], gap="small")
+        c1, c2, c3, c4, c5, c6 = st.columns([2.7, .9, .9, .9, .9, 2.4], gap="small")
         with c1:
             st.markdown(f'<div class="ex4-row-label">{item["label"]}</div>', unsafe_allow_html=True)
         with c2:
@@ -5877,12 +5871,24 @@ def page_exercise4_oxygen_bottle():
             _ex4_render_prop_button(i, "liquid", item["answers"])
         with c4:
             _ex4_render_prop_button(i, "gas", item["answers"])
+        with c5:
+            st.button(
+                "Valider",
+                key=f"ex4_validate_prop_{i}",
+                use_container_width=True,
+                on_click=_ex4_validate_prop_row,
+                args=(i, item["answers"]),
+            )
 
         errors = int(st.session_state.get(f"ex4_prop_errors_{i}", 0))
         complete = bool(st.session_state.get(f"ex4_prop_complete_{i}", False))
-        with c5:
+        feedback_state = st.session_state.get(f"ex4_prop_feedback_{i}")
+
+        with c6:
             if complete:
                 fb = '<div class="ex4-feedback ex4-ok">✅ Bonne réponse.</div>'
+            elif feedback_state == "empty":
+                fb = '<div class="ex4-feedback ex4-hint">Choisis au moins une réponse.</div>'
             elif errors == 1:
                 fb = f'<div class="ex4-feedback ex4-hint">💡 {item["hint"]}</div>'
             elif errors >= 2:
@@ -5907,7 +5913,7 @@ def page_exercise4_oxygen_bottle():
     else:
         st.warning(
             "Image manquante : ajoute « bouteille d oxygene.png » dans "
-            "assets/chapitre_1/exercice_4/."
+            "assets/chapitre_1/exercice 4/."
         )
 
     generation = int(st.session_state.get("ex4_generation", 0))
