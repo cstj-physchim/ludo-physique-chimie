@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE6_SYMBOLIC_MODEL_V41
+# VERSION_UI_2026_08_25_EXERCISE6_NARROWER_BEAKER_V42
 import re
 import base64
 import json
@@ -7664,7 +7664,7 @@ body{
   background:#36bdf1;border-color:#147ba6
 }
 .dot.alcohol{
-  width:34px;height:34px;
+  width:44px;height:44px;
   background:#ff9a32;border-color:#c86a13
 }
 
@@ -7678,7 +7678,7 @@ body{
 
 .final-area{
   display:grid;
-  grid-template-columns:240px 1fr 240px;
+  grid-template-columns:250px 1fr 250px;
   gap:18px;
   align-items:start
 }
@@ -7722,7 +7722,7 @@ body{
   border:3px solid #147ba6
 }
 .particle.alcohol{
-  width:40px;height:40px;
+  width:54px;height:54px;
   background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);
   border:3px solid #c86a13
 }
@@ -7763,7 +7763,7 @@ body{
   color:#6e7c90;
   margin:-3px 0 8px
 }
-.final-beaker-wrap{max-width:430px;margin:auto}
+.final-beaker-wrap{max-width:330px;margin:auto}
 .final-beaker{
   position:relative;
   height:310px;
@@ -7860,7 +7860,7 @@ button.primary{
 
     <div class="tray">
       <h4>État initial — eau</h4>
-      <p>8 pastilles bleues du modèle</p>
+      <p>10 pastilles bleues du modèle</p>
       <div class="pool" id="waterPool"></div>
     </div>
 
@@ -7876,7 +7876,7 @@ button.primary{
 
     <div class="tray">
       <h4>État initial — alcool</h4>
-      <p>8 pastilles orange du modèle</p>
+      <p>4 pastilles orange du modèle</p>
       <div class="pool" id="alcoholPool"></div>
     </div>
 
@@ -7890,14 +7890,14 @@ button.primary{
   </div>
 
   <div id="feedback" class="feedback neutral">
-    Place les 16 pastilles dans le récipient final, puis vérifie ton modèle.
+    Place les 14 pastilles dans le récipient final, puis vérifie ton modèle.
   </div>
 
 </div>
 
 <script>
 (function(){
-  const NW=8, NA=8;
+  const NW=10, NA=4;
   let generation=0, storageId="prototype", initialized=false, drag=null;
   let state=fresh();
 
@@ -7911,7 +7911,7 @@ button.primary{
   }
 
   function storageKey(){
-    return "ludo_ex6_symbolic_v4_"+storageId+"_"+String(generation);
+    return "ludo_ex6_symbolic_v5_"+storageId+"_"+String(generation);
   }
 
   function save(){
@@ -8077,7 +8077,7 @@ button.primary{
   }
 
   function particleSize(type){
-    return type==="water" ? 28 : 40;
+    return type==="water" ? 28 : 54;
   }
 
   function drop(e){
@@ -8166,20 +8166,20 @@ button.primary{
     // Les deux espèces doivent être réellement mélangées :
     // une majorité de chaque espèce doit avoir un voisin de l'autre espèce.
     const waterNearAlcohol=
-      w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=66).length/NW;
+      w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=78).length/NW;
 
     const alcoholNearWater=
-      a.filter(p=>nearestDistance(p,"alcohol",w,"water")<=66).length/NA;
+      a.filter(p=>nearestDistance(p,"alcohol",w,"water")<=78).length/NA;
 
     // Le modèle représente un liquide : les molécules restent regroupées
     // dans une zone plutôt basse du récipient, sans exiger un niveau précis.
     const compact=
       occupiedHeight<=205 &&
-      meanY>=145;
+      meanY>=140;
 
     const mixed=
-      waterNearAlcohol>=0.70 &&
-      alcoholNearWater>=0.70;
+      waterNearAlcohol>=0.60 &&
+      alcoholNearWater>=0.75;
 
     if(compact&&mixed){
       state.success=true;
@@ -8224,7 +8224,7 @@ button.primary{
     }else{
       setFeedback(
         "neutral",
-        "Place les 16 pastilles dans le récipient final, puis vérifie ton modèle."
+        "Place les 14 pastilles dans le récipient final, puis vérifie ton modèle."
       );
     }
   }
@@ -8311,18 +8311,18 @@ button.primary{
 
 
 @st.cache_resource
-def _ex6_component_v4():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_symbolic_component_v4"
+def _ex6_component_v5():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_symbolic_component_v5"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX6_MIXTURE_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex6_water_alcohol_symbolic_v4",
+        "ex6_water_alcohol_symbolic_v5",
         path=str(component_dir),
     )
 
 
 def render_ex6_model(generation):
-    component = _ex6_component_v4()
+    component = _ex6_component_v5()
 
     student = st.session_state.get("app_student") or {}
     storage_id = str(
@@ -8334,7 +8334,7 @@ def render_ex6_model(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex6_symbolic_v4_{generation}",
+        key=f"ex6_symbolic_v5_{generation}",
         default={
             "success": False,
             "errors": 0,
