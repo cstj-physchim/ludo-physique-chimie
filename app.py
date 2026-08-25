@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE7_Q4_JUSTIFICATIONS_V49
+# VERSION_UI_2026_08_25_STUDENT_GLOBAL_NAVIGATION_V50
 import re
 import base64
 import json
@@ -829,6 +829,48 @@ def logout_app():
 
 
 def back_button(target="home", label="← Retour"):
+    """
+    Navigation contextuelle.
+
+    - Élève : Retour + Accueil + Déconnexion, toujours au même endroit.
+    - Professeur / autre contexte : conserve le simple bouton Retour.
+    """
+    if st.session_state.get("app_user_type") == "student":
+        current_page = str(st.session_state.get("page", "page"))
+
+        back_col, home_col, logout_col, spacer_col = st.columns(
+            [1.15, 1.15, 1.35, 6.35],
+            gap="small",
+        )
+
+        with back_col:
+            st.button(
+                label,
+                key=f"student_nav_back_{current_page}_{target}",
+                use_container_width=True,
+                on_click=set_page,
+                args=(target,),
+            )
+
+        with home_col:
+            st.button(
+                "🏠 Accueil",
+                key=f"student_nav_home_{current_page}",
+                use_container_width=True,
+                on_click=set_page,
+                args=("home",),
+            )
+
+        with logout_col:
+            st.button(
+                "Déconnexion",
+                key=f"student_nav_logout_{current_page}",
+                use_container_width=True,
+                on_click=logout_app,
+            )
+
+        return
+
     st.button(
         label,
         use_container_width=False,
