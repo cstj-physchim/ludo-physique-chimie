@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE3_PARTICLE_MODELS_V15
+# VERSION_UI_2026_08_25_EXERCISE3_ASSET_PATH_FIX_V16
 import re
 import base64
 import json
@@ -4959,23 +4959,23 @@ def page_exercise2_water_properties():
 
 EXERCISE3_MODELS = {
     "solid": {
-        "path": "assets/chapitre_1/exercice_3/bouteille eau solide.png",
+        "path": "assets/chapitre_1/exercice 3/bouteille eau solide.png",
         "answer": "solide",
         "alt": "Modèle particulaire d'un solide",
     },
     "liquid": {
-        "path": "assets/chapitre_1/exercice_3/bouteille eau liquide.png",
+        "path": "assets/chapitre_1/exercice 3/bouteille eau liquide.png",
         "answer": "liquide",
         "alt": "Modèle particulaire d'un liquide",
     },
     "gas": {
-        "path": "assets/chapitre_1/exercice_3/bouteille eau gazeuse.png",
+        "path": "assets/chapitre_1/exercice 3/bouteille eau gazeuse.png",
         "answer": "gaz",
         "alt": "Modèle particulaire d'un gaz",
     },
 }
 
-EXERCISE3_COURSE_HELP = "assets/chapitre_1/exercice_3/aide cours.png"
+EXERCISE3_COURSE_HELP = "assets/chapitre_1/exercice 3/aide cours.png"
 
 
 def _normalize_state_answer(value):
@@ -5282,7 +5282,7 @@ def page_exercise3_particle_models():
     if missing:
         st.info(
             "Les trois images doivent être placées dans "
-            "assets/chapitre_1/exercice_3/ avec les noms : "
+            "assets/chapitre_1/exercice 3/ avec les noms : "
             "bouteille eau solide.png, bouteille eau liquide.png et bouteille eau gazeuse.png."
         )
 
@@ -5300,7 +5300,7 @@ def page_exercise3_particle_models():
         else:
             st.warning(
                 "Image d’aide manquante : ajoute « aide cours.png » dans "
-                "assets/chapitre_1/exercice_3/."
+                "assets/chapitre_1/exercice 3/."
             )
 
     total = len(EXERCISE3_MODELS)
