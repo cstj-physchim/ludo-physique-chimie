@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_STUDENT_GLOBAL_NAVIGATION_V50
+# VERSION_UI_2026_08_25_SEANCE2_EX8_EX9_V51
 import re
 import base64
 import json
@@ -180,6 +180,20 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 17,
         "description": "Comprendre ce qu’est un alliage et distinguer insertion et substitution à l’échelle microscopique.",
+        "resource_ready": True,
+    },
+    "exercise8_element_symbols": {
+        "label": "Exercice 8 — Symboles des éléments",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 30,
+        "description": "Utiliser le tableau périodique pour associer noms et symboles des éléments chimiques.",
+        "resource_ready": True,
+    },
+    "exercise9_atom_or_molecule": {
+        "label": "Exercice 9 — Atome ou molécule ?",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 32,
+        "description": "Distinguer un symbole d’élément d’une formule moléculaire, notamment CO et Co.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -2087,6 +2101,8 @@ def tracked_exercise_ids():
         "exercise5_seawater_mixture",
         "exercise6_water_alcohol_volume",
         "exercise7_solid_mixtures_alloys",
+        "exercise8_element_symbols",
+        "exercise9_atom_or_molecule",
         "exercise_states_matter",
     ]
 
@@ -3972,8 +3988,12 @@ def page_exercise_topics():
 
     exercises = []
 
+    session1 = "Séance 1 — États de la matière et mélanges"
+    session2 = "Séance 2 — Atomes, molécules et éléments chimiques"
+
     if resource_is_available_for_current_user("exercise1_states_water"):
         exercises.append({
+            "session": session1,
             "icon": "💧",
             "title": "Exercice 1 — Identifier les états de l’eau",
             "description": "Associe chaque situation au bon état physique : solide, liquide ou gazeux.",
@@ -3984,6 +4004,7 @@ def page_exercise_topics():
 
     if resource_is_available_for_current_user("exercise2_water_properties"):
         exercises.append({
+            "session": session1,
             "icon": "🧊",
             "title": "Exercice 2 — Les particularités des états de l’eau",
             "description": "Observe les trois images A, B et C puis attribue la bonne lettre à chaque étiquette.",
@@ -3994,6 +4015,7 @@ def page_exercise_topics():
 
     if resource_is_available_for_current_user("exercise3_particle_models"):
         exercises.append({
+            "session": session1,
             "icon": "🔬",
             "title": "Exercice 3 — Comprendre la modélisation",
             "description": "Observe la disposition des molécules et écris l’état de la matière représenté.",
@@ -4004,6 +4026,7 @@ def page_exercise_topics():
 
     if resource_is_available_for_current_user("exercise4_oxygen_bottle"):
         exercises.append({
+            "session": session1,
             "icon": "🫧",
             "title": "Exercice 4 — Propriétés et bouteille de dioxygène",
             "description": "Relie propriétés moléculaires, zones de la bouteille et construction d’un modèle.",
@@ -4014,6 +4037,7 @@ def page_exercise_topics():
 
     if resource_is_available_for_current_user("exercise5_seawater_mixture"):
         exercises.append({
+            "session": session1,
             "icon": "🌊",
             "title": "Exercice 5 — Modéliser un mélange : l’eau de mer",
             "description": "Observe deux modèles microscopiques et distingue corps pur et mélange.",
@@ -4024,6 +4048,7 @@ def page_exercise_topics():
 
     if resource_is_available_for_current_user("exercise6_water_alcohol_volume"):
         exercises.append({
+            "session": session1,
             "icon": "🧪",
             "title": "Exercice 6 — Le mystère du volume perdu : eau + alcool",
             "description": "Explique un volume final inférieur à la somme des volumes initiaux et modélise le mélange à l’échelle microscopique.",
@@ -4034,6 +4059,7 @@ def page_exercise_topics():
 
     if resource_is_available_for_current_user("exercise7_solid_mixtures_alloys"):
         exercises.append({
+            "session": session1,
             "icon": "🔑",
             "title": "Exercice 7 — Les mélanges solides : les alliages",
             "description": "Découvre le laiton et l’acier puis distingue alliage d’insertion et alliage de substitution.",
@@ -4042,8 +4068,31 @@ def page_exercise_topics():
             "key": "start_ex7_solid_mixtures_alloys",
         })
 
+    if resource_is_available_for_current_user("exercise8_element_symbols"):
+        exercises.append({
+            "session": session2,
+            "icon": "🧩",
+            "title": "Exercice 8 — Symboles des éléments",
+            "description": "Utilise le tableau périodique pour associer noms et symboles, puis enquête sur le symbole W du tungstène.",
+            "color": "card-blue",
+            "page": "exercise8_element_symbols",
+            "key": "start_ex8_element_symbols",
+        })
+
+    if resource_is_available_for_current_user("exercise9_atom_or_molecule"):
+        exercises.append({
+            "session": session2,
+            "icon": "⚛️",
+            "title": "Exercice 9 — Atome ou molécule ?",
+            "description": "Classe différentes écritures chimiques et fais attention au piège CO / Co.",
+            "color": "card-cyan",
+            "page": "exercise9_atom_or_molecule",
+            "key": "start_ex9_atom_or_molecule",
+        })
+
     if states_matter_available_for_current_user():
         exercises.append({
+            "session": session1,
             "icon": "🧊",
             "title": "Entraînement — États de la matière",
             "description": "8 questions autocorrigées sur les solides, liquides, gaz et le modèle particulaire.",
@@ -4056,8 +4105,19 @@ def page_exercise_topics():
         st.info("Aucun exercice n'est encore ouvert pour ta classe.")
         return
 
+    current_session = None
+
     for exercise in exercises:
-        c1, c2 = st.columns([4.5, 1.5])
+        if exercise["session"] != current_session:
+            current_session = exercise["session"]
+            st.markdown(
+                f'<div style="margin:1.5rem 0 .7rem;font-size:1.35rem;'
+                f'font-weight:850;color:#173b70;">{current_session}</div>',
+                unsafe_allow_html=True,
+            )
+
+        c1, c_mid, c2 = st.columns([4.5, .35, 1.5])
+
         with c1:
             nav_card(
                 exercise["icon"],
@@ -4065,6 +4125,15 @@ def page_exercise_topics():
                 exercise["description"],
                 exercise["color"],
             )
+
+        with c_mid:
+            st.markdown(
+                '<div style="display:flex;height:100%;min-height:160px;'
+                'align-items:center;justify-content:center;font-size:2rem;'
+                'color:#7fa8d6;font-weight:900;">→</div>',
+                unsafe_allow_html=True,
+            )
+
         with c2:
             st.write("")
             st.write("")
@@ -4072,6 +4141,7 @@ def page_exercise_topics():
                 "Commencer →",
                 key=exercise["key"],
                 use_container_width=True,
+                type="primary",
                 on_click=set_page,
                 args=(exercise["page"],),
             )
@@ -9928,6 +9998,838 @@ def page_exercise7_solid_mixtures_alloys():
             st.session_state["ex7_result_saved"]=True
 
 
+
+# ============================================================
+# EXERCICE 8 — SYMBOLES DES ÉLÉMENTS
+# ============================================================
+
+EXERCISE8_PERIODIC_TABLE_CANDIDATES = [
+    Path("assets/chapitre_1/exercice_8/Tableau_periodique_des_elements.pdf"),
+    Path("assets/chapitre_1/exercice 8/Tableau_periodique_des_elements.pdf"),
+    Path("assets/chapitre_1/exercice_8/tableau_periodique.pdf"),
+]
+
+EXERCISE8_ROWS = [
+    {"prompt_type": "name", "prompt": "Carbone", "answer": "C"},
+    {"prompt_type": "name", "prompt": "Oxygène", "answer": "O"},
+    {"prompt_type": "symbol", "prompt": "H", "answer": "Hydrogène"},
+    {"prompt_type": "name", "prompt": "Néon", "answer": "Ne"},
+    {"prompt_type": "name", "prompt": "Cobalt", "answer": "Co"},
+    {"prompt_type": "symbol", "prompt": "N", "answer": "Azote"},
+    {"prompt_type": "symbol", "prompt": "Hg", "answer": "Mercure"},
+    {"prompt_type": "name", "prompt": "Argent", "answer": "Ag"},
+    {"prompt_type": "symbol", "prompt": "Au", "answer": "Or"},
+    {"prompt_type": "name", "prompt": "Tungstène", "answer": "W"},
+]
+
+
+def _ex8_norm(value):
+    value = str(value or "").strip().lower()
+    repl = {
+        "é": "e", "è": "e", "ê": "e", "ë": "e",
+        "à": "a", "â": "a", "ä": "a",
+        "î": "i", "ï": "i", "ô": "o", "ö": "o",
+        "ù": "u", "û": "u", "ü": "u", "ç": "c",
+        "’": "'", "œ": "oe",
+    }
+    for old, new in repl.items():
+        value = value.replace(old, new)
+    return " ".join(re.sub(r"[^a-z0-9' ]+", " ", value).split())
+
+
+def _ex8_find_periodic_table():
+    for candidate in EXERCISE8_PERIODIC_TABLE_CANDIDATES:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _ex8_render_periodic_table():
+    path = _ex8_find_periodic_table()
+
+    with st.expander("🧪 Consulter le tableau périodique", expanded=False):
+        if path is None:
+            st.warning(
+                "Tableau périodique manquant. Ajoute le fichier "
+                "« Tableau_periodique_des_elements.pdf » dans "
+                "assets/chapitre_1/exercice_8/."
+            )
+            return
+
+        pdf_bytes = path.read_bytes()
+        encoded = base64.b64encode(pdf_bytes).decode("ascii")
+
+        components.html(
+            f"""
+            <div style="border:1px solid #dbe5ef;border-radius:14px;overflow:hidden;">
+              <iframe
+                src="data:application/pdf;base64,{encoded}#toolbar=1&navpanes=0&view=FitH"
+                style="width:100%;height:720px;border:0;background:white;">
+              </iframe>
+            </div>
+            """,
+            height=740,
+            scrolling=False,
+        )
+
+        st.download_button(
+            "📄 Ouvrir / télécharger le tableau périodique",
+            data=pdf_bytes,
+            file_name="Tableau_periodique_des_elements.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+
+def _ex8_symbol_answer_ok(row, value):
+    if row["prompt_type"] == "name":
+        # Ici la casse du symbole est volontairement importante.
+        return str(value or "").strip() == row["answer"]
+    return _ex8_norm(value) == _ex8_norm(row["answer"])
+
+
+def _ex8_validate_q1():
+    generation = int(st.session_state.get("ex8_generation", 0))
+    wrong = []
+    missing = []
+
+    for i, row in enumerate(EXERCISE8_ROWS):
+        key = f"ex8_q1_{i}_{generation}"
+        value = st.session_state.get(key, "")
+        if not str(value).strip():
+            missing.append(i)
+        elif not _ex8_symbol_answer_ok(row, value):
+            wrong.append(i)
+
+    if missing:
+        st.session_state["ex8_q1_feedback"] = {
+            "kind": "empty",
+            "missing": missing,
+        }
+        return
+
+    if not wrong:
+        st.session_state["ex8_q1_correct"] = True
+        st.session_state["ex8_q1_feedback"] = {"kind": "correct"}
+        return
+
+    st.session_state["ex8_q1_correct"] = False
+    st.session_state["ex8_q1_errors"] = int(
+        st.session_state.get("ex8_q1_errors", 0)
+    ) + 1
+    st.session_state["ex8_q1_feedback"] = {
+        "kind": "wrong",
+        "wrong": wrong,
+    }
+
+
+def _ex8_q2_ok(value):
+    v = _ex8_norm(value)
+    distinction = any(x in v for x in [
+        "disting", "differenc", "eviter confusion", "pas confond",
+        "plusieurs elements", "meme lettre", "meme initial",
+    ])
+    second_letter = any(x in v for x in [
+        "deuxieme lettre", "seconde lettre", "2e lettre",
+        "deux lettres", "autre lettre",
+    ])
+    return distinction and second_letter
+
+
+def _ex8_validate_q2():
+    generation = int(st.session_state.get("ex8_generation", 0))
+    value = st.session_state.get(f"ex8_q2_{generation}", "")
+
+    if not str(value).strip():
+        st.session_state["ex8_q2_feedback"] = "empty"
+        return
+
+    if _ex8_q2_ok(value):
+        st.session_state["ex8_q2_correct"] = True
+        st.session_state["ex8_q2_feedback"] = "correct"
+    else:
+        st.session_state["ex8_q2_correct"] = False
+        st.session_state["ex8_q2_errors"] = int(
+            st.session_state.get("ex8_q2_errors", 0)
+        ) + 1
+        st.session_state["ex8_q2_feedback"] = "wrong"
+
+
+def _ex8_q3_ok(value):
+    v = _ex8_norm(value)
+    return "wolfram" in v or "wolframium" in v
+
+
+def _ex8_validate_q3():
+    generation = int(st.session_state.get("ex8_generation", 0))
+    value = st.session_state.get(f"ex8_q3_{generation}", "")
+
+    if not str(value).strip():
+        st.session_state["ex8_q3_feedback"] = "empty"
+        return
+
+    if _ex8_q3_ok(value):
+        st.session_state["ex8_q3_correct"] = True
+        st.session_state["ex8_q3_feedback"] = "correct"
+    else:
+        st.session_state["ex8_q3_correct"] = False
+        st.session_state["ex8_q3_errors"] = int(
+            st.session_state.get("ex8_q3_errors", 0)
+        ) + 1
+        st.session_state["ex8_q3_feedback"] = "wrong"
+
+
+def _ex8_feedback_q1():
+    feedback = st.session_state.get("ex8_q1_feedback")
+    errors = int(st.session_state.get("ex8_q1_errors", 0))
+
+    if not feedback:
+        return
+
+    kind = feedback.get("kind")
+
+    if kind == "correct":
+        st.success("✅ Toutes les correspondances sont correctes.")
+        return
+
+    if kind == "empty":
+        st.warning("✏️ Complète toutes les cases avant de valider.")
+        return
+
+    wrong = feedback.get("wrong", [])
+
+    if errors == 1:
+        st.warning(
+            f"💡 Il reste {len(wrong)} réponse(s) à revoir. "
+            "Consulte le tableau périodique et vérifie aussi les majuscules/minuscules."
+        )
+    elif errors == 2:
+        labels = []
+        for i in wrong:
+            row = EXERCISE8_ROWS[i]
+            if row["prompt_type"] == "name":
+                labels.append(row["prompt"])
+            else:
+                labels.append(f"symbole {row['prompt']}")
+        st.warning(
+            "🔎 Revois particulièrement : " + ", ".join(labels) + "."
+        )
+    else:
+        corrections = []
+        for i in wrong:
+            row = EXERCISE8_ROWS[i]
+            if row["prompt_type"] == "name":
+                corrections.append(f"{row['prompt']} → {row['answer']}")
+            else:
+                corrections.append(f"{row['prompt']} → {row['answer']}")
+        st.error(
+            "📘 Vérifie ces correspondances puis corrige toi-même les cases : "
+            + " ; ".join(corrections)
+        )
+
+
+def _ex8_feedback_text(question):
+    feedback = st.session_state.get(f"ex8_q{question}_feedback")
+    errors = int(st.session_state.get(f"ex8_q{question}_errors", 0))
+
+    if feedback == "correct":
+        if question == 2:
+            st.success(
+                "✅ Oui. Une deuxième lettre permet de distinguer des éléments "
+                "qui ne peuvent pas tous utiliser la même lettre seule."
+            )
+        else:
+            st.success(
+                "✅ Bonne recherche : le symbole W est lié au nom « wolfram » "
+                "(ou « wolframium »)."
+            )
+        return
+
+    if feedback == "empty":
+        st.warning("✏️ Rédige une réponse avant de valider.")
+        return
+
+    if feedback != "wrong":
+        return
+
+    if question == 2:
+        if errors == 1:
+            st.warning(
+                "💡 Observe plusieurs noms d’éléments qui commencent par la même lettre."
+            )
+        elif errors == 2:
+            st.warning(
+                "🔎 Une seule lettre ne peut pas désigner deux éléments différents. "
+                "Que peut-on ajouter pour les distinguer ?"
+            )
+        else:
+            st.error(
+                "📘 Certains symboles utilisent une deuxième lettre afin de "
+                "distinguer des éléments ayant la même initiale."
+            )
+    else:
+        if errors == 1:
+            st.warning(
+                "🔎 Ta réponse n’explique pas encore l’origine de la lettre W. "
+                "Refais une recherche en t’intéressant à l’origine du symbole."
+            )
+        elif errors == 2:
+            st.warning(
+                "💡 Cherche si le tungstène possède ou a possédé un autre nom "
+                "commençant par W."
+            )
+        else:
+            st.error(
+                "📘 Le symbole W est lié au nom « wolfram » / « wolframium ». "
+                "Reformule maintenant cette idée avec tes propres mots."
+            )
+
+
+def _ex8_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    generation = int(st.session_state.get("ex8_generation", 0))
+    touched = any(
+        str(st.session_state.get(f"ex8_q1_{i}_{generation}", "")).strip()
+        for i in range(len(EXERCISE8_ROWS))
+    )
+    touched = touched or bool(
+        str(st.session_state.get(f"ex8_q2_{generation}", "")).strip()
+        or str(st.session_state.get(f"ex8_q3_{generation}", "")).strip()
+    )
+
+    if not touched:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    total_errors = sum(
+        int(st.session_state.get(f"ex8_q{i}_errors", 0))
+        for i in (1, 2, 3)
+    )
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        r for r in rows
+        if r.get("student_id") == student.get("id")
+        and r.get("resource_id") == "exercise8_element_symbols"
+        and r.get("activity_kind") == "training"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise8_element_symbols",
+        "resource_label": PILOT_CONTENTS["exercise8_element_symbols"]["label"],
+        "chapter": PILOT_CONTENTS["exercise8_element_symbols"]["chapter"],
+        "score_percent": None,
+        "completed_items": 0,
+        "total_items": 3,
+        "errors": total_errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise8():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex8_"):
+            st.session_state.pop(key, None)
+
+
+def _ex8_restart():
+    _ex8_record_restart_if_needed()
+    generation = int(st.session_state.get("ex8_generation", 0))
+    reset_exercise8()
+    st.session_state["ex8_generation"] = generation + 1
+
+
+def page_exercise8_element_symbols():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise8_element_symbols"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex8-box{
+            background:#f5f9ff;border:1px solid #cfe0fb;border-radius:16px;
+            padding:1rem 1.1rem;margin:.7rem 0 1rem;font-size:1.08rem;
+            line-height:1.55;color:#314b69;
+        }
+        .ex8-row{
+            background:#f8fafc;border:1px solid #e1e7f0;border-radius:13px;
+            padding:.65rem .8rem;margin:.25rem 0;
+        }
+        div[data-testid="stTextInput"] input,
+        div[data-testid="stTextArea"] textarea{
+            font-size:1.12rem!important;line-height:1.5!important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Séance 2 › Symboles des éléments</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">🧩 Exercice 8 — Symboles des éléments</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="ex8-box"><strong>Objectif :</strong> utiliser le tableau périodique '
+        'pour retrouver le nom ou le symbole d’un élément chimique.</div>',
+        unsafe_allow_html=True,
+    )
+
+    _ex8_render_periodic_table()
+
+    generation = int(st.session_state.get("ex8_generation", 0))
+
+    st.markdown("### 1. Complète le tableau à l’aide de la classification périodique.")
+
+    for i, row in enumerate(EXERCISE8_ROWS):
+        c1, c2 = st.columns([1.2, 1.2], gap="medium")
+
+        if row["prompt_type"] == "name":
+            with c1:
+                st.markdown(
+                    f'<div class="ex8-row"><strong>Élément</strong><br>{row["prompt"]}</div>',
+                    unsafe_allow_html=True,
+                )
+            with c2:
+                st.text_input(
+                    f"Symbole de {row['prompt']}",
+                    key=f"ex8_q1_{i}_{generation}",
+                    label_visibility="collapsed",
+                    placeholder="Symbole",
+                    disabled=bool(st.session_state.get("ex8_q1_correct", False)),
+                )
+        else:
+            with c1:
+                st.text_input(
+                    f"Nom correspondant à {row['prompt']}",
+                    key=f"ex8_q1_{i}_{generation}",
+                    label_visibility="collapsed",
+                    placeholder="Nom de l’élément",
+                    disabled=bool(st.session_state.get("ex8_q1_correct", False)),
+                )
+            with c2:
+                st.markdown(
+                    f'<div class="ex8-row"><strong>Symbole</strong><br>{row["prompt"]}</div>',
+                    unsafe_allow_html=True,
+                )
+
+    st.button(
+        "Valider le tableau",
+        key="ex8_validate_q1",
+        use_container_width=True,
+        type="primary",
+        on_click=_ex8_validate_q1,
+        disabled=bool(st.session_state.get("ex8_q1_correct", False)),
+    )
+    _ex8_feedback_q1()
+
+    st.markdown(
+        "### 2. Pourquoi certains symboles ont-ils deux lettres alors que d’autres n’en ont qu’une ?"
+    )
+    st.text_area(
+        "Ta réponse",
+        key=f"ex8_q2_{generation}",
+        height=105,
+        placeholder="Explique l’intérêt de la deuxième lettre.",
+        disabled=bool(st.session_state.get("ex8_q2_correct", False)),
+    )
+    st.button(
+        "Valider la question 2",
+        key="ex8_validate_q2",
+        use_container_width=True,
+        on_click=_ex8_validate_q2,
+        disabled=bool(st.session_state.get("ex8_q2_correct", False)),
+    )
+    _ex8_feedback_text(2)
+
+    st.markdown("### 3. Pourquoi le symbole chimique du tungstène est-il W ?")
+    st.info(
+        "🌐 Fais une recherche libre sur Internet, puis reviens rédiger ta réponse. "
+        "Aucun mot-clé de recherche ne t’est imposé."
+    )
+    st.text_area(
+        "Ta réponse après ta recherche",
+        key=f"ex8_q3_{generation}",
+        height=120,
+        placeholder="Explique avec tes propres mots l’origine du symbole W.",
+        disabled=bool(st.session_state.get("ex8_q3_correct", False)),
+    )
+    st.button(
+        "Valider la question 3",
+        key="ex8_validate_q3",
+        use_container_width=True,
+        on_click=_ex8_validate_q3,
+        disabled=bool(st.session_state.get("ex8_q3_correct", False)),
+    )
+    _ex8_feedback_text(3)
+
+    completed = sum(
+        int(bool(st.session_state.get(f"ex8_q{i}_correct", False)))
+        for i in (1, 2, 3)
+    )
+    st.markdown("### Ton avancement")
+    st.progress(completed / 3)
+    st.write(f"**{completed} / 3 parties réussies**")
+
+    c_reset, _ = st.columns([1.3, 4.7])
+    with c_reset:
+        if st.button(
+            "↻ Recommencer",
+            key="restart_ex8",
+            use_container_width=True,
+        ):
+            _ex8_restart()
+            st.rerun()
+
+    if completed == 3:
+        st.success(
+            "🎉 Bravo ! Tu sais retrouver des symboles dans le tableau périodique "
+            "et expliquer l’origine particulière du symbole W."
+        )
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex8_result_saved", False)
+        ):
+            total_errors = sum(
+                int(st.session_state.get(f"ex8_q{i}_errors", 0))
+                for i in (1, 2, 3)
+            )
+            score = round(100 * 3 / max(3, 3 + total_errors))
+            record_training_result(
+                student,
+                "exercise8_element_symbols",
+                score,
+                3,
+                3,
+                errors=total_errors,
+            )
+            st.session_state["ex8_result_saved"] = True
+
+
+# ============================================================
+# EXERCICE 9 — ATOME OU MOLÉCULE ?
+# ============================================================
+
+EXERCISE9_ITEMS = [
+    ("CO", "Molécule"),
+    ("Co", "Atome"),
+    ("CO₂", "Molécule"),
+    ("H₂", "Molécule"),
+    ("N", "Atome"),
+    ("Fe", "Atome"),
+    ("Cl₂", "Molécule"),
+    ("Ne", "Atome"),
+    ("C₆H₁₂O₆", "Molécule"),
+    ("NH₃", "Molécule"),
+    ("I₂", "Molécule"),
+    ("H₂O₂", "Molécule"),
+    ("NO₂", "Molécule"),
+    ("Al", "Atome"),
+    ("Cu", "Atome"),
+    ("U", "Atome"),
+]
+
+
+def _ex9_order(generation):
+    items = list(EXERCISE9_ITEMS)
+    rng = random.Random(9107 + int(generation))
+    rng.shuffle(items)
+    return items
+
+
+def _ex9_validate():
+    generation = int(st.session_state.get("ex9_generation", 0))
+    items = _ex9_order(generation)
+
+    missing = []
+    wrong = []
+
+    for i, (formula, answer) in enumerate(items):
+        value = st.session_state.get(f"ex9_answer_{i}_{generation}")
+        if not value:
+            missing.append(i)
+        elif value != answer:
+            wrong.append(i)
+
+    if missing:
+        st.session_state["ex9_feedback"] = {
+            "kind": "empty",
+            "missing": missing,
+        }
+        return
+
+    if not wrong:
+        st.session_state["ex9_correct"] = True
+        st.session_state["ex9_feedback"] = {"kind": "correct"}
+        return
+
+    st.session_state["ex9_correct"] = False
+    st.session_state["ex9_errors"] = int(
+        st.session_state.get("ex9_errors", 0)
+    ) + 1
+    st.session_state["ex9_feedback"] = {
+        "kind": "wrong",
+        "wrong": wrong,
+    }
+
+
+def _ex9_feedback():
+    feedback = st.session_state.get("ex9_feedback")
+    errors = int(st.session_state.get("ex9_errors", 0))
+    generation = int(st.session_state.get("ex9_generation", 0))
+    items = _ex9_order(generation)
+
+    if not feedback:
+        return
+
+    if feedback["kind"] == "correct":
+        st.success(
+            "✅ Tout est correct. Tu distingues bien symbole d’un atome "
+            "et formule d’une molécule."
+        )
+        return
+
+    if feedback["kind"] == "empty":
+        st.warning("✏️ Classe toutes les écritures avant de valider.")
+        return
+
+    wrong = feedback.get("wrong", [])
+
+    if errors == 1:
+        st.warning(
+            f"💡 Il reste {len(wrong)} classement(s) à revoir. "
+            "Regarde si l’écriture représente un seul symbole d’élément "
+            "ou plusieurs atomes assemblés."
+        )
+    elif errors == 2:
+        formulas = [items[i][0] for i in wrong]
+        st.warning(
+            "🔎 Revois particulièrement : " + ", ".join(formulas) + ". "
+            "Attention : une majuscule ou une minuscule peut changer le sens."
+        )
+    else:
+        details = []
+        for i in wrong:
+            formula, answer = items[i]
+            if formula == "CO":
+                details.append("CO : C et O → molécule")
+            elif formula == "Co":
+                details.append("Co : symbole du cobalt → atome")
+            elif answer == "Atome":
+                details.append(f"{formula} : un seul symbole d’élément → atome")
+            else:
+                details.append(f"{formula} : plusieurs atomes → molécule")
+
+        st.error(
+            "📘 Utilise ces indications puis corrige toi-même : "
+            + " ; ".join(details)
+        )
+
+
+def _ex9_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    generation = int(st.session_state.get("ex9_generation", 0))
+    touched = any(
+        st.session_state.get(f"ex9_answer_{i}_{generation}")
+        for i in range(len(EXERCISE9_ITEMS))
+    )
+    if not touched:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        r for r in rows
+        if r.get("student_id") == student.get("id")
+        and r.get("resource_id") == "exercise9_atom_or_molecule"
+        and r.get("activity_kind") == "training"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise9_atom_or_molecule",
+        "resource_label": PILOT_CONTENTS["exercise9_atom_or_molecule"]["label"],
+        "chapter": PILOT_CONTENTS["exercise9_atom_or_molecule"]["chapter"],
+        "score_percent": None,
+        "completed_items": 0,
+        "total_items": len(EXERCISE9_ITEMS),
+        "errors": int(st.session_state.get("ex9_errors", 0)),
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise9():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex9_"):
+            st.session_state.pop(key, None)
+
+
+def _ex9_restart():
+    _ex9_record_restart_if_needed()
+    generation = int(st.session_state.get("ex9_generation", 0))
+    reset_exercise9()
+    st.session_state["ex9_generation"] = generation + 1
+
+
+def page_exercise9_atom_or_molecule():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise9_atom_or_molecule"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex9-formula{
+            border:1px solid #dbe5ef;border-radius:14px;background:#fff;
+            padding:.65rem .8rem;text-align:center;font-size:1.55rem;
+            font-weight:850;color:#173b70;margin:.35rem 0 .15rem;
+        }
+        .ex9-note{
+            background:#f5f9ff;border:1px solid #cfe0fb;border-radius:14px;
+            padding:.9rem 1rem;margin:.7rem 0 1rem;font-size:1.06rem;
+            line-height:1.5;color:#314b69;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Séance 2 › Atome ou molécule</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">⚛️ Exercice 9 — Atome ou molécule ?</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="ex9-note"><strong>Consigne :</strong> pour chaque écriture, '
+        'indique s’il s’agit d’un <strong>atome</strong> ou d’une '
+        '<strong>molécule</strong>. Valide seulement lorsque tu as tout classé.</div>',
+        unsafe_allow_html=True,
+    )
+
+    generation = int(st.session_state.get("ex9_generation", 0))
+    items = _ex9_order(generation)
+
+    for start_i in range(0, len(items), 2):
+        cols = st.columns(2, gap="large")
+        for offset, col in enumerate(cols):
+            i = start_i + offset
+            if i >= len(items):
+                continue
+
+            formula, _ = items[i]
+
+            with col:
+                st.markdown(
+                    f'<div class="ex9-formula">{formula}</div>',
+                    unsafe_allow_html=True,
+                )
+                st.radio(
+                    f"Classement de {formula}",
+                    ["Atome", "Molécule"],
+                    index=None,
+                    horizontal=True,
+                    key=f"ex9_answer_{i}_{generation}",
+                    label_visibility="collapsed",
+                    disabled=bool(st.session_state.get("ex9_correct", False)),
+                )
+
+    st.button(
+        "Valider mes classements",
+        key="ex9_validate",
+        use_container_width=True,
+        type="primary",
+        on_click=_ex9_validate,
+        disabled=bool(st.session_state.get("ex9_correct", False)),
+    )
+
+    _ex9_feedback()
+
+    if st.session_state.get("ex9_correct", False):
+        st.info(
+            "🔎 À retenir : **CO** contient deux symboles, C et O : c’est une molécule. "
+            "**Co** est le symbole du cobalt : il représente ici un atome de cobalt."
+        )
+
+    c_reset, _ = st.columns([1.3, 4.7])
+    with c_reset:
+        if st.button(
+            "↻ Recommencer",
+            key="restart_ex9",
+            use_container_width=True,
+        ):
+            _ex9_restart()
+            st.rerun()
+
+    if st.session_state.get("ex9_correct", False):
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex9_result_saved", False)
+        ):
+            total_errors = int(st.session_state.get("ex9_errors", 0))
+            score = round(
+                100 * len(EXERCISE9_ITEMS)
+                / max(len(EXERCISE9_ITEMS), len(EXERCISE9_ITEMS) + total_errors)
+            )
+            record_training_result(
+                student,
+                "exercise9_atom_or_molecule",
+                score,
+                len(EXERCISE9_ITEMS),
+                len(EXERCISE9_ITEMS),
+                errors=total_errors,
+            )
+            st.session_state["ex9_result_saved"] = True
+
+
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
         if (
@@ -12213,6 +13115,10 @@ elif page == "exercise6_water_alcohol_volume":
     page_exercise6_water_alcohol_volume()
 elif page == "exercise7_solid_mixtures_alloys":
     page_exercise7_solid_mixtures_alloys()
+elif page == "exercise8_element_symbols":
+    page_exercise8_element_symbols()
+elif page == "exercise9_atom_or_molecule":
+    page_exercise9_atom_or_molecule()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
