@@ -1,7 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE3_CONTEXTUAL_VISUAL_HELP_V17
-import re
-import base64
-import json
+# VERSION_UI_2026_08_25_EXERCISE3_TRUE_EMPTY_RESTART_V18n
 import random
 import textwrap
 import secrets
@@ -5016,7 +5013,8 @@ def _ex3_get_order():
 
 
 def _ex3_validate_model(model_key):
-    answer_key = f"ex3_answer_{model_key}"
+    generation = int(st.session_state.get("ex3_generation", 0))
+    answer_key = f"ex3_answer_{generation}_{model_key}"
     errors_key = f"ex3_errors_{model_key}"
     correct_key = f"ex3_correct_{model_key}"
 
@@ -5045,8 +5043,9 @@ def _ex3_record_restart_if_needed():
     errors = 0
     total = len(EXERCISE3_MODELS)
 
+    generation = int(st.session_state.get("ex3_generation", 0))
     for model_key in EXERCISE3_MODELS:
-        if str(st.session_state.get(f"ex3_answer_{model_key}", "")).strip():
+        if str(st.session_state.get(f"ex3_answer_{generation}_{model_key}", "")).strip():
             touched += 1
         errors += int(st.session_state.get(f"ex3_errors_{model_key}", 0))
 
@@ -5093,7 +5092,13 @@ def reset_exercise3_particle_models():
 
 def _ex3_start_new_attempt():
     _ex3_record_restart_if_needed()
+
+    # Nouvelle génération de widgets : cela garantit que les champs de saisie
+    # repartent réellement vides après « Recommencer ».
+    current_generation = int(st.session_state.get("ex3_generation", 0))
     reset_exercise3_particle_models()
+    st.session_state["ex3_generation"] = current_generation + 1
+
     order = list(EXERCISE3_MODELS.keys())
     random.shuffle(order)
     st.session_state["ex3_model_order"] = order
@@ -5216,9 +5221,10 @@ def page_exercise3_particle_models():
                 missing.append(info["path"])
                 st.warning(f"Image manquante : {path.name}")
 
+            generation = int(st.session_state.get("ex3_generation", 0))
             st.text_input(
                 "Quel état de la matière est représenté ?",
-                key=f"ex3_answer_{model_key}",
+                key=f"ex3_answer_{generation}_{model_key}",
                 placeholder="Écris ta réponse",
                 disabled=bool(st.session_state.get(f"ex3_correct_{model_key}", False)),
             )
