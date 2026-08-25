@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_PROGRESSIVE_FEEDBACK_THREE_RESETS_V29
+# VERSION_UI_2026_08_25_EX4_COMPONENT_CACHE_BUST_V30
 import re
 import base64
 import json
@@ -5661,6 +5661,7 @@ EX4_DRAGDROP_HTML = r"""
     </div>
   </div>
 
+  <div style="text-align:center;color:#9aa7b8;font-size:10px;margin-top:4px;">module interactif v30</div>
   <div class="controls">
     <button id="resetA">↻ Remettre les molécules de A</button>
     <button id="resetB">↻ Remettre les molécules de B</button>
@@ -5696,7 +5697,7 @@ EX4_DRAGDROP_HTML = r"""
   }
 
   function storageKey(){
-    return "ludo_ex4_dragdrop_v27_" + storageId + "_" + String(generation ?? 0);
+    return "ludo_ex4_dragdrop_v30_" + storageId + "_" + String(generation ?? 0);
   }
 
   function saveLocal(){
@@ -6200,18 +6201,18 @@ EX4_DRAGDROP_HTML = r"""
 
 
 @st.cache_resource
-def _ex4_dragdrop_component():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex4_dragdrop_component"
+def _ex4_dragdrop_component_v30():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex4_dragdrop_component_v30"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX4_DRAGDROP_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex4_dragdrop_model_v27",
+        "ex4_dragdrop_model_v30",
         path=str(component_dir),
     )
 
 
 def render_ex4_dragdrop_model(generation):
-    component = _ex4_dragdrop_component()
+    component = _ex4_dragdrop_component_v30()
 
     student = st.session_state.get("app_student") or {}
     storage_id = str(
@@ -6223,7 +6224,7 @@ def render_ex4_dragdrop_model(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex4_dragdrop_{generation}",
+        key=f"ex4_dragdrop_v30_{generation}",
         default={
             "zone_a": False,
             "zone_b": False,
