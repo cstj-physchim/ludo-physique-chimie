@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_EX8_EX9_INTERACTIVE_V53
+# VERSION_UI_2026_08_26_EX8_LOCKED_RESULTS_SEARCH_V54
 import re
 import base64
 import json
@@ -10222,10 +10222,10 @@ body{
 <body>
 <div class="wrap">
   <div class="help">
-    Complète chaque case bleue. <strong>Appuie sur Entrée</strong> ou passe à la case suivante :
-    la case devient <strong>verte si la réponse est correcte</strong> et
-    <strong>rouge si elle est incorrecte</strong>. Dès que tu modifies une réponse,
-    elle redevient bleue.
+    Complète chaque case bleue puis <strong>appuie sur Entrée</strong> ou passe à la case suivante.
+    La case devient <strong>verte si la réponse est correcte</strong> et
+    <strong>rouge si elle est incorrecte</strong>. Une fois corrigée, la réponse est
+    <strong>verrouillée</strong> : seul « Recommencer » permet de refaire l’exercice.
   </div>
 
   <div class="grid" id="tableGrid">
@@ -10265,7 +10265,7 @@ body{
   }
 
   function storageKey(){
-    return "ludo_ex8_table_v3_"+storageId+"_"+String(generation);
+    return "ludo_ex8_table_v4_"+storageId+"_"+String(generation);
   }
 
   function fresh(){
@@ -10319,12 +10319,15 @@ body{
 
   function send(){
     const correctCount=state.statuses.filter(x=>x==="correct").length;
+    const answeredCount=state.statuses.filter(x=>x==="correct"||x==="wrong").length;
     window.parent.postMessage({
       isStreamlitMessage:true,
       type:"streamlit:setComponentValue",
       value:{
         success:correctCount===rows.length,
+        complete:answeredCount===rows.length,
         correct_count:correctCount,
+        answered_count:answeredCount,
         total:rows.length,
         errors:state.errors,
         answers:state.answers,
@@ -10363,14 +10366,13 @@ body{
     const correction=document.createElement("div");
     correction.className="correction";
 
+    // Une réponse déjà validée (bonne ou fausse) est définitive.
+    input.disabled=Boolean(state.statuses[index]);
+
     input.addEventListener("input",()=>{
+      if(state.statuses[index])return;
       state.answers[index]=input.value;
-      // Toute modification remet la case en bleu jusqu'à la prochaine validation.
-      state.statuses[index]="";
-      state.lastChecked[index]="";
-      updateCell(index);
       save();
-      updateProgress();
       send();
     });
 
@@ -10378,11 +10380,13 @@ body{
       if(event.key==="Enter"){
         event.preventDefault();
         validateOne(index,true);
+
         const inputs=[...document.querySelectorAll(".answer input")];
-        const pos=inputs.indexOf(input);
-        if(pos>=0 && pos<inputs.length-1){
-          inputs[pos+1].focus();
-          inputs[pos+1].select();
+        const current=inputs.indexOf(input);
+        const next=inputs.slice(current+1).find(el=>!el.disabled);
+        if(next){
+          next.focus();
+          next.select();
         }else{
           input.blur();
         }
@@ -10390,7 +10394,7 @@ body{
     });
 
     input.addEventListener("change",()=>{
-      validateOne(index,true);
+      if(!state.statuses[index])validateOne(index,true);
     });
 
     box.appendChild(input);
@@ -10435,6 +10439,9 @@ body{
     box.classList.remove("correct","wrong");
     if(state.statuses[index])box.classList.add(state.statuses[index]);
 
+    const input=box.querySelector("input");
+    if(input)input.disabled=Boolean(state.statuses[index]);
+
     const correction=box.querySelector(".correction");
     if(correction){
       correction.textContent=
@@ -10445,15 +10452,12 @@ body{
   }
 
   function validateOne(index,countError){
+    // Si la ligne a déjà été corrigée, on ne peut plus modifier le résultat.
+    if(state.statuses[index])return;
+
     const value=String(state.answers[index]||"").trim();
 
     if(!value){
-      state.statuses[index]="";
-      state.lastChecked[index]="";
-      updateCell(index);
-      save();
-      updateProgress();
-      send();
       return;
     }
 
@@ -10463,9 +10467,7 @@ body{
       state.statuses[index]="correct";
     }else{
       state.statuses[index]="wrong";
-      if(countError && state.lastChecked[index]!==value){
-        state.errors+=1;
-      }
+      if(countError)state.errors+=1;
     }
 
     state.lastChecked[index]=value;
@@ -10477,14 +10479,20 @@ body{
 
   function updateProgress(){
     const correct=state.statuses.filter(x=>x==="correct").length;
+    const answered=state.statuses.filter(x=>x==="correct"||x==="wrong").length;
+    const wrong=state.statuses.filter(x=>x==="wrong").length;
     const progress=document.getElementById("progress");
 
-    if(correct===rows.length && rows.length){
-      progress.className="progress done";
-      progress.textContent="✅ Toutes les correspondances sont correctes.";
+    if(answered===rows.length && rows.length){
+      progress.className=wrong===0 ? "progress done" : "progress";
+      progress.textContent=
+        correct+" / "+rows.length+" réponse(s) correcte(s) • "+
+        wrong+" erreur(s)";
     }else{
       progress.className="progress";
-      progress.textContent=correct+" / "+rows.length+" réponse(s) correcte(s)";
+      progress.textContent=
+        correct+" bonne(s) réponse(s) • "+
+        answered+" / "+rows.length+" ligne(s) terminée(s)";
     }
   }
 
@@ -10551,21 +10559,21 @@ body{
 
 
 @st.cache_resource
-def _ex8_table_component_v3():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex8_table_component_v3"
+def _ex8_table_component_v4():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex8_table_component_v4"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(
         EX8_INTERACTIVE_TABLE_HTML,
         encoding="utf-8",
     )
     return components.declare_component(
-        "ex8_interactive_periodic_table_v3",
+        "ex8_interactive_periodic_table_v4",
         path=str(component_dir),
     )
 
 
 def render_ex8_interactive_table(generation):
-    component = _ex8_table_component_v3()
+    component = _ex8_table_component_v4()
 
     student = st.session_state.get("app_student") or {}
     storage_id = str(
@@ -10584,10 +10592,12 @@ def render_ex8_interactive_table(generation):
         storage_id=storage_id,
         rows=EXERCISE8_ROWS,
         pdf_data=pdf_data,
-        key=f"ex8_interactive_table_v3_{generation}",
+        key=f"ex8_interactive_table_v4_{generation}",
         default={
             "success": False,
+            "complete": False,
             "correct_count": 0,
+            "answered_count": 0,
             "total": len(EXERCISE8_ROWS),
             "errors": 0,
             "answers": [],
@@ -10675,16 +10685,32 @@ def _ex8_validate_q1():
 
 
 def _ex8_q2_ok(value):
+    """
+    Accepte les formulations naturelles exprimant l'idée essentielle :
+    plusieurs éléments peuvent commencer par la même lettre et une lettre
+    supplémentaire permet de les distinguer.
+    """
     v = _ex8_norm(value)
+
     distinction = any(x in v for x in [
         "disting", "differenc", "eviter confusion", "pas confond",
-        "plusieurs elements", "meme lettre", "meme initial",
+        "reconnaitre", "identifier",
     ])
+
+    same_initial = any(x in v for x in [
+        "meme lettre", "meme initial", "meme premiere lettre",
+        "commence par la meme", "commencent par la meme",
+        "plusieurs elements",
+    ])
+
     second_letter = any(x in v for x in [
         "deuxieme lettre", "seconde lettre", "2e lettre",
         "deux lettres", "autre lettre",
+        "la seconde", "la deuxieme",
+        "seconde permet", "deuxieme permet",
     ])
-    return distinction and second_letter
+
+    return distinction and (same_initial or second_letter)
 
 
 def _ex8_validate_q2():
@@ -10954,13 +10980,27 @@ def page_exercise8_element_symbols():
 
     if isinstance(q1_state, dict):
         st.session_state["ex8_q1_component_state"] = q1_state
-        st.session_state["ex8_q1_correct"] = bool(q1_state.get("success"))
-        st.session_state["ex8_q1_errors"] = int(q1_state.get("errors", 0) or 0)
 
-        if q1_state.get("success"):
-            st.success(
-                "✅ Tableau complété : toutes les correspondances nom ↔ symbole sont correctes."
-            )
+        q1_complete = bool(q1_state.get("complete"))
+        q1_correct_count = int(q1_state.get("correct_count", 0) or 0)
+        q1_total = int(q1_state.get("total", len(EXERCISE8_ROWS)) or len(EXERCISE8_ROWS))
+        q1_errors = int(q1_state.get("errors", 0) or 0)
+
+        # Pour l'avancement, une partie est terminée lorsque toutes ses lignes
+        # ont été corrigées, même si le score n'est pas parfait.
+        st.session_state["ex8_q1_correct"] = q1_complete
+        st.session_state["ex8_q1_errors"] = q1_errors
+
+        if q1_complete:
+            if q1_correct_count == q1_total:
+                st.success(
+                    f"✅ Tableau terminé : {q1_correct_count} / {q1_total} bonnes réponses."
+                )
+            else:
+                st.warning(
+                    f"📊 Tableau terminé : {q1_correct_count} / {q1_total} bonnes réponses "
+                    f"et {q1_errors} erreur(s). Les réponses corrigées restent verrouillées."
+                )
 
     st.markdown(
         "### 2. Pourquoi certains symboles ont-ils deux lettres alors que d’autres n’en ont qu’une ?"
@@ -10986,6 +11026,15 @@ def page_exercise8_element_symbols():
         "🌐 Fais une recherche libre sur Internet, puis reviens rédiger ta réponse. "
         "Aucun mot-clé de recherche ne t’est imposé."
     )
+
+    search_col, spacer_col = st.columns([1.8, 4.2])
+    with search_col:
+        st.link_button(
+            "🌐 Faire une recherche sur Internet ↗",
+            "https://www.google.com/",
+            use_container_width=True,
+        )
+
     st.text_area(
         "Ta réponse après ta recherche",
         key=f"ex8_q3_{generation}",
@@ -11032,17 +11081,31 @@ def page_exercise8_element_symbols():
             and student
             and not st.session_state.get("ex8_result_saved", False)
         ):
+            q1_state_final = st.session_state.get("ex8_q1_component_state") or {}
+            q1_correct_points = int(q1_state_final.get("correct_count", 0) or 0)
+            q1_total_points = int(
+                q1_state_final.get("total", len(EXERCISE8_ROWS))
+                or len(EXERCISE8_ROWS)
+            )
+
+            q2_point = int(bool(st.session_state.get("ex8_q2_correct", False)))
+            q3_point = int(bool(st.session_state.get("ex8_q3_correct", False)))
+
+            earned_points = q1_correct_points + q2_point + q3_point
+            total_points = q1_total_points + 2
+
             total_errors = sum(
                 int(st.session_state.get(f"ex8_q{i}_errors", 0))
                 for i in (1, 2, 3)
             )
-            score = round(100 * 3 / max(3, 3 + total_errors))
+            score = round(100 * earned_points / max(1, total_points))
+
             record_training_result(
                 student,
                 "exercise8_element_symbols",
                 score,
-                3,
-                3,
+                earned_points,
+                total_points,
                 errors=total_errors,
             )
             st.session_state["ex8_result_saved"] = True
