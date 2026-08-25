@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE2_WATER_PROPERTIES_V12
+# VERSION_UI_2026_08_25_EXERCISE2_ASSETS_STRUCTURE_V13
 import re
 import base64
 import json
@@ -4451,15 +4451,15 @@ def page_exercise1_states_water():
 
 EXERCISE2_WATER_IMAGES = {
     "ice": {
-        "path": "assets/Glace.png",
+        "path": "assets/chapitre_1/exercice_2/Glace.png",
         "alt": "Glaçon",
     },
     "liquid": {
-        "path": "assets/liquide.png",
+        "path": "assets/chapitre_1/exercice_2/liquide.png",
         "alt": "Goutte d’eau",
     },
     "vapor": {
-        "path": "assets/vapeur.png",
+        "path": "assets/chapitre_1/exercice_2/vapeur.png",
         "alt": "Vapeur d’eau",
     },
 }
@@ -4808,7 +4808,7 @@ def page_exercise2_water_properties():
 
     if missing_assets:
         st.info(
-            "Ajoute dans le dossier assets du dépôt : Glace.png, liquide.png et vapeur.png."
+            "Ajoute les images dans assets/chapitre_1/exercice_2/ : Glace.png, liquide.png et vapeur.png."
         )
 
     st.markdown("### Associe chaque étiquette")
