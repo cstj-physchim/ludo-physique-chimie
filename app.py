@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE14_STATES_WATER
+# VERSION_UI_2026_08_25_EXERCISE14_TWO_LEVEL_FEEDBACK
 import re
 import base64
 import json
@@ -3773,6 +3773,23 @@ def reset_exercise14_states_water():
     st.session_state.pop("ex14_water_last_signature", None)
 
 
+def ex14_hint_for_item(label):
+    hints = {
+        "Glacier": "Pense à la matière qui constitue un glacier : est-elle fluide ou rigide ?",
+        "Pluie": "Observe une goutte de pluie : elle coule et prend la forme du récipient qui la reçoit.",
+        "Brouillard": "Le brouillard est constitué de très petites gouttelettes en suspension dans l’air.",
+        "Neige": "Les flocons sont formés de cristaux de glace.",
+        "Atmosphère": "L’eau peut être présente dans l’air sous une forme invisible.",
+        "Vapeur d’eau": "La vapeur d’eau est invisible et se diffuse dans l’air.",
+        "Givre": "Le givre se forme sous forme de petits cristaux de glace.",
+        "Lacs": "L’eau d’un lac peut s’écouler et prend la forme du bassin.",
+        "Nuage": "Un nuage n’est pas uniquement constitué de vapeur d’eau invisible.",
+        "Nappes phréatiques": "L’eau y circule entre les grains et les fissures du sous-sol.",
+        "Rivières et fleuves": "Cette eau s’écoule et prend la forme de son lit.",
+    }
+    return hints.get(label, "Observe les propriétés de cette forme d’eau.")
+
+
 def page_exercise14_states_water():
     hero()
     back_button("exercise_topics")
@@ -3809,6 +3826,7 @@ def page_exercise14_states_water():
     st.divider()
 
     selections = {}
+
     for index, item in enumerate(EXERCISE14_STATES_WATER):
         c1, c2, c3, c4 = st.columns([3.2, 1, 1, 1])
 
@@ -3843,7 +3861,22 @@ def page_exercise14_states_water():
 
         selections[index] = row_selection
 
-    st.markdown("---")
+        # Feedback pédagogique mémorisé par ligne.
+        if st.session_state.get("ex14_water_checked", False):
+            is_correct = row_selection == item["answers"]
+            error_count = int(st.session_state.get(f"ex14_water_errors_{index}", 0))
+
+            if is_correct:
+                if error_count > 0:
+                    st.success(f"✅ {item['label']} : bonne correction.")
+            elif error_count == 1:
+                st.warning(f"💡 Indice — {item['label']} : {ex14_hint_for_item(item['label'])}")
+            elif error_count >= 2:
+                correct_text = " + ".join(sorted(item["answers"]))
+                st.error(f"❌ {item['label']} : la bonne réponse est **{correct_text}**.")
+                st.info("📘 Explication : " + item["explanation"])
+
+        st.divider()
 
     if st.button(
         "✅ Valider mes réponses",
@@ -3851,28 +3884,33 @@ def page_exercise14_states_water():
         use_container_width=True,
         key="validate_ex14_states_water",
     ):
-        # Une nouvelle combinaison de réponses = une nouvelle tentative.
+        # Une nouvelle combinaison de réponses = une nouvelle tentative globale.
         signature = tuple(
             tuple(sorted(selections[i]))
             for i in range(len(EXERCISE14_STATES_WATER))
         )
+
         if st.session_state.get("ex14_water_last_signature") != signature:
             st.session_state["ex14_water_attempts"] = int(
                 st.session_state.get("ex14_water_attempts", 0)
             ) + 1
             st.session_state["ex14_water_last_signature"] = signature
 
+            # On incrémente seulement les lignes actuellement fausses.
+            for index, item in enumerate(EXERCISE14_STATES_WATER):
+                if selections[index] != item["answers"]:
+                    key = f"ex14_water_errors_{index}"
+                    st.session_state[key] = int(st.session_state.get(key, 0)) + 1
+
         st.session_state["ex14_water_checked"] = True
+        st.rerun()
 
     if st.session_state.get("ex14_water_checked", False):
         correct_rows = 0
-        wrong_rows = []
 
         for index, item in enumerate(EXERCISE14_STATES_WATER):
             if selections[index] == item["answers"]:
                 correct_rows += 1
-            else:
-                wrong_rows.append((item, selections[index]))
 
         total = len(EXERCISE14_STATES_WATER)
         score_percent = round(100 * correct_rows / total)
@@ -3881,7 +3919,7 @@ def page_exercise14_states_water():
         st.progress(correct_rows / total)
         st.write(f"**{correct_rows} / {total} lignes correctes — {score_percent} %**")
 
-        if not wrong_rows:
+        if correct_rows == total:
             st.success("🎉 Bravo ! Toutes tes réponses sont correctes.")
 
             student = st.session_state.get("app_student")
@@ -3890,28 +3928,32 @@ def page_exercise14_states_water():
                 and student
                 and not st.session_state.get("ex14_water_result_saved", False)
             ):
-                attempts = int(st.session_state.get("ex14_water_attempts", 1))
-                # Score de maîtrise : tient compte du nombre de validations nécessaires.
-                mastery_score = round(100 / max(1, attempts))
+                total_errors = sum(
+                    int(st.session_state.get(f"ex14_water_errors_{i}", 0))
+                    for i in range(total)
+                )
+
+                # Indicateur de maîtrise : baisse progressivement avec les erreurs cumulées.
+                mastery_score = round(
+                    100 * total / max(total, total + total_errors)
+                )
+
                 record_training_result(
                     student,
                     "exercise14_states_water",
                     mastery_score,
                     total,
                     total,
-                    errors=max(0, attempts - 1),
+                    errors=total_errors,
                 )
                 st.session_state["ex14_water_result_saved"] = True
         else:
-            st.warning(
-                f"Il reste {len(wrong_rows)} ligne(s) à corriger. "
-                "Regarde les explications puis modifie tes cases et valide à nouveau."
+            remaining = total - correct_rows
+            st.info(
+                f"Il reste {remaining} ligne(s) à corriger. "
+                "À la première erreur, tu reçois un indice ; à la deuxième erreur sur la même ligne, "
+                "la correction expliquée apparaît."
             )
-
-            for item, chosen in wrong_rows:
-                chosen_text = ", ".join(sorted(chosen)) if chosen else "aucune case cochée"
-                st.error(f"❌ {item['label']} — ta réponse : {chosen_text}")
-                st.info("💡 " + item["explanation"])
 
     if st.button(
         "🔄 Recommencer l’exercice",
