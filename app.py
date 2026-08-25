@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_SEANCES_COLLAPSIBLE_EX10_PARSE_V57
+# VERSION_UI_2026_08_26_EX10_EMPTY_FIELDS_V58
 import re
 import base64
 import json
@@ -12144,21 +12144,18 @@ def page_exercise10_ethanol():
         st.text_input(
             "Nombre d’atomes de carbone",
             key=f"ex10_q1_c_{generation}",
-            placeholder="Ex. 2",
             disabled=bool(st.session_state.get("ex10_q1_correct", False)),
         )
     with c2:
         st.text_input(
             "Nombre d’atomes d’hydrogène",
             key=f"ex10_q1_h_{generation}",
-            placeholder="Ex. 6",
             disabled=bool(st.session_state.get("ex10_q1_correct", False)),
         )
     with c3:
         st.text_input(
             "Nombre d’atomes d’oxygène",
             key=f"ex10_q1_o_{generation}",
-            placeholder="Ex. 1",
             disabled=bool(st.session_state.get("ex10_q1_correct", False)),
         )
 
