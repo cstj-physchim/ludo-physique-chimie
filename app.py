@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_DRAGDROP_REBUILT_AND_TESTED_V27
+# VERSION_UI_2026_08_25_EX4_LIQUID_CONTACT_DETECTION_V28
 import re
 import base64
 import json
@@ -5975,6 +5975,13 @@ EX4_DRAGDROP_HTML = r"""
     }
 
     const avgNearest=nearest.reduce((a,b)=>a+b,0)/nearest.length;
+
+    // A molecule is considered "in contact or almost in contact"
+    // when the centre-to-centre distance is <= 40 px.
+    // Molecule diameter is 32 px, so this gives a small pedagogical tolerance.
+    const closeFraction=
+      nearest.filter(d=>d<=40).length / nearest.length;
+
     const xs=points.map(p=>p.x);
     const ys=points.map(p=>p.y);
     const width=Math.max(...xs)-Math.min(...xs);
@@ -5996,6 +6003,7 @@ EX4_DRAGDROP_HTML = r"""
 
     return {
       avgNearest,
+      closeFraction,
       width,
       height,
       meanY,
@@ -6067,7 +6075,8 @@ EX4_DRAGDROP_HTML = r"""
     }else{
       const s=stats(b);
       const ok=
-        s.avgNearest<=55 &&
+        s.avgNearest<=42 &&
+        s.closeFraction>=0.78 &&
         s.height<=118 &&
         s.meanY>=350 &&
         s.alignment<0.50;
@@ -6081,10 +6090,10 @@ EX4_DRAGDROP_HTML = r"""
         );
       }else{
         state.errors.b++;
-        if(s.avgNearest>62){
+        if(s.closeFraction<0.78 || s.avgNearest>42){
           setFeedback(
             "b","hint",
-            "💡 Zone b : rapproche davantage les molécules."
+            "💡 Zone b : les molécules sont trop espacées. Dans un liquide, elles doivent être proches les unes des autres, presque au contact."
           );
         }else if(s.meanY<342){
           setFeedback(
