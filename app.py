@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_INDIVIDUAL_CONTENT_ACCESS
+# VERSION_UI_2026_08_25_CONTENTS_BY_CHAPTERS
 import re
 import base64
 import json
@@ -130,37 +130,53 @@ def content_pilot_enabled_for_teacher(teacher_id=None, teacher_name=None):
 
 
 PILOT_CONTENTS = {
+    "exercise_states_matter": {
+        "label": "Entraînement — États de la matière",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 10,
+        "description": "Entraînement autocorrigé sur les solides, liquides, gaz et le modèle particulaire.",
+        "resource_ready": True,
+    },
     "domino_molecules": {
         "label": "Domino Molécules",
-        "group": "Dominos",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 20,
         "description": "Formules, modèles moléculaires et descriptions selon les niveaux déjà créés.",
         "resource_ready": True,
     },
+    # Ces trois ressources sont terminées mais ne sont pas rattachées au Thème 1
+    # tant que la progression correspondante n'a pas été intégrée.
     "domino_glassware": {
         "label": "Domino Verrerie",
-        "group": "Dominos",
+        "chapter": "Autres contenus déjà prêts",
+        "order": 10,
         "description": "Reconnaître le matériel de laboratoire à partir de son illustration.",
         "resource_ready": True,
     },
     "domino_ions": {
         "label": "Domino Ions",
-        "group": "Dominos",
+        "chapter": "Autres contenus déjà prêts",
+        "order": 20,
         "description": "Associer formules, noms et représentations des ions selon les niveaux déjà créés.",
         "resource_ready": True,
     },
     "domino_electricity": {
         "label": "Domino Électricité",
-        "group": "Dominos",
+        "chapter": "Autres contenus déjà prêts",
+        "order": 30,
         "description": "Passer du montage électrique au schéma normalisé et réciproquement.",
         "resource_ready": True,
     },
-    "exercise_states_matter": {
-        "label": "Entraînement — États de la matière",
-        "group": "Exercices",
-        "description": "Prototype autocorrigé sur les solides, liquides, gaz et le modèle particulaire.",
-        "resource_ready": True,
-    },
 }
+
+PROGRESSION_CHAPTERS = [
+    "Chapitre 1 — Organisation de la matière",
+    "Chapitre 2 — L’air qui nous entoure",
+    "Chapitre 3 — Les transformations chimiques",
+    "Chapitre 4 — D’autres transformations chimiques",
+    "Autres contenus déjà prêts",
+]
+
 
 RESOURCE_BY_THEME = {
     "Molécules": "domino_molecules",
@@ -4655,48 +4671,79 @@ def teacher_contents():
         st.info("Créez d'abord une classe dans « Classes et élèves ».")
         return
 
-    st.markdown('<div class="section-title">📚 Contenus disponibles par classe</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-title">📚 Contenus disponibles par classe</div>',
+        unsafe_allow_html=True,
+    )
     st.caption(
-        "Chaque ressource est indépendante. Ouvrez uniquement ce que vous souhaitez mettre à disposition "
-        "après le travail réalisé en classe. Les ressources fermées restent invisibles pour les élèves. "
-        "Votre compte professeur conserve l'accès à tout."
+        "Les contenus suivent la progression de 4e. Chaque ressource reste indépendante : "
+        "vous pouvez ouvrir ou fermer un exercice ou un jeu sans ouvrir tout le chapitre. "
+        "Les ressources fermées restent invisibles pour les élèves."
     )
 
-    selected_class = st.selectbox("Classe à configurer", classes, key="content_class_select")
+    selected_class = st.selectbox(
+        "Classe à configurer",
+        classes,
+        key="content_class_select",
+    )
     access = get_content_access()
     class_access = dict(access.get(selected_class, {}))
 
-    # Migration douce des deux anciens interrupteurs du prototype.
+    # Migration douce des anciens interrupteurs du prototype.
     if "atoms_molecules" in class_access and "domino_molecules" not in class_access:
         class_access["domino_molecules"] = bool(class_access.get("atoms_molecules"))
     if "states_matter" in class_access and "exercise_states_matter" not in class_access:
         class_access["exercise_states_matter"] = bool(class_access.get("states_matter"))
 
     changed = False
-    groups = []
-    for info in PILOT_CONTENTS.values():
-        if info["group"] not in groups:
-            groups.append(info["group"])
 
-    for group in groups:
-        st.markdown(f"### {group}")
-        for content_id, info in PILOT_CONTENTS.items():
-            if info["group"] != group:
-                continue
-            c1, c2 = st.columns([4.5, 1.5])
-            with c1:
-                st.markdown(f"**{info['label']}**")
-                st.caption(info["description"])
-            with c2:
-                old_value = bool(class_access.get(content_id, False))
-                value = st.toggle(
-                    "Visible pour la classe",
-                    value=old_value,
-                    key=f"content_toggle_{selected_class}_{content_id}",
+    for chapter in PROGRESSION_CHAPTERS:
+        resources = [
+            (content_id, info)
+            for content_id, info in PILOT_CONTENTS.items()
+            if info.get("chapter") == chapter
+        ]
+        resources.sort(key=lambda item: item[1].get("order", 999))
+
+        opened_count = sum(
+            1
+            for content_id, _ in resources
+            if bool(class_access.get(content_id, False))
+        )
+        total_count = len(resources)
+
+        if chapter == "Autres contenus déjà prêts":
+            title = f"🧰 {chapter} — {opened_count}/{total_count} ouvert(s)"
+        else:
+            title = f"{chapter} — {opened_count}/{total_count} ouvert(s)"
+
+        with st.expander(title, expanded=(chapter == "Chapitre 1 — Organisation de la matière")):
+            if not resources:
+                st.caption(
+                    "Aucune ressource n'est encore ajoutée dans ce chapitre. "
+                    "Les futurs exercices seront classés ici au fur et à mesure."
                 )
-                if value != old_value:
-                    class_access[content_id] = value
-                    changed = True
+                continue
+
+            for content_id, info in resources:
+                c1, c2 = st.columns([4.8, 1.2])
+
+                with c1:
+                    st.markdown(f"**{info['label']}**")
+                    st.caption(info["description"])
+
+                with c2:
+                    old_value = bool(class_access.get(content_id, False))
+                    value = st.toggle(
+                        "Visible",
+                        value=old_value,
+                        key=f"content_toggle_{selected_class}_{content_id}",
+                        help="Affiche ou masque uniquement cette ressource pour la classe.",
+                    )
+
+                    if value != old_value:
+                        class_access[content_id] = value
+                        changed = True
 
     if changed:
         access[selected_class] = class_access
@@ -4704,12 +4751,20 @@ def teacher_contents():
         st.success(f"Accès de la classe {selected_class} mis à jour.")
         st.rerun()
 
-    opened = [info["label"] for cid, info in PILOT_CONTENTS.items() if class_access.get(cid)]
+    opened = [
+        info["label"]
+        for content_id, info in PILOT_CONTENTS.items()
+        if class_access.get(content_id)
+    ]
+
+    st.markdown("---")
     if opened:
-        st.info("Actuellement visible pour cette classe : " + ", ".join(opened))
+        st.info(
+            "Actuellement visible pour cette classe : "
+            + ", ".join(opened)
+        )
     else:
         st.info("Aucun contenu n'est actuellement ouvert pour cette classe.")
-
 
 def teacher_challenges():
     teacher_header("Défis")
