@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_EX10_EX11_V56
+# VERSION_UI_2026_08_26_SEANCES_COLLAPSIBLE_EX10_PARSE_V57
 import re
 import base64
 import json
@@ -4143,46 +4143,54 @@ def page_exercise_topics():
         st.info("Aucun exercice n'est encore ouvert pour ta classe.")
         return
 
-    current_session = None
-
+    grouped = {}
     for exercise in exercises:
-        if exercise["session"] != current_session:
-            current_session = exercise["session"]
-            st.markdown(
-                f'<div style="margin:1.5rem 0 .7rem;font-size:1.35rem;'
-                f'font-weight:850;color:#173b70;">{current_session}</div>',
-                unsafe_allow_html=True,
-            )
+        grouped.setdefault(exercise["session"], []).append(exercise)
 
-        c1, c_mid, c2 = st.columns([4.5, .35, 1.5])
+    session_order = [session1, session2]
 
-        with c1:
-            nav_card(
-                exercise["icon"],
-                exercise["title"],
-                exercise["description"],
-                exercise["color"],
-            )
+    for session_name in session_order:
+        session_exercises = grouped.get(session_name, [])
+        if not session_exercises:
+            continue
 
-        with c_mid:
-            st.markdown(
-                '<div style="display:flex;height:100%;min-height:160px;'
-                'align-items:center;justify-content:center;font-size:2rem;'
-                'color:#7fa8d6;font-weight:900;">→</div>',
-                unsafe_allow_html=True,
-            )
+        # Séance 1 fermée par défaut ; séance 2 ouverte par défaut.
+        default_open = session_name == session2
 
-        with c2:
-            st.write("")
-            st.write("")
-            st.button(
-                "Commencer →",
-                key=exercise["key"],
-                use_container_width=True,
-                type="primary",
-                on_click=set_page,
-                args=(exercise["page"],),
-            )
+        with st.expander(
+            f"{session_name}  ·  {len(session_exercises)} exercice(s)",
+            expanded=default_open,
+        ):
+            for exercise in session_exercises:
+                c1, c_mid, c2 = st.columns([4.5, .35, 1.5])
+
+                with c1:
+                    nav_card(
+                        exercise["icon"],
+                        exercise["title"],
+                        exercise["description"],
+                        exercise["color"],
+                    )
+
+                with c_mid:
+                    st.markdown(
+                        '<div style="display:flex;height:100%;min-height:160px;'
+                        'align-items:center;justify-content:center;font-size:2rem;'
+                        'color:#7fa8d6;font-weight:900;">→</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                with c2:
+                    st.write("")
+                    st.write("")
+                    st.button(
+                        "Commencer →",
+                        key=exercise["key"],
+                        use_container_width=True,
+                        type="primary",
+                        on_click=set_page,
+                        args=(exercise["page"],),
+                    )
 
 
 EXERCISE1_STATES_WATER = [
@@ -11842,8 +11850,25 @@ def _chem_formula_norm(value):
 
 
 def _ex10_int(value):
+    """
+    Extrait le premier nombre entier saisi par l'élève.
+
+    Exemples :
+    - "2" -> 2
+    - "2 noir" -> 2
+    - "6 blancs" -> 6
+    - "1 rouge" -> 1
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+
+    match = re.search(r"-?\d+", raw)
+    if not match:
+        return None
+
     try:
-        return int(str(value).strip())
+        return int(match.group(0))
     except Exception:
         return None
 
@@ -11856,9 +11881,28 @@ def _ex10_validate_q1():
 
     if c is None or h is None or o is None:
         st.session_state["ex10_q1_feedback"] = "empty"
+        st.session_state["ex10_q1_wrong_fields"] = []
         return
 
-    if (c, h, o) == (2, 6, 1):
+    expected = {
+        "carbone": 2,
+        "hydrogène": 6,
+        "oxygène": 1,
+    }
+    given = {
+        "carbone": c,
+        "hydrogène": h,
+        "oxygène": o,
+    }
+
+    wrong_fields = [
+        label
+        for label, expected_value in expected.items()
+        if given[label] != expected_value
+    ]
+    st.session_state["ex10_q1_wrong_fields"] = wrong_fields
+
+    if not wrong_fields:
         st.session_state["ex10_q1_correct"] = True
         st.session_state["ex10_q1_feedback"] = "correct"
     else:
@@ -11912,13 +11956,28 @@ def _ex10_feedback(question):
         return
 
     if question == 1:
+        wrong_fields = st.session_state.get("ex10_q1_wrong_fields", [])
+
+        if wrong_fields:
+            if len(wrong_fields) == 1:
+                detail = f"Recompte les atomes d’{wrong_fields[0]}."
+            else:
+                detail = (
+                    "Recompte les atomes de "
+                    + ", ".join(wrong_fields[:-1])
+                    + " et d’"
+                    + wrong_fields[-1]
+                    + "."
+                )
+        else:
+            detail = "Recompte séparément chaque sorte d’atome."
+
         if errors == 1:
-            st.warning(
-                "💡 Recompte séparément les boules noires, blanches et rouges du modèle."
-            )
+            st.warning(f"💡 {detail}")
         else:
             st.warning(
-                "🔎 Utilise la légende : noir = carbone, blanc = hydrogène, rouge = oxygène."
+                f"🔎 {detail} Utilise la légende : "
+                "noir = carbone, blanc = hydrogène, rouge = oxygène."
             )
     else:
         if errors == 1:
