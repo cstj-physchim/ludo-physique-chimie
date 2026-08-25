@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE14_TWO_LEVEL_FEEDBACK
+# VERSION_UI_2026_08_25_EXERCISE1_MODERN_TABLE
 import re
 import base64
 import json
@@ -130,8 +130,8 @@ def content_pilot_enabled_for_teacher(teacher_id=None, teacher_name=None):
 
 
 PILOT_CONTENTS = {
-    "exercise14_states_water": {
-        "label": "Exercice 14 — Identifier les états de l’eau",
+    "exercise1_states_water": {
+        "label": "Exercice 1 — Identifier les états de l’eau",
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 5,
         "description": "Choisir, pour chaque situation, le ou les états physiques de l’eau correspondants.",
@@ -434,6 +434,141 @@ st.markdown(
         padding: 1rem;
         text-align: center;
         box-shadow: 0 6px 18px rgba(31, 55, 90, 0.05);
+    }
+
+
+    /* ============================================================
+       EXERCICE 1 — TABLEAU MODERNE DES ÉTATS DE L'EAU
+       ============================================================ */
+    .ex1-instruction {
+        background: linear-gradient(180deg, #f8fbff 0%, #f3f8ff 100%);
+        border: 1px solid #cfe0fb;
+        border-radius: 16px;
+        padding: 0.9rem 1.1rem;
+        color: #324a68;
+        margin: 0.4rem 0 1rem 0;
+        box-shadow: 0 4px 14px rgba(31, 55, 90, 0.04);
+    }
+
+    .ex1-header-cell {
+        background: linear-gradient(180deg, #f6f9fd 0%, #eef4fb 100%);
+        border-top: 1px solid #dce5f1;
+        border-bottom: 1px solid #dce5f1;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #16335f;
+        font-size: 1rem;
+    }
+
+    .ex1-header-left {
+        justify-content: flex-start;
+        padding-left: 1rem;
+        border-left: 1px solid #dce5f1;
+        border-top-left-radius: 14px;
+    }
+
+    .ex1-header-right {
+        border-right: 1px solid #dce5f1;
+        border-top-right-radius: 14px;
+    }
+
+    .ex1-row-label {
+        min-height: 54px;
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        padding: 0.3rem 0.9rem;
+        background: #ffffff;
+        border-left: 1px solid #e3e9f2;
+        border-bottom: 1px solid #e8edf4;
+        color: #162b4d;
+        font-weight: 750;
+        font-size: 0.98rem;
+    }
+
+    .ex1-row-label:nth-child(even) {
+        background: #fbfdff;
+    }
+
+    .ex1-row-emoji {
+        font-size: 1.35rem;
+        width: 1.55rem;
+        text-align: center;
+        flex: 0 0 auto;
+    }
+
+    /* Agrandit visuellement les cases à cocher de cet exercice */
+    div[data-testid="stCheckbox"] {
+        min-height: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-bottom: 1px solid #e8edf4;
+        background: #fff;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    div[data-testid="stCheckbox"] label {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+        min-height: 54px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    div[data-testid="stCheckbox"] [data-testid="stCheckbox"] {
+        min-height: 54px;
+    }
+
+    div[data-testid="stCheckbox"] svg {
+        width: 26px !important;
+        height: 26px !important;
+    }
+
+    div[data-testid="stCheckbox"] span[data-baseweb="checkbox"] {
+        transform: scale(1.22);
+    }
+
+    .ex1-tip {
+        background: #fff9eb;
+        border: 1px solid #f5dda4;
+        border-radius: 12px;
+        padding: 0.75rem 0.9rem;
+        color: #72551a;
+        font-weight: 600;
+    }
+
+    .ex1-feedback-hint {
+        background: #fff7e6;
+        border: 1px solid #f4d69b;
+        border-radius: 12px;
+        padding: .65rem .8rem;
+        margin: .25rem 0 .7rem 0;
+        color: #73541c;
+    }
+
+    .ex1-feedback-correction {
+        background: #fff1f1;
+        border: 1px solid #f0c8c8;
+        border-radius: 12px;
+        padding: .65rem .8rem;
+        margin: .25rem 0 .7rem 0;
+        color: #7b2c2c;
+    }
+
+    .ex1-feedback-ok {
+        background: #eefaf2;
+        border: 1px solid #cdebd6;
+        border-radius: 12px;
+        padding: .6rem .8rem;
+        margin: .25rem 0 .7rem 0;
+        color: #24623a;
     }
 
     .footer-note {
@@ -1787,7 +1922,7 @@ def save_evaluation_preparations(preparations, teacher_id=None):
 def tracked_exercise_ids():
     """Ressources dont la réalisation produit déjà un résultat exploitable."""
     return [
-        "exercise14_states_water",
+        "exercise1_states_water",
         "exercise_states_matter",
     ]
 
@@ -3660,13 +3795,13 @@ def page_exercise_topics():
 
     exercises = []
 
-    if resource_is_available_for_current_user("exercise14_states_water"):
+    if resource_is_available_for_current_user("exercise1_states_water"):
         exercises.append({
             "icon": "💧",
-            "title": "Exercice 14 — Identifier les états de l’eau",
+            "title": "Exercice 1 — Identifier les états de l’eau",
             "description": "Associe chaque situation au bon état physique : solide, liquide ou gazeux.",
             "color": "card-cyan",
-            "page": "exercise14_states_water",
+            "page": "exercise1_states_water",
             "key": "start_ex14_states_water",
         })
 
@@ -3705,7 +3840,7 @@ def page_exercise_topics():
             )
 
 
-EXERCISE14_STATES_WATER = [
+EXERCISE1_STATES_WATER = [
     {
         "label": "Glacier",
         "answers": {"Solide"},
@@ -3764,16 +3899,16 @@ EXERCISE14_STATES_WATER = [
 ]
 
 
-def reset_exercise14_states_water():
+def reset_exercise1_states_water():
     for key in list(st.session_state.keys()):
-        if str(key).startswith("ex14_water_"):
+        if str(key).startswith("ex1_water_"):
             st.session_state.pop(key, None)
-    st.session_state.pop("ex14_water_attempts", None)
-    st.session_state.pop("ex14_water_result_saved", None)
-    st.session_state.pop("ex14_water_last_signature", None)
+    st.session_state.pop("ex1_water_attempts", None)
+    st.session_state.pop("ex1_water_result_saved", None)
+    st.session_state.pop("ex1_water_last_signature", None)
 
 
-def ex14_hint_for_item(label):
+def ex1_hint_for_item(label):
     hints = {
         "Glacier": "Pense à la matière qui constitue un glacier : est-elle fluide ou rigide ?",
         "Pluie": "Observe une goutte de pluie : elle coule et prend la forme du récipient qui la reçoit.",
@@ -3790,11 +3925,11 @@ def ex14_hint_for_item(label):
     return hints.get(label, "Observe les propriétés de cette forme d’eau.")
 
 
-def page_exercise14_states_water():
+def page_exercise1_states_water():
     hero()
     back_button("exercise_topics")
 
-    if not resource_is_available_for_current_user("exercise14_states_water"):
+    if not resource_is_available_for_current_user("exercise1_states_water"):
         st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
         return
 
@@ -3803,119 +3938,186 @@ def page_exercise14_states_water():
         'Chapitre 1 › Identifier les états de l’eau</div>',
         unsafe_allow_html=True,
     )
+
     st.markdown(
-        '<div class="section-title">💧 Exercice 14 — Identifier les états de l’eau</div>',
+        '<div class="section-title">💧 Exercice 1 — Identifier les états de l’eau</div>',
         unsafe_allow_html=True,
     )
-    st.caption(
-        "Pour chaque proposition, coche le ou les états physiques correspondants. "
-        "Certaines lignes peuvent avoir plusieurs bonnes réponses."
+
+    st.markdown(
+        """
+        <div class="ex1-instruction">
+            <strong>ℹ️ Consigne :</strong> Pour chaque proposition, coche le ou les états physiques correspondants.<br>
+            <span style="opacity:.82;">Certaines lignes peuvent avoir plusieurs bonnes réponses.</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    # En-tête du tableau
-    h1, h2, h3, h4 = st.columns([3.2, 1, 1, 1])
+    # En-tête moderne du tableau.
+    h1, h2, h3, h4 = st.columns([3.2, 1.2, 1.2, 1.2], gap="small")
     with h1:
-        st.markdown("**Proposition**")
+        st.markdown(
+            '<div class="ex1-header-cell ex1-header-left">Proposition</div>',
+            unsafe_allow_html=True,
+        )
     with h2:
-        st.markdown("**Solide**")
+        st.markdown(
+            '<div class="ex1-header-cell">❄️&nbsp;&nbsp;Solide</div>',
+            unsafe_allow_html=True,
+        )
     with h3:
-        st.markdown("**Liquide**")
+        st.markdown(
+            '<div class="ex1-header-cell">💧&nbsp;&nbsp;Liquide</div>',
+            unsafe_allow_html=True,
+        )
     with h4:
-        st.markdown("**Gazeux**")
+        st.markdown(
+            '<div class="ex1-header-cell ex1-header-right">☁️&nbsp;&nbsp;Gazeux</div>',
+            unsafe_allow_html=True,
+        )
 
-    st.divider()
+    icons = {
+        "Glacier": "🧊",
+        "Pluie": "🌧️",
+        "Brouillard": "🌫️",
+        "Neige": "❄️",
+        "Atmosphère": "🌍",
+        "Vapeur d’eau": "♨️",
+        "Givre": "🌨️",
+        "Lacs": "🏞️",
+        "Nuage": "☁️",
+        "Nappes phréatiques": "💧",
+        "Rivières et fleuves": "🏞️",
+    }
 
     selections = {}
 
-    for index, item in enumerate(EXERCISE14_STATES_WATER):
-        c1, c2, c3, c4 = st.columns([3.2, 1, 1, 1])
+    for index, item in enumerate(EXERCISE1_STATES_WATER):
+        c1, c2, c3, c4 = st.columns([3.2, 1.2, 1.2, 1.2], gap="small")
 
         with c1:
-            st.markdown(f"**{item['label']}**")
+            st.markdown(
+                f"""
+                <div class="ex1-row-label">
+                    <span class="ex1-row-emoji">{icons.get(item['label'], '•')}</span>
+                    <span>{item['label']}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
         row_selection = set()
 
         with c2:
             if st.checkbox(
-                "Solide",
-                key=f"ex14_water_{index}_solid",
+                f"{item['label']} — solide",
+                key=f"ex1_water_{index}_solid",
                 label_visibility="collapsed",
             ):
                 row_selection.add("Solide")
 
         with c3:
             if st.checkbox(
-                "Liquide",
-                key=f"ex14_water_{index}_liquid",
+                f"{item['label']} — liquide",
+                key=f"ex1_water_{index}_liquid",
                 label_visibility="collapsed",
             ):
                 row_selection.add("Liquide")
 
         with c4:
             if st.checkbox(
-                "Gazeux",
-                key=f"ex14_water_{index}_gas",
+                f"{item['label']} — gazeux",
+                key=f"ex1_water_{index}_gas",
                 label_visibility="collapsed",
             ):
                 row_selection.add("Gazeux")
 
         selections[index] = row_selection
 
-        # Feedback pédagogique mémorisé par ligne.
-        if st.session_state.get("ex14_water_checked", False):
+        # Aide/correction progressive sous la ligne concernée.
+        if st.session_state.get("ex1_water_checked", False):
             is_correct = row_selection == item["answers"]
-            error_count = int(st.session_state.get(f"ex14_water_errors_{index}", 0))
+            error_count = int(st.session_state.get(f"ex1_water_errors_{index}", 0))
 
-            if is_correct:
-                if error_count > 0:
-                    st.success(f"✅ {item['label']} : bonne correction.")
+            if is_correct and error_count > 0:
+                st.markdown(
+                    f'<div class="ex1-feedback-ok">✅ <strong>{item["label"]}</strong> : bonne correction.</div>',
+                    unsafe_allow_html=True,
+                )
             elif error_count == 1:
-                st.warning(f"💡 Indice — {item['label']} : {ex14_hint_for_item(item['label'])}")
+                st.markdown(
+                    f'<div class="ex1-feedback-hint">💡 <strong>Indice — {item["label"]}</strong> : '
+                    f'{ex1_hint_for_item(item["label"])}</div>',
+                    unsafe_allow_html=True,
+                )
             elif error_count >= 2:
                 correct_text = " + ".join(sorted(item["answers"]))
-                st.error(f"❌ {item['label']} : la bonne réponse est **{correct_text}**.")
-                st.info("📘 Explication : " + item["explanation"])
+                st.markdown(
+                    f'<div class="ex1-feedback-correction">❌ <strong>{item["label"]}</strong> : '
+                    f'la bonne réponse est <strong>{correct_text}</strong>.<br>'
+                    f'📘 {item["explanation"]}</div>',
+                    unsafe_allow_html=True,
+                )
 
-        st.divider()
+    st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
 
-    if st.button(
-        "✅ Valider mes réponses",
-        type="primary",
-        use_container_width=True,
-        key="validate_ex14_states_water",
-    ):
-        # Une nouvelle combinaison de réponses = une nouvelle tentative globale.
-        signature = tuple(
-            tuple(sorted(selections[i]))
-            for i in range(len(EXERCISE14_STATES_WATER))
+    # Barre basse façon maquette.
+    tip_col, reset_col, validate_col = st.columns([2.6, 1.3, 1.6])
+
+    with tip_col:
+        st.markdown(
+            '<div class="ex1-tip">💡 Tu peux cocher plusieurs cases sur une même ligne.</div>',
+            unsafe_allow_html=True,
         )
 
-        if st.session_state.get("ex14_water_last_signature") != signature:
-            st.session_state["ex14_water_attempts"] = int(
-                st.session_state.get("ex14_water_attempts", 0)
-            ) + 1
-            st.session_state["ex14_water_last_signature"] = signature
+    with reset_col:
+        if st.button(
+            "↻ Réinitialiser",
+            use_container_width=True,
+            key="restart_ex1_states_water",
+        ):
+            reset_exercise1_states_water()
+            st.rerun()
 
-            # On incrémente seulement les lignes actuellement fausses.
-            for index, item in enumerate(EXERCISE14_STATES_WATER):
-                if selections[index] != item["answers"]:
-                    key = f"ex14_water_errors_{index}"
-                    st.session_state[key] = int(st.session_state.get(key, 0)) + 1
+    with validate_col:
+        if st.button(
+            "✓ Vérifier mes réponses",
+            type="primary",
+            use_container_width=True,
+            key="validate_ex1_states_water",
+        ):
+            signature = tuple(
+                tuple(sorted(selections[i]))
+                for i in range(len(EXERCISE1_STATES_WATER))
+            )
 
-        st.session_state["ex14_water_checked"] = True
-        st.rerun()
+            if st.session_state.get("ex1_water_last_signature") != signature:
+                st.session_state["ex1_water_attempts"] = int(
+                    st.session_state.get("ex1_water_attempts", 0)
+                ) + 1
+                st.session_state["ex1_water_last_signature"] = signature
 
-    if st.session_state.get("ex14_water_checked", False):
-        correct_rows = 0
+                # Seules les lignes fausses prennent une erreur supplémentaire.
+                for index, item in enumerate(EXERCISE1_STATES_WATER):
+                    if selections[index] != item["answers"]:
+                        key = f"ex1_water_errors_{index}"
+                        st.session_state[key] = int(st.session_state.get(key, 0)) + 1
 
-        for index, item in enumerate(EXERCISE14_STATES_WATER):
-            if selections[index] == item["answers"]:
-                correct_rows += 1
+            st.session_state["ex1_water_checked"] = True
+            st.rerun()
 
-        total = len(EXERCISE14_STATES_WATER)
+    if st.session_state.get("ex1_water_checked", False):
+        correct_rows = sum(
+            1
+            for index, item in enumerate(EXERCISE1_STATES_WATER)
+            if selections[index] == item["answers"]
+        )
+
+        total = len(EXERCISE1_STATES_WATER)
         score_percent = round(100 * correct_rows / total)
 
-        st.markdown("### Résultat")
+        st.markdown("### Ton résultat")
         st.progress(correct_rows / total)
         st.write(f"**{correct_rows} / {total} lignes correctes — {score_percent} %**")
 
@@ -3926,43 +4128,32 @@ def page_exercise14_states_water():
             if (
                 st.session_state.get("app_user_type") == "student"
                 and student
-                and not st.session_state.get("ex14_water_result_saved", False)
+                and not st.session_state.get("ex1_water_result_saved", False)
             ):
                 total_errors = sum(
-                    int(st.session_state.get(f"ex14_water_errors_{i}", 0))
+                    int(st.session_state.get(f"ex1_water_errors_{i}", 0))
                     for i in range(total)
                 )
 
-                # Indicateur de maîtrise : baisse progressivement avec les erreurs cumulées.
                 mastery_score = round(
                     100 * total / max(total, total + total_errors)
                 )
 
                 record_training_result(
                     student,
-                    "exercise14_states_water",
+                    "exercise1_states_water",
                     mastery_score,
                     total,
                     total,
                     errors=total_errors,
                 )
-                st.session_state["ex14_water_result_saved"] = True
+                st.session_state["ex1_water_result_saved"] = True
         else:
             remaining = total - correct_rows
             st.info(
                 f"Il reste {remaining} ligne(s) à corriger. "
-                "À la première erreur, tu reçois un indice ; à la deuxième erreur sur la même ligne, "
-                "la correction expliquée apparaît."
+                "Première erreur : un indice. Deuxième erreur sur la même ligne : la correction expliquée."
             )
-
-    if st.button(
-        "🔄 Recommencer l’exercice",
-        use_container_width=False,
-        key="restart_ex14_states_water",
-    ):
-        reset_exercise14_states_water()
-        st.rerun()
-
 
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
@@ -6202,8 +6393,8 @@ elif page == "free_activity":
     page_free_activity()
 elif page == "exercise_topics":
     page_exercise_topics()
-elif page == "exercise14_states_water":
-    page_exercise14_states_water()
+elif page == "exercise1_states_water":
+    page_exercise1_states_water()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
