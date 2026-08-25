@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_23_STATES_V3_FULLSCREEN_STATES_MATTER_V1
+# VERSION_UI_2026_08_25_INDIVIDUAL_CONTENT_ACCESS
 import re
 import base64
 import json
@@ -130,16 +130,43 @@ def content_pilot_enabled_for_teacher(teacher_id=None, teacher_name=None):
 
 
 PILOT_CONTENTS = {
-    "states_matter": {
-        "label": "États de la matière",
-        "description": "Premier module d'entraînement autocorrigé : solide, liquide, gaz et modèle particulaire.",
+    "domino_molecules": {
+        "label": "Domino Molécules",
+        "group": "Dominos",
+        "description": "Formules, modèles moléculaires et descriptions selon les niveaux déjà créés.",
         "resource_ready": True,
     },
-    "atoms_molecules": {
-        "label": "Atomes et molécules",
-        "description": "Donne accès au domino Molécules déjà présent dans la Ludothèque.",
+    "domino_glassware": {
+        "label": "Domino Verrerie",
+        "group": "Dominos",
+        "description": "Reconnaître le matériel de laboratoire à partir de son illustration.",
         "resource_ready": True,
     },
+    "domino_ions": {
+        "label": "Domino Ions",
+        "group": "Dominos",
+        "description": "Associer formules, noms et représentations des ions selon les niveaux déjà créés.",
+        "resource_ready": True,
+    },
+    "domino_electricity": {
+        "label": "Domino Électricité",
+        "group": "Dominos",
+        "description": "Passer du montage électrique au schéma normalisé et réciproquement.",
+        "resource_ready": True,
+    },
+    "exercise_states_matter": {
+        "label": "Entraînement — États de la matière",
+        "group": "Exercices",
+        "description": "Prototype autocorrigé sur les solides, liquides, gaz et le modèle particulaire.",
+        "resource_ready": True,
+    },
+}
+
+RESOURCE_BY_THEME = {
+    "Molécules": "domino_molecules",
+    "Verrerie": "domino_glassware",
+    "Ions": "domino_ions",
+    "Électricité": "domino_electricity",
 }
 
 
@@ -3313,7 +3340,7 @@ def states_matter_available_for_current_user():
         return False
 
     return content_is_open_for_class(
-        "states_matter",
+        "exercise_states_matter",
         student.get("class_name", ""),
         teacher_id,
     )
@@ -3562,6 +3589,19 @@ def page_states_matter_training():
         reset_states_matter_training()
         st.rerun()
 
+def resource_is_available_for_current_user(resource_id):
+    """Professeur : tout le catalogue. Élève pilote : uniquement les ressources ouvertes pour sa classe."""
+    if st.session_state.get("app_user_type") == "teacher":
+        return True
+    if st.session_state.get("app_user_type") != "student":
+        return False
+    student = st.session_state.get("app_student") or {}
+    teacher_id = student.get("_teacher_id")
+    if not content_pilot_enabled_for_teacher(teacher_id, ""):
+        return True
+    return content_is_open_for_class(resource_id, student.get("class_name", ""), teacher_id)
+
+
 def page_free_theme():
     hero()
     back_button("free_activity")
@@ -3570,38 +3610,15 @@ def page_free_theme():
         '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Dominos › Choix du thème</div>',
         unsafe_allow_html=True,
     )
+    st.markdown('<div class="section-title">Dominos — choisissez un thème</div>', unsafe_allow_html=True)
 
-    st.markdown(
-        '<div class="section-title">Dominos — choisissez un thème</div>',
-        unsafe_allow_html=True,
-    )
-
-    # Dans le pilote personnel, un élève ne voit plus le catalogue complet :
-    # seuls les dominos rattachés à une notion ouverte pour sa classe apparaissent.
-    pilot_student = False
-    show_molecules = True
-    if st.session_state.get("app_user_type") == "student":
-        student = st.session_state.get("app_student") or {}
-        student_teacher_id = student.get("_teacher_id")
-        pilot_student = content_pilot_enabled_for_teacher(student_teacher_id, "")
-        if pilot_student:
-            show_molecules = content_is_open_for_class(
-                "atoms_molecules",
-                student.get("class_name", ""),
-                student_teacher_id,
-            )
-
-    # Professeur : catalogue complet. Élève pilote : uniquement les contenus ouverts.
-    themes = []
-    if show_molecules:
-        themes.append(("🔵", "Molécules", "Formules, modèles moléculaires et composition de la matière.", "card-blue", "theme_molecules"))
-
-    if not pilot_student:
-        themes.extend([
-            ("🧪", "Verrerie", "Reconnaître le matériel de laboratoire à partir de son illustration.", "card-cyan", "theme_glassware"),
-            ("➕➖", "Ions", "Associer la formule d'un ion à son nom.", "card-green", "theme_ions"),
-            ("⚡", "Électricité", "Passer du montage électrique au schéma normalisé et réciproquement.", "card-orange", "theme_elec"),
-        ])
+    catalog = [
+        ("🔵", "Molécules", "Formules, modèles moléculaires et composition de la matière.", "card-blue", "theme_molecules"),
+        ("🧪", "Verrerie", "Reconnaître le matériel de laboratoire à partir de son illustration.", "card-cyan", "theme_glassware"),
+        ("➕➖", "Ions", "Associer la formule d'un ion à son nom.", "card-green", "theme_ions"),
+        ("⚡", "Électricité", "Passer du montage électrique au schéma normalisé et réciproquement.", "card-orange", "theme_elec"),
+    ]
+    themes = [item for item in catalog if resource_is_available_for_current_user(RESOURCE_BY_THEME[item[1]])]
 
     if not themes:
         st.info("Aucun domino n'est encore ouvert pour votre classe.")
@@ -3621,6 +3638,11 @@ def page_free_level():
     back_button("free_theme")
 
     theme = st.session_state.get("selected_theme", "Molécules")
+    resource_id = RESOURCE_BY_THEME.get(theme)
+    if resource_id and not resource_is_available_for_current_user(resource_id):
+        st.warning("Ce domino n'est pas ouvert pour votre classe.")
+        st.button("← Retour aux dominos", on_click=set_page, args=("free_theme",))
+        return
     theme_levels = levels_for_theme(theme)
 
     st.markdown(
@@ -4633,39 +4655,48 @@ def teacher_contents():
         st.info("Créez d'abord une classe dans « Classes et élèves ».")
         return
 
-    st.markdown(
-        """
-        <div class="section-title">📚 Pilotage des contenus par classe</div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="section-title">📚 Contenus disponibles par classe</div>', unsafe_allow_html=True)
     st.caption(
-        "Cochez une notion lorsqu'elle a été travaillée en classe. "
-        "Les élèves de cette classe la verront alors dans leur espace d'entraînement. "
-        "Votre compte professeur conserve toujours l'accès à tout le contenu."
+        "Chaque ressource est indépendante. Ouvrez uniquement ce que vous souhaitez mettre à disposition "
+        "après le travail réalisé en classe. Les ressources fermées restent invisibles pour les élèves. "
+        "Votre compte professeur conserve l'accès à tout."
     )
 
     selected_class = st.selectbox("Classe à configurer", classes, key="content_class_select")
     access = get_content_access()
     class_access = dict(access.get(selected_class, {}))
 
+    # Migration douce des deux anciens interrupteurs du prototype.
+    if "atoms_molecules" in class_access and "domino_molecules" not in class_access:
+        class_access["domino_molecules"] = bool(class_access.get("atoms_molecules"))
+    if "states_matter" in class_access and "exercise_states_matter" not in class_access:
+        class_access["exercise_states_matter"] = bool(class_access.get("states_matter"))
+
     changed = False
-    for content_id, info in PILOT_CONTENTS.items():
-        c1, c2 = st.columns([4.5, 1.5])
-        with c1:
-            st.markdown(f"**{info['label']}**")
-            st.caption(info["description"])
-            if not info["resource_ready"]:
-                st.caption("🛠️ Aucun exercice n'est encore rattaché à cette notion : on ajoutera les exercices ensuite.")
-        with c2:
-            value = st.toggle(
-                "Visible pour la classe",
-                value=bool(class_access.get(content_id, False)),
-                key=f"content_toggle_{selected_class}_{content_id}",
-            )
-            if value != bool(class_access.get(content_id, False)):
-                class_access[content_id] = value
-                changed = True
+    groups = []
+    for info in PILOT_CONTENTS.values():
+        if info["group"] not in groups:
+            groups.append(info["group"])
+
+    for group in groups:
+        st.markdown(f"### {group}")
+        for content_id, info in PILOT_CONTENTS.items():
+            if info["group"] != group:
+                continue
+            c1, c2 = st.columns([4.5, 1.5])
+            with c1:
+                st.markdown(f"**{info['label']}**")
+                st.caption(info["description"])
+            with c2:
+                old_value = bool(class_access.get(content_id, False))
+                value = st.toggle(
+                    "Visible pour la classe",
+                    value=old_value,
+                    key=f"content_toggle_{selected_class}_{content_id}",
+                )
+                if value != old_value:
+                    class_access[content_id] = value
+                    changed = True
 
     if changed:
         access[selected_class] = class_access
@@ -4677,7 +4708,7 @@ def teacher_contents():
     if opened:
         st.info("Actuellement visible pour cette classe : " + ", ".join(opened))
     else:
-        st.info("Aucune notion de ce prototype n'est encore ouverte pour cette classe.")
+        st.info("Aucun contenu n'est actuellement ouvert pour cette classe.")
 
 
 def teacher_challenges():
