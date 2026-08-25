@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE3_ASSET_PATH_FIX_V16
+# VERSION_UI_2026_08_25_EXERCISE3_CONTEXTUAL_VISUAL_HELP_V17
 import re
 import base64
 import json
@@ -5286,13 +5286,20 @@ def page_exercise3_particle_models():
             "bouteille eau solide.png, bouteille eau liquide.png et bouteille eau gazeuse.png."
         )
 
-    # Aide visuelle commune : elle n'apparaît que si au moins un élève atteint le 3e niveau d'aide.
-    show_course_help = any(
-        int(st.session_state.get(f"ex3_errors_{key}", 0)) >= 3
+    # Aide visuelle commune :
+    # elle apparaît seulement tant qu'au moins une réponse ayant atteint
+    # le 3e niveau d'aide reste incorrecte. Dès que cette réponse est corrigée,
+    # l'aide disparaît automatiquement.
+    models_needing_visual_help = [
+        key
         for key in EXERCISE3_MODELS
-    )
+        if (
+            int(st.session_state.get(f"ex3_errors_{key}", 0)) >= 3
+            and not bool(st.session_state.get(f"ex3_correct_{key}", False))
+        )
+    ]
 
-    if show_course_help:
+    if models_needing_visual_help:
         help_path = Path(EXERCISE3_COURSE_HELP)
         st.markdown("### Aide visuelle du cours")
         if help_path.exists():
