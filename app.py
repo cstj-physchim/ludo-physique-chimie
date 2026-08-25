@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_EX10_EMPTY_FIELDS_V58
+# VERSION_UI_2026_08_26_EX12_EX13_EX14_V59
 import re
 import base64
 import json
@@ -208,6 +208,27 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 36,
         "description": "Réinvestir symbole, formule, modèle moléculaire et composition autour de l’azote.",
+        "resource_ready": True,
+    },
+    "exercise12_caffeine": {
+        "label": "Exercice 12 — Caféine",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 38,
+        "description": "Lire une formule chimique et en déduire la composition et le nombre total d’atomes.",
+        "resource_ready": True,
+    },
+    "exercise13_names_formulas": {
+        "label": "Exercice 13 — Noms et formules",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 40,
+        "description": "Associer un modèle moléculaire à son nom et à sa formule.",
+        "resource_ready": True,
+    },
+    "exercise14_molecule_formulas": {
+        "label": "Exercice 14 — Formules de molécules",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 42,
+        "description": "Déduire la formule d’une molécule à partir de son modèle.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -2119,6 +2140,9 @@ def tracked_exercise_ids():
         "exercise9_atom_or_molecule",
         "exercise10_ethanol",
         "exercise11_nitrous_oxide",
+        "exercise12_caffeine",
+        "exercise13_names_formulas",
+        "exercise14_molecule_formulas",
         "exercise_states_matter",
     ]
 
@@ -4126,6 +4150,39 @@ def page_exercise_topics():
             "color": "card-green",
             "page": "exercise11_nitrous_oxide",
             "key": "start_ex11_nitrous_oxide",
+        })
+
+    if resource_is_available_for_current_user("exercise12_caffeine"):
+        exercises.append({
+            "session": session2,
+            "icon": "☕",
+            "title": "Exercice 12 — Caféine",
+            "description": "Lis la formule de la caféine, détaille sa composition et compte tous ses atomes.",
+            "color": "card-orange",
+            "page": "exercise12_caffeine",
+            "key": "start_ex12_caffeine",
+        })
+
+    if resource_is_available_for_current_user("exercise13_names_formulas"):
+        exercises.append({
+            "session": session2,
+            "icon": "🧬",
+            "title": "Exercice 13 — Noms et formules",
+            "description": "Observe quatre modèles moléculaires et retrouve leur nom ainsi que leur formule.",
+            "color": "card-blue",
+            "page": "exercise13_names_formulas",
+            "key": "start_ex13_names_formulas",
+        })
+
+    if resource_is_available_for_current_user("exercise14_molecule_formulas"):
+        exercises.append({
+            "session": session2,
+            "icon": "🔎",
+            "title": "Exercice 14 — Formules de molécules",
+            "description": "Observe deux nouveaux modèles moléculaires et retrouve leur formule.",
+            "color": "card-cyan",
+            "page": "exercise14_molecule_formulas",
+            "key": "start_ex14_molecule_formulas",
         })
 
     if states_matter_available_for_current_user():
@@ -13212,6 +13269,669 @@ def page_exercise11_nitrous_oxide():
 
 
 
+
+# ============================================================
+# EXERCICE 12 — CAFÉINE
+# ============================================================
+
+def _ex12_validate_q1():
+    generation = int(st.session_state.get("ex12_generation", 0))
+
+    values = {
+        "carbone": _ex10_int(st.session_state.get(f"ex12_q1_c_{generation}", "")),
+        "hydrogène": _ex10_int(st.session_state.get(f"ex12_q1_h_{generation}", "")),
+        "azote": _ex10_int(st.session_state.get(f"ex12_q1_n_{generation}", "")),
+        "oxygène": _ex10_int(st.session_state.get(f"ex12_q1_o_{generation}", "")),
+    }
+
+    if any(v is None for v in values.values()):
+        st.session_state["ex12_q1_feedback"] = "empty"
+        st.session_state["ex12_q1_wrong_fields"] = []
+        return
+
+    expected = {
+        "carbone": 8,
+        "hydrogène": 10,
+        "azote": 4,
+        "oxygène": 2,
+    }
+
+    wrong = [
+        label for label, expected_value in expected.items()
+        if values[label] != expected_value
+    ]
+
+    st.session_state["ex12_q1_wrong_fields"] = wrong
+
+    if not wrong:
+        st.session_state["ex12_q1_correct"] = True
+        st.session_state["ex12_q1_feedback"] = "correct"
+    else:
+        st.session_state["ex12_q1_correct"] = False
+        st.session_state["ex12_q1_errors"] = int(
+            st.session_state.get("ex12_q1_errors", 0)
+        ) + 1
+        st.session_state["ex12_q1_feedback"] = "wrong"
+
+
+def _ex12_validate_q2():
+    generation = int(st.session_state.get("ex12_generation", 0))
+    value = _ex10_int(st.session_state.get(f"ex12_q2_{generation}", ""))
+
+    if value is None:
+        st.session_state["ex12_q2_feedback"] = "empty"
+        return
+
+    if value == 4:
+        st.session_state["ex12_q2_correct"] = True
+        st.session_state["ex12_q2_feedback"] = "correct"
+    else:
+        st.session_state["ex12_q2_correct"] = False
+        st.session_state["ex12_q2_errors"] = int(
+            st.session_state.get("ex12_q2_errors", 0)
+        ) + 1
+        st.session_state["ex12_q2_feedback"] = "wrong"
+
+
+def _ex12_validate_q3():
+    generation = int(st.session_state.get("ex12_generation", 0))
+    value = _ex10_int(st.session_state.get(f"ex12_q3_{generation}", ""))
+
+    if value is None:
+        st.session_state["ex12_q3_feedback"] = "empty"
+        return
+
+    if value == 24:
+        st.session_state["ex12_q3_correct"] = True
+        st.session_state["ex12_q3_feedback"] = "correct"
+    else:
+        st.session_state["ex12_q3_correct"] = False
+        st.session_state["ex12_q3_errors"] = int(
+            st.session_state.get("ex12_q3_errors", 0)
+        ) + 1
+        st.session_state["ex12_q3_feedback"] = "wrong"
+
+
+def _ex12_feedback(question):
+    feedback = st.session_state.get(f"ex12_q{question}_feedback")
+    errors = int(st.session_state.get(f"ex12_q{question}_errors", 0))
+
+    if feedback == "correct":
+        messages = {
+            1: "✅ Bonne lecture de la formule : C₈H₁₀N₄O₂.",
+            2: "✅ Il y a 4 sortes d’atomes différentes : C, H, N et O.",
+            3: "✅ La molécule contient 24 atomes au total.",
+        }
+        st.success(messages[question])
+        return
+
+    if feedback == "empty":
+        st.warning("✏️ Complète la réponse avant de valider.")
+        return
+
+    if feedback != "wrong":
+        return
+
+    if question == 1:
+        wrong = st.session_state.get("ex12_q1_wrong_fields", [])
+        if wrong:
+            st.warning(
+                "💡 Relis l’indice placé après le symbole de : "
+                + ", ".join(wrong)
+                + "."
+            )
+        else:
+            st.warning("💡 Relis les indices placés après chaque symbole.")
+    elif question == 2:
+        if errors == 1:
+            st.warning("💡 Compte les symboles chimiques différents présents dans la formule.")
+        else:
+            st.warning("🔎 Les symboles présents sont C, H, N et O.")
+    elif question == 3:
+        if errors == 1:
+            st.warning("💡 Additionne le nombre de tous les atomes indiqués par les indices.")
+        else:
+            st.warning("🔎 Additionne 8 + 10 + 4 + 2.")
+
+
+def reset_exercise12():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex12_"):
+            st.session_state.pop(key, None)
+
+
+def page_exercise12_caffeine():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise12_caffeine"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Séance 2 › Caféine</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">☕ Exercice 12 — Caféine</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div style="
+          background:#f5f9ff;border:1px solid #cfe0fb;border-radius:16px;
+          padding:1rem 1.1rem;margin:.7rem 0 1rem;font-size:1.12rem;
+          line-height:1.55;color:#314b69;">
+          Voici la formule de la molécule de caféine :
+          <span style="font-size:1.5rem;font-weight:900;color:#173b70;">
+          C<sub>8</sub>H<sub>10</sub>N<sub>4</sub>O<sub>2</sub>
+          </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    generation = int(st.session_state.get("ex12_generation", 0))
+
+    st.markdown("### 1. Détaille la composition de la molécule.")
+    c1, c2, c3, c4 = st.columns(4, gap="medium")
+    with c1:
+        st.text_input(
+            "Nombre d’atomes de carbone",
+            key=f"ex12_q1_c_{generation}",
+            disabled=bool(st.session_state.get("ex12_q1_correct", False)),
+        )
+    with c2:
+        st.text_input(
+            "Nombre d’atomes d’hydrogène",
+            key=f"ex12_q1_h_{generation}",
+            disabled=bool(st.session_state.get("ex12_q1_correct", False)),
+        )
+    with c3:
+        st.text_input(
+            "Nombre d’atomes d’azote",
+            key=f"ex12_q1_n_{generation}",
+            disabled=bool(st.session_state.get("ex12_q1_correct", False)),
+        )
+    with c4:
+        st.text_input(
+            "Nombre d’atomes d’oxygène",
+            key=f"ex12_q1_o_{generation}",
+            disabled=bool(st.session_state.get("ex12_q1_correct", False)),
+        )
+
+    st.button(
+        "Valider la composition",
+        key="ex12_validate_q1",
+        use_container_width=True,
+        type="primary",
+        on_click=_ex12_validate_q1,
+        disabled=bool(st.session_state.get("ex12_q1_correct", False)),
+    )
+    _ex12_feedback(1)
+
+    st.markdown("### 2. Combien y a-t-il de sortes d’atomes différentes ?")
+    st.text_input(
+        "Nombre de sortes d’atomes",
+        key=f"ex12_q2_{generation}",
+        disabled=bool(st.session_state.get("ex12_q2_correct", False)),
+    )
+    st.button(
+        "Valider la question 2",
+        key="ex12_validate_q2",
+        use_container_width=True,
+        on_click=_ex12_validate_q2,
+        disabled=bool(st.session_state.get("ex12_q2_correct", False)),
+    )
+    _ex12_feedback(2)
+
+    st.markdown("### 3. Quel est le nombre total d’atomes contenus dans la molécule ?")
+    st.text_input(
+        "Nombre total d’atomes",
+        key=f"ex12_q3_{generation}",
+        disabled=bool(st.session_state.get("ex12_q3_correct", False)),
+    )
+    st.button(
+        "Valider la question 3",
+        key="ex12_validate_q3",
+        use_container_width=True,
+        on_click=_ex12_validate_q3,
+        disabled=bool(st.session_state.get("ex12_q3_correct", False)),
+    )
+    _ex12_feedback(3)
+
+    completed = sum(
+        int(bool(st.session_state.get(f"ex12_q{i}_correct", False)))
+        for i in (1, 2, 3)
+    )
+
+    st.markdown("### Ton avancement")
+    st.progress(completed / 3)
+    st.write(f"**{completed} / 3 questions réussies**")
+
+    if st.button("↻ Recommencer", key="restart_ex12"):
+        reset_exercise12()
+        st.rerun()
+
+    if completed == 3:
+        st.success("🎉 Exercice terminé.")
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex12_result_saved", False)
+        ):
+            errors = sum(
+                int(st.session_state.get(f"ex12_q{i}_errors", 0))
+                for i in (1, 2, 3)
+            )
+            score = round(100 * 3 / max(3, 3 + errors))
+            record_training_result(
+                student,
+                "exercise12_caffeine",
+                score,
+                3,
+                3,
+                errors=errors,
+            )
+            st.session_state["ex12_result_saved"] = True
+
+
+# ============================================================
+# EXERCICE 13 — NOMS ET FORMULES
+# ============================================================
+
+EXERCISE13_ITEMS = [
+    {
+        "id": "h2o",
+        "image_candidates": [
+            Path("assets/chapitre_1/exercice 13/H2O.png"),
+            Path("assets/chapitre_1/exercice_13/H2O.png"),
+        ],
+        "name_answers": {"eau", "molecule d eau", "molécule d eau"},
+        "formula": "H2O",
+        "hint": "Le modèle contient un atome d’oxygène et deux atomes d’hydrogène.",
+    },
+    {
+        "id": "co2",
+        "image_candidates": [
+            Path("assets/chapitre_1/exercice 13/CO2.png"),
+            Path("assets/chapitre_1/exercice_13/CO2.png"),
+        ],
+        "name_answers": {"dioxyde de carbone"},
+        "formula": "CO2",
+        "hint": "Le modèle contient un atome de carbone et deux atomes d’oxygène.",
+    },
+    {
+        "id": "n2",
+        "image_candidates": [
+            Path("assets/chapitre_1/exercice 13/N2.png"),
+            Path("assets/chapitre_1/exercice_13/N2.png"),
+        ],
+        "name_answers": {"diazote"},
+        "formula": "N2",
+        "hint": "Il s’agit d’une molécule constituée de deux atomes d’azote.",
+    },
+    {
+        "id": "h2",
+        "image_candidates": [
+            Path("assets/chapitre_1/exercice 13/H2.png"),
+            Path("assets/chapitre_1/exercice_13/H2.png"),
+        ],
+        "name_answers": {"dihydrogene", "dihydrogène"},
+        "formula": "H2",
+        "hint": "Il s’agit d’une molécule constituée de deux atomes d’hydrogène.",
+    },
+]
+
+
+def _exercise_image(candidates):
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _chem_name_norm(value):
+    return _ex8_norm(value).replace("'", " ")
+
+
+def _ex13_validate_item(index):
+    generation = int(st.session_state.get("ex13_generation", 0))
+    item = EXERCISE13_ITEMS[index]
+
+    name = _chem_name_norm(
+        st.session_state.get(f"ex13_name_{index}_{generation}", "")
+    )
+    formula = _chem_formula_norm(
+        st.session_state.get(f"ex13_formula_{index}_{generation}", "")
+    )
+
+    if not name or not formula:
+        st.session_state[f"ex13_feedback_{index}"] = "empty"
+        return
+
+    accepted_names = {_chem_name_norm(v) for v in item["name_answers"]}
+    name_ok = name in accepted_names
+    formula_ok = formula == item["formula"]
+
+    if name_ok and formula_ok:
+        st.session_state[f"ex13_correct_{index}"] = True
+        st.session_state[f"ex13_feedback_{index}"] = "correct"
+    else:
+        st.session_state[f"ex13_correct_{index}"] = False
+        st.session_state[f"ex13_errors_{index}"] = int(
+            st.session_state.get(f"ex13_errors_{index}", 0)
+        ) + 1
+        st.session_state[f"ex13_feedback_{index}"] = {
+            "name_ok": name_ok,
+            "formula_ok": formula_ok,
+        }
+
+
+def _ex13_render_item(index):
+    item = EXERCISE13_ITEMS[index]
+    generation = int(st.session_state.get("ex13_generation", 0))
+    correct = bool(st.session_state.get(f"ex13_correct_{index}", False))
+
+    image_path = _exercise_image(item["image_candidates"])
+
+    st.markdown(
+        f"#### Modèle {chr(ord('a') + index)}"
+    )
+
+    if image_path is not None:
+        st.image(str(image_path), width=300)
+    else:
+        st.warning(
+            f"Image manquante pour le modèle {chr(ord('a') + index)}."
+        )
+
+    st.text_input(
+        "Nom de la molécule",
+        key=f"ex13_name_{index}_{generation}",
+        disabled=correct,
+    )
+    st.text_input(
+        "Formule",
+        key=f"ex13_formula_{index}_{generation}",
+        disabled=correct,
+    )
+
+    st.button(
+        "Valider",
+        key=f"ex13_validate_{index}",
+        use_container_width=True,
+        on_click=_ex13_validate_item,
+        args=(index,),
+        disabled=correct,
+    )
+
+    feedback = st.session_state.get(f"ex13_feedback_{index}")
+    errors = int(st.session_state.get(f"ex13_errors_{index}", 0))
+
+    if feedback == "empty":
+        st.warning("✏️ Complète le nom et la formule.")
+    elif feedback == "correct":
+        st.success("✅ Nom et formule corrects.")
+    elif isinstance(feedback, dict):
+        name_ok = feedback.get("name_ok", False)
+        formula_ok = feedback.get("formula_ok", False)
+
+        if name_ok and not formula_ok:
+            st.warning("💡 Le nom est correct. Revois la formule.")
+        elif formula_ok and not name_ok:
+            st.warning("💡 La formule est correcte. Revois le nom.")
+        elif errors == 1:
+            st.warning("💡 Observe les couleurs et compte les atomes du modèle.")
+        else:
+            st.warning("🔎 " + item["hint"])
+
+
+def reset_exercise13():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex13_"):
+            st.session_state.pop(key, None)
+
+
+def page_exercise13_names_formulas():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise13_names_formulas"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Séance 2 › Noms et formules</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">🧬 Exercice 13 — Noms et formules</div>',
+        unsafe_allow_html=True,
+    )
+    st.info(
+        "Pour chaque modèle, indique le nom de la molécule et sa formule."
+    )
+
+    for row_start in (0, 2):
+        cols = st.columns(2, gap="large")
+        for offset, col in enumerate(cols):
+            index = row_start + offset
+            with col:
+                _ex13_render_item(index)
+
+    completed = sum(
+        int(bool(st.session_state.get(f"ex13_correct_{i}", False)))
+        for i in range(len(EXERCISE13_ITEMS))
+    )
+
+    st.markdown("### Ton avancement")
+    st.progress(completed / len(EXERCISE13_ITEMS))
+    st.write(
+        f"**{completed} / {len(EXERCISE13_ITEMS)} modèles réussis**"
+    )
+
+    if st.button("↻ Recommencer", key="restart_ex13"):
+        reset_exercise13()
+        st.rerun()
+
+    if completed == len(EXERCISE13_ITEMS):
+        st.success("🎉 Exercice terminé.")
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex13_result_saved", False)
+        ):
+            errors = sum(
+                int(st.session_state.get(f"ex13_errors_{i}", 0))
+                for i in range(len(EXERCISE13_ITEMS))
+            )
+            score = round(
+                100 * len(EXERCISE13_ITEMS)
+                / max(len(EXERCISE13_ITEMS), len(EXERCISE13_ITEMS) + errors)
+            )
+            record_training_result(
+                student,
+                "exercise13_names_formulas",
+                score,
+                len(EXERCISE13_ITEMS),
+                len(EXERCISE13_ITEMS),
+                errors=errors,
+            )
+            st.session_state["ex13_result_saved"] = True
+
+
+# ============================================================
+# EXERCICE 14 — FORMULES DE MOLÉCULES
+# ============================================================
+
+EXERCISE14_ITEMS = [
+    {
+        "id": "ch4",
+        "image_candidates": [
+            Path("assets/chapitre_1/exercice 14/CH4.png"),
+            Path("assets/chapitre_1/exercice_14/CH4.png"),
+        ],
+        "formula": "CH4",
+        "hint": "Compte le nombre d’atomes de carbone et d’hydrogène.",
+    },
+    {
+        "id": "cl2",
+        "image_candidates": [
+            Path("assets/chapitre_1/exercice 14/Cl2.png"),
+            Path("assets/chapitre_1/exercice_14/Cl2.png"),
+        ],
+        "formula": "Cl2",
+        "hint": "Le symbole du chlore est Cl. Le modèle montre deux atomes de chlore.",
+    },
+]
+
+
+def _ex14_validate_item(index):
+    generation = int(st.session_state.get("ex14_generation", 0))
+    item = EXERCISE14_ITEMS[index]
+
+    formula = _chem_formula_norm(
+        st.session_state.get(f"ex14_formula_{index}_{generation}", "")
+    )
+
+    if not formula:
+        st.session_state[f"ex14_feedback_{index}"] = "empty"
+        return
+
+    if formula == item["formula"]:
+        st.session_state[f"ex14_correct_{index}"] = True
+        st.session_state[f"ex14_feedback_{index}"] = "correct"
+    else:
+        st.session_state[f"ex14_correct_{index}"] = False
+        st.session_state[f"ex14_errors_{index}"] = int(
+            st.session_state.get(f"ex14_errors_{index}", 0)
+        ) + 1
+        st.session_state[f"ex14_feedback_{index}"] = "wrong"
+
+
+def reset_exercise14():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex14_"):
+            st.session_state.pop(key, None)
+
+
+def page_exercise14_molecule_formulas():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise14_molecule_formulas"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Séance 2 › Formules de molécules</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">🔎 Exercice 14 — Formules de molécules</div>',
+        unsafe_allow_html=True,
+    )
+    st.info(
+        "Observe chaque modèle et écris la formule de la molécule représentée."
+    )
+
+    generation = int(st.session_state.get("ex14_generation", 0))
+    cols = st.columns(2, gap="large")
+
+    for index, col in enumerate(cols):
+        item = EXERCISE14_ITEMS[index]
+        correct = bool(st.session_state.get(f"ex14_correct_{index}", False))
+        image_path = _exercise_image(item["image_candidates"])
+
+        with col:
+            st.markdown(f"#### Modèle {chr(ord('a') + index)}")
+
+            if image_path is not None:
+                st.image(str(image_path), width=360)
+            else:
+                st.warning("Image manquante.")
+
+            st.text_input(
+                "Formule",
+                key=f"ex14_formula_{index}_{generation}",
+                disabled=correct,
+            )
+
+            st.button(
+                "Valider",
+                key=f"ex14_validate_{index}",
+                use_container_width=True,
+                on_click=_ex14_validate_item,
+                args=(index,),
+                disabled=correct,
+            )
+
+            feedback = st.session_state.get(f"ex14_feedback_{index}")
+            errors = int(st.session_state.get(f"ex14_errors_{index}", 0))
+
+            if feedback == "empty":
+                st.warning("✏️ Écris une formule.")
+            elif feedback == "correct":
+                st.success("✅ Bonne formule.")
+            elif feedback == "wrong":
+                if errors == 1:
+                    st.warning("💡 Recompte les atomes représentés.")
+                else:
+                    st.warning("🔎 " + item["hint"])
+
+    completed = sum(
+        int(bool(st.session_state.get(f"ex14_correct_{i}", False)))
+        for i in range(len(EXERCISE14_ITEMS))
+    )
+
+    st.markdown("### Ton avancement")
+    st.progress(completed / len(EXERCISE14_ITEMS))
+    st.write(
+        f"**{completed} / {len(EXERCISE14_ITEMS)} modèles réussis**"
+    )
+
+    if st.button("↻ Recommencer", key="restart_ex14"):
+        reset_exercise14()
+        st.rerun()
+
+    if completed == len(EXERCISE14_ITEMS):
+        st.success("🎉 Exercice terminé.")
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex14_result_saved", False)
+        ):
+            errors = sum(
+                int(st.session_state.get(f"ex14_errors_{i}", 0))
+                for i in range(len(EXERCISE14_ITEMS))
+            )
+            score = round(
+                100 * len(EXERCISE14_ITEMS)
+                / max(len(EXERCISE14_ITEMS), len(EXERCISE14_ITEMS) + errors)
+            )
+            record_training_result(
+                student,
+                "exercise14_molecule_formulas",
+                score,
+                len(EXERCISE14_ITEMS),
+                len(EXERCISE14_ITEMS),
+                errors=errors,
+            )
+            st.session_state["ex14_result_saved"] = True
+
+
+
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
         if (
@@ -15505,6 +16225,12 @@ elif page == "exercise10_ethanol":
     page_exercise10_ethanol()
 elif page == "exercise11_nitrous_oxide":
     page_exercise11_nitrous_oxide()
+elif page == "exercise12_caffeine":
+    page_exercise12_caffeine()
+elif page == "exercise13_names_formulas":
+    page_exercise13_names_formulas()
+elif page == "exercise14_molecule_formulas":
+    page_exercise14_molecule_formulas()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
