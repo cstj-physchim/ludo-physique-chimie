@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE2_ASSETS_STRUCTURE_V13
+# VERSION_UI_2026_08_25_EXERCISE2_EQUAL_IMAGES_V14
 import re
 import base64
 import json
@@ -4695,6 +4695,23 @@ def page_exercise2_water_properties():
             min-height: 270px;
         }
 
+        .ex2-fixed-image-wrap {
+            height: 245px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto .4rem auto;
+            overflow: hidden;
+        }
+
+        .ex2-fixed-image-wrap img {
+            width: 220px;
+            height: 220px;
+            object-fit: contain;
+            display: block;
+        }
+
         .ex2-label {
             min-height: 46px;
             height: 46px;
@@ -4801,7 +4818,17 @@ def page_exercise2_water_properties():
             st.markdown(f'<div class="ex2-letter">{letter}</div>', unsafe_allow_html=True)
             path = Path(info["path"])
             if path.exists():
-                st.image(str(path), use_container_width=True)
+                import base64
+                mime = "image/png"
+                encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+                st.markdown(
+                    f"""
+                    <div class="ex2-fixed-image-wrap">
+                        <img src="data:{mime};base64,{encoded}" alt="{info['alt']}">
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             else:
                 missing_assets.append(info["path"])
                 st.warning(f"Image manquante : {path.name}")
