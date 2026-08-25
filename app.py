@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE6_LARGER_STATEMENTS_V37
+# VERSION_UI_2026_08_25_EXERCISE6_BIG_ALCOHOL_MOLECULES_V38
 import re
 import base64
 import json
@@ -3976,7 +3976,7 @@ def page_exercise_topics():
         exercises.append({
             "icon": "🧪",
             "title": "Exercice 6 — Le mystère du volume perdu : eau + alcool",
-            "description": "Explique la diminution de volume et modélise le mélange à l’échelle microscopique.",
+            "description": "Explique un volume final inférieur à la somme des volumes initiaux et modélise le mélange à l’échelle microscopique.",
             "color": "card-purple",
             "page": "exercise6_water_alcohol_volume",
             "key": "start_ex6_water_alcohol_volume",
@@ -7557,7 +7557,7 @@ def _ex6_feedback(question):
     if correct:
         messages = {
             1: "✅ Bonne réponse ! Tu as bien utilisé l’analogie entre les grosses billes et le sable fin.",
-            2: "✅ Bonne réponse ! Ton explication relie correctement la taille des molécules et la diminution du volume.",
+            2: "✅ Bonne réponse ! Ton explication relie correctement la taille des molécules et le fait que le volume final soit inférieur à la somme des volumes initiaux.",
             3: "✅ Bonne réponse ! Le volume peut changer sans disparition de matière : la masse se conserve.",
         }
         st.markdown(
@@ -7590,7 +7590,7 @@ def _ex6_feedback(question):
         elif errors == 2:
             msg = "📘 Les molécules d’eau sont plus petites. Cherche ce qu’elles peuvent faire dans les espaces existant entre les molécules d’alcool."
         else:
-            msg = "🔎 Les molécules d’eau, plus petites, peuvent occuper une partie des espaces entre les molécules d’alcool. Le mélange devient plus compact et son volume diminue."
+            msg = "🔎 Les molécules d’eau, plus petites, peuvent occuper une partie des espaces entre les molécules d’alcool. Le mélange devient plus compact : le volume final est inférieur à la somme des volumes initiaux."
 
     else:
         if errors == 1:
@@ -7625,8 +7625,8 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sa
 .legend{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin:8px 0 12px;font-size:13px}
 .legend span{display:flex;align-items:center;gap:7px}
 .dot{display:inline-block;border-radius:50%;border:3px solid}
-.dot.water{width:23px;height:23px;background:#36bdf1;border-color:#147ba6}
-.dot.alcohol{width:34px;height:34px;background:#ff9a32;border-color:#c86a13}
+.dot.water{width:24px;height:24px;background:#36bdf1;border-color:#147ba6}
+.dot.alcohol{width:46px;height:46px;background:#ff9a32;border-color:#c86a13}
 .section-title{text-align:center;font-weight:900;color:#16335f;margin:8px 0}
 .initial{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:760px;margin:0 auto 18px}
 .beaker-card{text-align:center}
@@ -7634,10 +7634,10 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sa
 .beaker{position:relative;height:190px;border:5px solid #25313b;border-top:0;border-radius:0 0 30px 30px;overflow:hidden;background:linear-gradient(90deg,#f3fffd,#fff,#f0fbff)}
 .initial .beaker{height:170px}
 .particle{position:absolute;border-radius:50%;box-shadow:0 2px 5px #0002}
-.particle.water{width:23px;height:23px;background:radial-gradient(circle at 32% 28%,#a9ecff 0 18%,#36bdf1 20% 100%);border:3px solid #147ba6}
-.particle.alcohol{width:34px;height:34px;background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);border:3px solid #c86a13}
-.final-area{display:grid;grid-template-columns:210px 1fr 210px;gap:18px;align-items:start}
-.tray{background:#f7f9fc;border:1px solid #cfdbea;border-radius:16px;padding:12px;min-height:210px;text-align:center}
+.particle.water{width:24px;height:24px;background:radial-gradient(circle at 32% 28%,#a9ecff 0 18%,#36bdf1 20% 100%);border:3px solid #147ba6}
+.particle.alcohol{width:52px;height:52px;background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);border:4px solid #c86a13}
+.final-area{display:grid;grid-template-columns:240px 1fr 240px;gap:18px;align-items:start}
+.tray{background:#f7f9fc;border:1px solid #cfdbea;border-radius:16px;padding:12px;min-height:245px;text-align:center}
 .tray h4{margin:0 0 5px}
 .tray p{margin:0 0 10px;color:#6e7c90;font-size:12px}
 .pool{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;align-content:flex-start;min-height:120px}
@@ -7746,7 +7746,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   }
 
   function storageKey(){
-    return "ludo_ex6_mix_v1_"+storageId+"_"+String(generation);
+    return "ludo_ex6_mix_v2_"+storageId+"_"+String(generation);
   }
   function save(){
     try{sessionStorage.setItem(storageKey(),JSON.stringify(state));}catch(e){}
@@ -7801,8 +7801,14 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     const w=document.getElementById("initialWater");
     const a=document.getElementById("initialAlcohol");
     w.innerHTML=""; a.innerHTML="";
-    const wp=[[24,125],[55,130],[86,123],[117,132],[148,124],[179,130],[210,123],[241,132]];
-    const ap=[[25,112],[65,119],[105,111],[145,120],[185,112],[225,119],[265,111],[305,120]];
+    const wp=[
+      [48,112],[93,121],[140,111],[186,120],
+      [70,139],[116,145],[162,138],[208,146]
+    ];
+    const ap=[
+      [32,64],[95,72],[158,64],[221,72],
+      [62,116],[125,124],[188,116],[251,124]
+    ];
     wp.forEach((p,i)=>{
       const e=document.createElement("div"); e.className="particle water";
       e.style.left=p[0]+"px";e.style.top=p[1]+"px";w.appendChild(e);
@@ -7880,7 +7886,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     const inside=e.clientX>=br.left&&e.clientX<=br.right&&e.clientY>=br.top&&e.clientY<=br.bottom;
     if(inside){
       const gr=drag.ghost.getBoundingClientRect();
-      const size=drag.type==="water"?23:34;
+      const size=drag.type==="water"?24:52;
       let x=gr.left-br.left, y=gr.top-br.top;
       x=Math.max(4,Math.min(b.clientWidth-size-4,x));
       y=Math.max(74,Math.min(b.clientHeight-size-5,y));
@@ -7892,11 +7898,21 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     cleanup();drag=null;
   }
 
-  function nearestDistance(point, others){
+  function particleSize(type){
+    return type==="water" ? 24 : 52;
+  }
+
+  function centre(point,type){
+    const s=particleSize(type);
+    return {x:point.x+s/2,y:point.y+s/2};
+  }
+
+  function nearestDistance(point, pointType, others, otherType){
+    const p=centre(point,pointType);
     let d=Infinity;
     others.forEach(o=>{
-      const dx=(point.x)-(o.x),dy=(point.y)-(o.y);
-      d=Math.min(d,Math.hypot(dx,dy));
+      const q=centre(o,otherType);
+      d=Math.min(d,Math.hypot(p.x-q.x,p.y-q.y));
     });
     return d;
   }
@@ -7916,20 +7932,20 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     const occupiedHeight=Math.max(...ys)-Math.min(...ys);
 
     // Intermixing: most water molecules should be reasonably close to at least one alcohol molecule.
-    const waterNearAlcohol=w.filter(p=>nearestDistance(p,a)<=62).length/NW;
+    const waterNearAlcohol=w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=72).length/NW;
 
     // Compactness: final particles should mainly occupy the lower part and not a very tall region.
     const meanY=ys.reduce((x,y)=>x+y,0)/ys.length;
-    const compact=occupiedHeight<=180 && meanY>=160;
+    const compact=occupiedHeight<=190 && meanY>=155;
     const mixed=waterNearAlcohol>=0.65;
 
     if(compact&&mixed){
       state.success=true;
-      setFeedback("good","✅ Ton état final est cohérent : les deux sortes de molécules sont mélangées et l’ensemble est plus compact.");
+      setFeedback("good","✅ Ton état final est cohérent : les deux sortes de molécules sont mélangées et les petites molécules d’eau occupent une partie des espaces entre les grosses molécules d’alcool.");
     }else{
       state.errors++;
       if(state.errors===1){
-        setFeedback("hint","💡 Ton modèle ne traduit pas encore la diminution de volume. Compare l’espace occupé avant et après.");
+        setFeedback("hint","💡 Ton modèle ne traduit pas encore un volume final inférieur à la somme des volumes initiaux. Compare l’espace occupé avant et après.");
       }else if(state.errors===2){
         setFeedback("hint","💡 Reprends l’analogie des grosses billes et du sable : observe les espaces entre les grosses molécules.");
       }else{
@@ -7984,18 +8000,18 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
 
 @st.cache_resource
-def _ex6_component():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_mix_component_v1"
+def _ex6_component_v2():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_mix_component_v2"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX6_MIXTURE_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex6_water_alcohol_mix_v1",
+        "ex6_water_alcohol_mix_v2",
         path=str(component_dir),
     )
 
 
 def render_ex6_model(generation):
-    component = _ex6_component()
+    component = _ex6_component_v2()
     student = st.session_state.get("app_student") or {}
     storage_id = str(
         student.get("id")
@@ -8005,7 +8021,7 @@ def render_ex6_model(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex6_mix_v1_{generation}",
+        key=f"ex6_mix_v2_{generation}",
         default={
             "success": False,
             "errors": 0,
@@ -8185,8 +8201,8 @@ def page_exercise6_water_alcohol_volume():
     # Question 2
     st.markdown('<div class="ex6-question">', unsafe_allow_html=True)
     st.markdown(
-        "### 2. Interprétation microscopique : sachant que les molécules d’eau sont plus "
-        "petites que les molécules d’alcool, explique pourquoi le volume du mélange diminue."
+        "### 2. Interprétation microscopique : explique pourquoi, après le mélange, "
+        "le volume obtenu est inférieur à 200 mL + 200 mL."
     )
     st.text_area(
         "Ta réponse",
@@ -8207,7 +8223,7 @@ def page_exercise6_water_alcohol_volume():
     st.markdown('<div class="ex6-question">', unsafe_allow_html=True)
     st.markdown(
         "### 3. Conservation de la masse : explique pourquoi la masse totale ne varie pas, "
-        "alors que le volume a diminué."
+        "alors que le volume final est inférieur à 400 mL."
     )
     st.text_area(
         "Ta réponse",
@@ -8252,7 +8268,7 @@ def page_exercise6_water_alcohol_volume():
 
     if completed==4:
         st.success(
-            "🎉 Bravo ! Tu as relié la diminution de volume à l’organisation des molécules "
+            "🎉 Bravo ! Tu as relié un volume final inférieur à la somme des volumes initiaux à l’organisation des molécules "
             "tout en conservant la même quantité de matière."
         )
 
