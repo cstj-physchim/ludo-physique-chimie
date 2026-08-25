@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE1_RESTART_TRACKING_V11
+# VERSION_UI_2026_08_25_EXERCISE2_WATER_PROPERTIES_V12
 import re
 import base64
 import json
@@ -135,6 +135,13 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 5,
         "description": "Choisir, pour chaque situation, le ou les états physiques de l’eau correspondants.",
+        "resource_ready": True,
+    },
+    "exercise2_water_properties": {
+        "label": "Exercice 2 — Les particularités des états de l’eau",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 7,
+        "description": "Associer des étiquettes à trois représentations de l’eau en utilisant les lettres A, B et C.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -1994,6 +2001,7 @@ def tracked_exercise_ids():
     """Ressources dont la réalisation produit déjà un résultat exploitable."""
     return [
         "exercise1_states_water",
+        "exercise2_water_properties",
         "exercise_states_matter",
     ]
 
@@ -3889,6 +3897,16 @@ def page_exercise_topics():
             "key": "start_ex14_states_water",
         })
 
+    if resource_is_available_for_current_user("exercise2_water_properties"):
+        exercises.append({
+            "icon": "🧊",
+            "title": "Exercice 2 — Les particularités des états de l’eau",
+            "description": "Observe les trois images A, B et C puis attribue la bonne lettre à chaque étiquette.",
+            "color": "card-blue",
+            "page": "exercise2_water_properties",
+            "key": "start_ex2_water_properties",
+        })
+
     if states_matter_available_for_current_user():
         exercises.append({
             "icon": "🧊",
@@ -4425,6 +4443,469 @@ def page_exercise1_states_water():
                     errors=total_errors,
                 )
                 st.session_state["ex1_water_result_saved"] = True
+
+
+# ============================================================
+# EXERCICE 2 — PARTICULARITÉS DES ÉTATS DE L'EAU
+# ============================================================
+
+EXERCISE2_WATER_IMAGES = {
+    "ice": {
+        "path": "assets/Glace.png",
+        "alt": "Glaçon",
+    },
+    "liquid": {
+        "path": "assets/liquide.png",
+        "alt": "Goutte d’eau",
+    },
+    "vapor": {
+        "path": "assets/vapeur.png",
+        "alt": "Vapeur d’eau",
+    },
+}
+
+EXERCISE2_LABELS = [
+    {
+        "label": "liquide",
+        "target": "liquid",
+        "hint": "Cherche l’image qui représente de l’eau pouvant s’écouler.",
+        "explanation": "L’eau liquide correspond ici à la goutte d’eau.",
+    },
+    {
+        "label": "solide",
+        "target": "ice",
+        "hint": "Cherche l’image dont la forme reste propre et rigide.",
+        "explanation": "La glace est de l’eau à l’état solide.",
+    },
+    {
+        "label": "glace",
+        "target": "ice",
+        "hint": "Le nom usuel recherché correspond à l’eau gelée.",
+        "explanation": "Le glaçon représente la glace.",
+    },
+    {
+        "label": "gaz",
+        "target": "vapor",
+        "hint": "Cherche la représentation correspondant à l’état gazeux.",
+        "explanation": "La vapeur d’eau correspond à l’état gazeux de l’eau.",
+    },
+    {
+        "label": "coule",
+        "target": "liquid",
+        "hint": "Cette propriété caractérise l’eau qui peut s’écouler.",
+        "explanation": "L’eau liquide coule.",
+    },
+    {
+        "label": "vapeur",
+        "target": "vapor",
+        "hint": "Cherche la représentation de l’eau à l’état gazeux.",
+        "explanation": "La vapeur d’eau est le nom usuel de l’eau à l’état gazeux.",
+    },
+    {
+        "label": "peut être saisi avec les doigts",
+        "target": "ice",
+        "hint": "Quel état permet de prendre directement l’objet dans la main ?",
+        "explanation": "Un glaçon est solide : il peut être saisi avec les doigts.",
+    },
+    {
+        "label": "eau",
+        "target": "liquid",
+        "hint": "Ici, le mot désigne l’eau liquide représentée par la goutte.",
+        "explanation": "Dans cet exercice, « eau » correspond à l’image de l’eau liquide.",
+    },
+    {
+        "label": "souvent invisible",
+        "target": "vapor",
+        "hint": "L’eau à l’état gazeux n’est généralement pas visible à l’œil nu.",
+        "explanation": "La vapeur d’eau est généralement invisible.",
+    },
+]
+
+
+def _ex2_get_image_order():
+    """Les lettres A, B, C restent fixes ; seules les images changent de place."""
+    key = "ex2_image_order"
+    if key not in st.session_state:
+        order = list(EXERCISE2_WATER_IMAGES.keys())
+        random.shuffle(order)
+        st.session_state[key] = order
+    return st.session_state[key]
+
+
+def _ex2_letter_for_target(target):
+    order = _ex2_get_image_order()
+    letters = ["A", "B", "C"]
+    return letters[order.index(target)]
+
+
+def _ex2_choice_state(index, letter):
+    return st.session_state.get(f"ex2_choice_{index}_{letter}", "idle")
+
+
+def _ex2_answer_click(index, letter, correct_letter):
+    """Correction immédiate au clic sur A, B ou C."""
+    if letter == correct_letter:
+        st.session_state[f"ex2_choice_{index}_{letter}"] = "correct"
+        st.session_state[f"ex2_item_complete_{index}"] = True
+    else:
+        st.session_state[f"ex2_choice_{index}_{letter}"] = "wrong"
+        err_key = f"ex2_errors_{index}"
+        st.session_state[err_key] = int(st.session_state.get(err_key, 0)) + 1
+
+
+def _ex2_render_letter_button(index, letter, correct_letter):
+    state = _ex2_choice_state(index, letter)
+
+    if state == "correct":
+        label = f"✓ {letter}"
+        button_type = "primary"
+    elif state == "wrong":
+        label = f"✕ {letter}"
+        button_type = "secondary"
+    else:
+        label = letter
+        button_type = "secondary"
+
+    st.button(
+        label,
+        key=f"ex2_btn_{index}_{letter}",
+        use_container_width=True,
+        type=button_type,
+        on_click=_ex2_answer_click,
+        args=(index, letter, correct_letter),
+    )
+
+    state_class = {
+        "idle": "ex2-choice-idle",
+        "correct": "ex2-choice-correct",
+        "wrong": "ex2-choice-wrong",
+    }[state]
+    st.markdown(
+        f'<div class="{state_class}" data-ex2="{index}-{letter}"></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _ex2_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    touched = 0
+    errors = 0
+    total = len(EXERCISE2_LABELS)
+
+    for i in range(total):
+        if any(
+            st.session_state.get(f"ex2_choice_{i}_{letter}", "idle") != "idle"
+            for letter in ("A", "B", "C")
+        ):
+            touched += 1
+        errors += int(st.session_state.get(f"ex2_errors_{i}", 0))
+
+    if touched == 0:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        row for row in rows
+        if row.get("student_id") == student.get("id")
+        and row.get("resource_id") == "exercise2_water_properties"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise2_water_properties",
+        "resource_label": PILOT_CONTENTS["exercise2_water_properties"]["label"],
+        "chapter": PILOT_CONTENTS["exercise2_water_properties"]["chapter"],
+        "score_percent": None,
+        "completed_items": touched,
+        "total_items": total,
+        "errors": errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise2_water_properties():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex2_"):
+            st.session_state.pop(key, None)
+
+
+def _ex2_start_new_attempt():
+    _ex2_record_restart_if_needed()
+    reset_exercise2_water_properties()
+    order = list(EXERCISE2_WATER_IMAGES.keys())
+    random.shuffle(order)
+    st.session_state["ex2_image_order"] = order
+
+
+def page_exercise2_water_properties():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise2_water_properties"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex2-instruction {
+            background: #f5f9ff;
+            border: 1px solid #cfe0fb;
+            border-radius: 16px;
+            padding: .85rem 1rem;
+            color: #324a68;
+            margin: .35rem 0 .9rem 0;
+        }
+
+        .ex2-letter {
+            width: 42px;
+            height: 42px;
+            margin: 0 auto .45rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #173b70;
+            color: white;
+            font-weight: 900;
+            font-size: 1.15rem;
+        }
+
+        .ex2-image-card {
+            background: #f4f6f9;
+            border: 1px solid #dfe6ef;
+            border-radius: 16px;
+            padding: .75rem;
+            text-align: center;
+            min-height: 270px;
+        }
+
+        .ex2-label {
+            min-height: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            padding: 0 .8rem;
+            border-radius: 11px;
+            background: #f1f3f6;
+            border: 1px solid #dfe6ef;
+            font-weight: 800;
+            color: #162b4d;
+            box-sizing: border-box;
+        }
+
+        .ex2-feedback {
+            min-height: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            padding: 0 .7rem;
+            border-radius: 11px;
+            font-size: .88rem;
+            font-weight: 700;
+            box-sizing: border-box;
+        }
+
+        .ex2-feedback-empty {
+            background: #f8fafc;
+            border: 1px solid #e3e9f2;
+            color: #92a0b2;
+        }
+
+        .ex2-feedback-ok {
+            background: #eefaf2;
+            border: 1px solid #cdebd6;
+            color: #24623a;
+        }
+
+        .ex2-feedback-hint {
+            background: #fff7e6;
+            border: 1px solid #f4d69b;
+            color: #73541c;
+        }
+
+        .ex2-feedback-correction {
+            background: #fff1f1;
+            border: 1px solid #f0c8c8;
+            color: #7b2c2c;
+        }
+
+        div[data-testid="stButton"]:has(+ .ex2-choice-wrong) button {
+            background: #e05656 !important;
+            border-color: #bd3d3d !important;
+            color: #ffffff !important;
+        }
+
+        div[data-testid="stButton"]:has(+ .ex2-choice-idle) button {
+            background: #ffffff !important;
+            border: 2px solid #cfd8e6 !important;
+            color: #18345d !important;
+        }
+
+        div[data-testid="stButton"]:has(+ .ex2-choice-correct) button {
+            background: #2fb05b !important;
+            border-color: #268f4b !important;
+            color: #ffffff !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Particularités des états de l’eau</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="section-title">🧊 Exercice 2 — Les particularités des états de l’eau</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="ex2-instruction">
+            <strong>ℹ️ Consigne :</strong> Observe les trois images A, B et C.
+            Pour chaque étiquette, clique sur la lettre de l’image correspondante.
+            Les lettres restent dans l’ordre A–B–C, mais les images changent de place à chaque nouvelle tentative.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    order = _ex2_get_image_order()
+    letters = ["A", "B", "C"]
+    cols = st.columns(3, gap="medium")
+
+    missing_assets = []
+
+    for col, letter, image_key in zip(cols, letters, order):
+        info = EXERCISE2_WATER_IMAGES[image_key]
+        with col:
+            st.markdown(f'<div class="ex2-letter">{letter}</div>', unsafe_allow_html=True)
+            path = Path(info["path"])
+            if path.exists():
+                st.image(str(path), use_container_width=True)
+            else:
+                missing_assets.append(info["path"])
+                st.warning(f"Image manquante : {path.name}")
+
+    if missing_assets:
+        st.info(
+            "Ajoute dans le dossier assets du dépôt : Glace.png, liquide.png et vapeur.png."
+        )
+
+    st.markdown("### Associe chaque étiquette")
+
+    for index, item in enumerate(EXERCISE2_LABELS):
+        correct_letter = _ex2_letter_for_target(item["target"])
+
+        c1, c2, c3, c4, c5 = st.columns([2.8, .75, .75, .75, 2.8], gap="small")
+
+        with c1:
+            st.markdown(
+                f'<div class="ex2-label">{item["label"]}</div>',
+                unsafe_allow_html=True,
+            )
+
+        with c2:
+            _ex2_render_letter_button(index, "A", correct_letter)
+        with c3:
+            _ex2_render_letter_button(index, "B", correct_letter)
+        with c4:
+            _ex2_render_letter_button(index, "C", correct_letter)
+
+        error_count = int(st.session_state.get(f"ex2_errors_{index}", 0))
+        complete = bool(st.session_state.get(f"ex2_item_complete_{index}", False))
+
+        with c5:
+            if complete:
+                feedback = (
+                    f'<div class="ex2-feedback ex2-feedback-ok">'
+                    f'✅ Bonne réponse : {correct_letter}</div>'
+                )
+            elif error_count == 1:
+                feedback = (
+                    f'<div class="ex2-feedback ex2-feedback-hint">'
+                    f'💡 {item["hint"]}</div>'
+                )
+            elif error_count >= 2:
+                feedback = (
+                    f'<div class="ex2-feedback ex2-feedback-correction">'
+                    f'❌ Lettre {correct_letter} — {item["explanation"]}</div>'
+                )
+            else:
+                feedback = (
+                    '<div class="ex2-feedback ex2-feedback-empty">Correction</div>'
+                )
+
+            st.markdown(feedback, unsafe_allow_html=True)
+
+    total = len(EXERCISE2_LABELS)
+    completed = sum(
+        1 for i in range(total)
+        if st.session_state.get(f"ex2_item_complete_{i}", False)
+    )
+
+    c_reset, c_space = st.columns([1.3, 4.7])
+    with c_reset:
+        if st.button(
+            "↻ Recommencer",
+            use_container_width=True,
+            key="restart_ex2_water_properties",
+        ):
+            _ex2_start_new_attempt()
+            st.rerun()
+
+    if completed:
+        st.markdown("### Ton avancement")
+        st.progress(completed / total)
+        st.write(f"**{completed} / {total} étiquettes correctement associées**")
+
+    if completed == total:
+        st.success("🎉 Bravo ! Toutes les associations sont correctes.")
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex2_result_saved", False)
+        ):
+            total_errors = sum(
+                int(st.session_state.get(f"ex2_errors_{i}", 0))
+                for i in range(total)
+            )
+
+            mastery_score = round(
+                100 * total / max(total, total + total_errors)
+            )
+
+            record_training_result(
+                student,
+                "exercise2_water_properties",
+                mastery_score,
+                total,
+                total,
+                errors=total_errors,
+            )
+            st.session_state["ex2_result_saved"] = True
+
 
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
@@ -6699,6 +7180,8 @@ elif page == "exercise_topics":
     page_exercise_topics()
 elif page == "exercise1_states_water":
     page_exercise1_states_water()
+elif page == "exercise2_water_properties":
+    page_exercise2_water_properties()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
