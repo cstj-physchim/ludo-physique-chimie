@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE6_WATER_ALCOHOL_V36
+# VERSION_UI_2026_08_25_EXERCISE6_LARGER_STATEMENTS_V37
 import re
 import base64
 import json
@@ -8100,11 +8100,20 @@ def page_exercise6_water_alcohol_volume():
         <style>
         .ex6-box{
             background:#f5f9ff;border:1px solid #cfe0fb;border-radius:16px;
-            padding:.95rem 1rem;margin:.55rem 0 1rem;color:#324a68;line-height:1.5;
+            padding:1.05rem 1.15rem;margin:.55rem 0 1rem;color:#324a68;
+            line-height:1.6;font-size:1.12rem;
+        }
+        .ex6-box strong{
+            font-size:1.16rem;
         }
         .ex6-question{
             background:#f8fafc;border:1px solid #e1e7f0;border-radius:15px;
-            padding:.95rem 1rem .5rem;margin:1rem 0;
+            padding:1rem 1.1rem .55rem;margin:1rem 0;
+        }
+        .ex6-question h3{
+            font-size:1.28rem !important;
+            line-height:1.45 !important;
+            margin-bottom:.85rem !important;
         }
         .ex6-feedback{
             border-radius:12px;padding:.82rem 1rem;margin:.5rem 0 .9rem;
@@ -8117,7 +8126,13 @@ def page_exercise6_water_alcohol_volume():
             font-size:1.15rem!important;line-height:1.55!important;padding:.8rem .9rem!important;
         }
         div[data-testid="stTextArea"] label{
-            font-size:1rem!important;font-weight:700!important;
+            font-size:1.04rem!important;font-weight:700!important;
+        }
+
+        /* Lisibilité générale de l'exercice 6 */
+        .section-title{
+            font-size:1.65rem !important;
+            line-height:1.35 !important;
         }
         </style>
         """,
