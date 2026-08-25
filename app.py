@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_STUDENT_TRACKING_V1
+# VERSION_UI_2026_08_25_EXERCISE14_STATES_WATER
 import re
 import base64
 import json
@@ -130,6 +130,13 @@ def content_pilot_enabled_for_teacher(teacher_id=None, teacher_name=None):
 
 
 PILOT_CONTENTS = {
+    "exercise14_states_water": {
+        "label": "Exercice 14 — Identifier les états de l’eau",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 5,
+        "description": "Choisir, pour chaque situation, le ou les états physiques de l’eau correspondants.",
+        "resource_ready": True,
+    },
     "exercise_states_matter": {
         "label": "Entraînement — États de la matière",
         "chapter": "Chapitre 1 — Organisation de la matière",
@@ -1779,7 +1786,10 @@ def save_evaluation_preparations(preparations, teacher_id=None):
 
 def tracked_exercise_ids():
     """Ressources dont la réalisation produit déjà un résultat exploitable."""
-    return ["exercise_states_matter"]
+    return [
+        "exercise14_states_water",
+        "exercise_states_matter",
+    ]
 
 
 def latest_training_by_student_resource(rows):
@@ -3644,29 +3654,272 @@ def page_exercise_topics():
         '<div class="section-title">📝 Exercices d’entraînement</div>',
         unsafe_allow_html=True,
     )
-    st.caption("Les notions apparaissent ici au fur et à mesure qu'elles sont ouvertes pour votre classe.")
+    st.caption(
+        "Seuls les exercices ouverts par ton professeur apparaissent ici."
+    )
+
+    exercises = []
+
+    if resource_is_available_for_current_user("exercise14_states_water"):
+        exercises.append({
+            "icon": "💧",
+            "title": "Exercice 14 — Identifier les états de l’eau",
+            "description": "Associe chaque situation au bon état physique : solide, liquide ou gazeux.",
+            "color": "card-cyan",
+            "page": "exercise14_states_water",
+            "key": "start_ex14_states_water",
+        })
 
     if states_matter_available_for_current_user():
+        exercises.append({
+            "icon": "🧊",
+            "title": "Entraînement — États de la matière",
+            "description": "8 questions autocorrigées sur les solides, liquides, gaz et le modèle particulaire.",
+            "color": "card-purple",
+            "page": "exercise_states_matter",
+            "key": "start_states_matter",
+        })
+
+    if not exercises:
+        st.info("Aucun exercice n'est encore ouvert pour ta classe.")
+        return
+
+    for exercise in exercises:
         c1, c2 = st.columns([4.5, 1.5])
         with c1:
             nav_card(
-                "🧊",
-                "États de la matière",
-                "8 questions autocorrigées sur les solides, liquides, gaz et le modèle particulaire.",
-                "card-purple",
+                exercise["icon"],
+                exercise["title"],
+                exercise["description"],
+                exercise["color"],
             )
         with c2:
             st.write("")
             st.write("")
             st.button(
                 "Commencer →",
-                key="start_states_matter",
+                key=exercise["key"],
                 use_container_width=True,
                 on_click=set_page,
-                args=("exercise_states_matter",),
+                args=(exercise["page"],),
             )
-    else:
-        st.info("Aucun exercice n'est encore ouvert pour votre classe.")
+
+
+EXERCISE14_STATES_WATER = [
+    {
+        "label": "Glacier",
+        "answers": {"Solide"},
+        "explanation": "Un glacier est constitué de glace : l’eau y est à l’état solide.",
+    },
+    {
+        "label": "Pluie",
+        "answers": {"Liquide"},
+        "explanation": "Les gouttes de pluie sont de l’eau liquide.",
+    },
+    {
+        "label": "Brouillard",
+        "answers": {"Liquide"},
+        "explanation": "Le brouillard est formé de minuscules gouttelettes d’eau liquide en suspension dans l’air.",
+    },
+    {
+        "label": "Neige",
+        "answers": {"Solide"},
+        "explanation": "La neige est constituée de cristaux de glace : l’eau y est solide.",
+    },
+    {
+        "label": "Atmosphère",
+        "answers": {"Gazeux"},
+        "explanation": "Dans l’atmosphère, l’eau peut être présente sous forme de vapeur d’eau, donc à l’état gazeux.",
+    },
+    {
+        "label": "Vapeur d’eau",
+        "answers": {"Gazeux"},
+        "explanation": "La vapeur d’eau correspond à l’état gazeux de l’eau et elle est invisible.",
+    },
+    {
+        "label": "Givre",
+        "answers": {"Solide"},
+        "explanation": "Le givre est constitué de cristaux de glace : c’est de l’eau solide.",
+    },
+    {
+        "label": "Lacs",
+        "answers": {"Liquide"},
+        "explanation": "L’eau d’un lac est principalement à l’état liquide.",
+    },
+    {
+        "label": "Nuage",
+        "answers": {"Liquide", "Solide"},
+        "explanation": "Un nuage peut contenir de minuscules gouttelettes d’eau liquide et des cristaux de glace.",
+    },
+    {
+        "label": "Nappes phréatiques",
+        "answers": {"Liquide"},
+        "explanation": "L’eau des nappes phréatiques circule dans le sous-sol à l’état liquide.",
+    },
+    {
+        "label": "Rivières et fleuves",
+        "answers": {"Liquide"},
+        "explanation": "L’eau des rivières et des fleuves est à l’état liquide.",
+    },
+]
+
+
+def reset_exercise14_states_water():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex14_water_"):
+            st.session_state.pop(key, None)
+    st.session_state.pop("ex14_water_attempts", None)
+    st.session_state.pop("ex14_water_result_saved", None)
+    st.session_state.pop("ex14_water_last_signature", None)
+
+
+def page_exercise14_states_water():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise14_states_water"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Identifier les états de l’eau</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">💧 Exercice 14 — Identifier les états de l’eau</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Pour chaque proposition, coche le ou les états physiques correspondants. "
+        "Certaines lignes peuvent avoir plusieurs bonnes réponses."
+    )
+
+    # En-tête du tableau
+    h1, h2, h3, h4 = st.columns([3.2, 1, 1, 1])
+    with h1:
+        st.markdown("**Proposition**")
+    with h2:
+        st.markdown("**Solide**")
+    with h3:
+        st.markdown("**Liquide**")
+    with h4:
+        st.markdown("**Gazeux**")
+
+    st.divider()
+
+    selections = {}
+    for index, item in enumerate(EXERCISE14_STATES_WATER):
+        c1, c2, c3, c4 = st.columns([3.2, 1, 1, 1])
+
+        with c1:
+            st.markdown(f"**{item['label']}**")
+
+        row_selection = set()
+
+        with c2:
+            if st.checkbox(
+                "Solide",
+                key=f"ex14_water_{index}_solid",
+                label_visibility="collapsed",
+            ):
+                row_selection.add("Solide")
+
+        with c3:
+            if st.checkbox(
+                "Liquide",
+                key=f"ex14_water_{index}_liquid",
+                label_visibility="collapsed",
+            ):
+                row_selection.add("Liquide")
+
+        with c4:
+            if st.checkbox(
+                "Gazeux",
+                key=f"ex14_water_{index}_gas",
+                label_visibility="collapsed",
+            ):
+                row_selection.add("Gazeux")
+
+        selections[index] = row_selection
+
+    st.markdown("---")
+
+    if st.button(
+        "✅ Valider mes réponses",
+        type="primary",
+        use_container_width=True,
+        key="validate_ex14_states_water",
+    ):
+        # Une nouvelle combinaison de réponses = une nouvelle tentative.
+        signature = tuple(
+            tuple(sorted(selections[i]))
+            for i in range(len(EXERCISE14_STATES_WATER))
+        )
+        if st.session_state.get("ex14_water_last_signature") != signature:
+            st.session_state["ex14_water_attempts"] = int(
+                st.session_state.get("ex14_water_attempts", 0)
+            ) + 1
+            st.session_state["ex14_water_last_signature"] = signature
+
+        st.session_state["ex14_water_checked"] = True
+
+    if st.session_state.get("ex14_water_checked", False):
+        correct_rows = 0
+        wrong_rows = []
+
+        for index, item in enumerate(EXERCISE14_STATES_WATER):
+            if selections[index] == item["answers"]:
+                correct_rows += 1
+            else:
+                wrong_rows.append((item, selections[index]))
+
+        total = len(EXERCISE14_STATES_WATER)
+        score_percent = round(100 * correct_rows / total)
+
+        st.markdown("### Résultat")
+        st.progress(correct_rows / total)
+        st.write(f"**{correct_rows} / {total} lignes correctes — {score_percent} %**")
+
+        if not wrong_rows:
+            st.success("🎉 Bravo ! Toutes tes réponses sont correctes.")
+
+            student = st.session_state.get("app_student")
+            if (
+                st.session_state.get("app_user_type") == "student"
+                and student
+                and not st.session_state.get("ex14_water_result_saved", False)
+            ):
+                attempts = int(st.session_state.get("ex14_water_attempts", 1))
+                # Score de maîtrise : tient compte du nombre de validations nécessaires.
+                mastery_score = round(100 / max(1, attempts))
+                record_training_result(
+                    student,
+                    "exercise14_states_water",
+                    mastery_score,
+                    total,
+                    total,
+                    errors=max(0, attempts - 1),
+                )
+                st.session_state["ex14_water_result_saved"] = True
+        else:
+            st.warning(
+                f"Il reste {len(wrong_rows)} ligne(s) à corriger. "
+                "Regarde les explications puis modifie tes cases et valide à nouveau."
+            )
+
+            for item, chosen in wrong_rows:
+                chosen_text = ", ".join(sorted(chosen)) if chosen else "aucune case cochée"
+                st.error(f"❌ {item['label']} — ta réponse : {chosen_text}")
+                st.info("💡 " + item["explanation"])
+
+    if st.button(
+        "🔄 Recommencer l’exercice",
+        use_container_width=False,
+        key="restart_ex14_states_water",
+    ):
+        reset_exercise14_states_water()
+        st.rerun()
 
 
 def reset_states_matter_training():
@@ -5907,6 +6160,8 @@ elif page == "free_activity":
     page_free_activity()
 elif page == "exercise_topics":
     page_exercise_topics()
+elif page == "exercise14_states_water":
+    page_exercise14_states_water()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
