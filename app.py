@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE6_NARROWER_12WATER_V43
+# VERSION_UI_2026_08_25_EXERCISE6_SMALLER_WATER_LARGER_ALCOHOL_V44
 import re
 import base64
 import json
@@ -7660,11 +7660,11 @@ body{
   border:3px solid
 }
 .dot.water{
-  width:24px;height:24px;
+  width:20px;height:20px;
   background:#36bdf1;border-color:#147ba6
 }
 .dot.alcohol{
-  width:44px;height:44px;
+  width:48px;height:48px;
   background:#ff9a32;border-color:#c86a13
 }
 
@@ -7717,12 +7717,12 @@ body{
   box-shadow:0 2px 5px #0002
 }
 .particle.water{
-  width:28px;height:28px;
+  width:22px;height:22px;
   background:radial-gradient(circle at 32% 28%,#a9ecff 0 18%,#36bdf1 20% 100%);
   border:3px solid #147ba6
 }
 .particle.alcohol{
-  width:54px;height:54px;
+  width:60px;height:60px;
   background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);
   border:3px solid #c86a13
 }
@@ -7911,7 +7911,7 @@ button.primary{
   }
 
   function storageKey(){
-    return "ludo_ex6_symbolic_v6_"+storageId+"_"+String(generation);
+    return "ludo_ex6_symbolic_v7_"+storageId+"_"+String(generation);
   }
 
   function save(){
@@ -8077,7 +8077,7 @@ button.primary{
   }
 
   function particleSize(type){
-    return type==="water" ? 28 : 54;
+    return type==="water" ? 22 : 60;
   }
 
   function drop(e){
@@ -8166,15 +8166,15 @@ button.primary{
     // Les deux espèces doivent être réellement mélangées :
     // une majorité de chaque espèce doit avoir un voisin de l'autre espèce.
     const waterNearAlcohol=
-      w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=78).length/NW;
+      w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=82).length/NW;
 
     const alcoholNearWater=
-      a.filter(p=>nearestDistance(p,"alcohol",w,"water")<=78).length/NA;
+      a.filter(p=>nearestDistance(p,"alcohol",w,"water")<=82).length/NA;
 
     // Le modèle représente un liquide : les molécules restent regroupées
     // dans une zone plutôt basse du récipient, sans exiger un niveau précis.
     const compact=
-      occupiedHeight<=205 &&
+      occupiedHeight<=200 &&
       meanY>=140;
 
     const mixed=
@@ -8311,18 +8311,18 @@ button.primary{
 
 
 @st.cache_resource
-def _ex6_component_v6():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_symbolic_component_v6"
+def _ex6_component_v7():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_symbolic_component_v7"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX6_MIXTURE_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex6_water_alcohol_symbolic_v6",
+        "ex6_water_alcohol_symbolic_v7",
         path=str(component_dir),
     )
 
 
 def render_ex6_model(generation):
-    component = _ex6_component_v6()
+    component = _ex6_component_v7()
 
     student = st.session_state.get("app_student") or {}
     storage_id = str(
@@ -8334,7 +8334,7 @@ def render_ex6_model(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex6_symbolic_v6_{generation}",
+        key=f"ex6_symbolic_v7_{generation}",
         default={
             "success": False,
             "errors": 0,
