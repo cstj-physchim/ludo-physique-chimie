@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_SEANCE2_EX8_EX9_V51
+# VERSION_UI_2026_08_26_EX8_INTERACTIVE_TABLE_V52
 import re
 import base64
 import json
@@ -10044,6 +10044,607 @@ def _ex8_find_periodic_table():
     return None
 
 
+
+EX8_INTERACTIVE_TABLE_HTML = r"""
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:#17345f;
+  background:#fff;
+}
+.wrap{width:100%;padding:2px 0 8px}
+.help{
+  margin:0 0 10px;
+  padding:9px 12px;
+  border:1px solid #cfe0fb;
+  border-radius:12px;
+  background:#f5f9ff;
+  color:#4c6481;
+  font-size:13px;
+  line-height:1.4;
+}
+.grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) 118px;
+  gap:8px;
+  align-items:stretch;
+}
+.header{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  padding:0 14px;
+  border-radius:10px;
+  background:#173b70;
+  color:#fff;
+  font-weight:800;
+  font-size:14px;
+}
+.header.help-head{justify-content:center}
+.cell{
+  min-height:60px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+}
+.fixed{
+  border:1px solid #d7e1ec;
+  background:#f8fafc;
+  padding:8px 14px;
+}
+.fixed-inner{line-height:1.25}
+.fixed-label{
+  display:block;
+  color:#718096;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+  margin-bottom:4px;
+}
+.fixed-value{
+  display:block;
+  color:#17345f;
+  font-size:17px;
+  font-weight:750;
+}
+.answer{
+  position:relative;
+  border:2px solid #78b5ef;
+  background:#edf6ff;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.answer.correct{
+  background:#e9f8ee;
+  border-color:#67bf80;
+}
+.answer.wrong{
+  background:#fff0f0;
+  border-color:#e57575;
+}
+.answer:focus-within{
+  box-shadow:0 0 0 3px rgba(59,130,246,.12);
+}
+.answer input{
+  width:100%;
+  height:56px;
+  border:0;
+  outline:0;
+  background:transparent;
+  padding:0 44px 0 14px;
+  color:#17345f;
+  font-size:17px;
+  font-weight:650;
+}
+.answer input::placeholder{color:#7c94ad;font-weight:500}
+.status{
+  position:absolute;
+  right:13px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:18px;
+  font-weight:900;
+  pointer-events:none;
+}
+.answer.correct .status::after{content:"✓";color:#258343}
+.answer.wrong .status::after{content:"✕";color:#c34242}
+.table-btn{
+  width:100%;
+  min-height:60px;
+  border:1px solid #a9c8eb;
+  border-radius:12px;
+  background:#fff;
+  color:#175aa8;
+  font-weight:800;
+  font-size:13px;
+  cursor:pointer;
+  transition:.15s ease;
+}
+.table-btn:hover{background:#eef6ff;border-color:#6ea7df}
+.progress{
+  margin-top:11px;
+  padding:9px 12px;
+  border-radius:11px;
+  background:#f7f9fc;
+  border:1px solid #e0e6ee;
+  color:#61738b;
+  font-size:13px;
+  font-weight:700;
+}
+.progress.done{
+  background:#eaf8ef;
+  border-color:#b8e2c4;
+  color:#24623a;
+}
+
+/* Fenêtre modale du tableau périodique */
+.modal{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(18,31,49,.72);
+}
+.modal.open{display:flex}
+.modal-card{
+  width:min(1180px,96vw);
+  height:min(860px,92vh);
+  background:#fff;
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 24px 80px rgba(0,0,0,.28);
+  display:flex;
+  flex-direction:column;
+}
+.modal-head{
+  min-height:54px;
+  padding:8px 12px 8px 17px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid #dbe5ef;
+  color:#17345f;
+  font-weight:850;
+}
+.close{
+  border:1px solid #cdd8e5;
+  background:#fff;
+  border-radius:9px;
+  padding:7px 11px;
+  cursor:pointer;
+  color:#17345f;
+  font-weight:800;
+}
+.viewer{flex:1;min-height:0;background:#f3f6fa}
+.viewer iframe{
+  display:block;
+  width:100%;
+  height:100%;
+  border:0;
+}
+.no-pdf{
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  text-align:center;
+  color:#7b4d22;
+  background:#fff8e8;
+  font-weight:700;
+}
+
+@media(max-width:700px){
+  .grid{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) 70px;
+    gap:6px;
+  }
+  .header{padding:0 9px;font-size:12px}
+  .cell,.table-btn{min-height:56px}
+  .fixed{padding:7px 9px}
+  .fixed-value,.answer input{font-size:15px}
+  .fixed-label{font-size:9px}
+  .table-btn{font-size:0}
+  .table-btn::before{content:"🧪";font-size:21px}
+  .modal{padding:5px}
+  .modal-card{width:99vw;height:96vh;border-radius:11px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="help">
+    Complète chaque case bleue. <strong>Appuie sur Entrée</strong> ou passe à la case suivante :
+    la case devient <strong>verte si la réponse est correcte</strong> et
+    <strong>rouge si elle est incorrecte</strong>. Dès que tu modifies une réponse,
+    elle redevient bleue.
+  </div>
+
+  <div class="grid" id="tableGrid">
+    <div class="header">Élément</div>
+    <div class="header">Symbole</div>
+    <div class="header help-head">Aide</div>
+  </div>
+
+  <div class="progress" id="progress">0 réponse correcte</div>
+</div>
+
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span>🧪 Tableau périodique des éléments</span>
+      <button class="close" id="closeModal">Fermer ✕</button>
+    </div>
+    <div class="viewer" id="viewer"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let initialized=false;
+  let generation=0;
+  let storageId="prototype";
+  let rows=[];
+  let pdfData="";
+  let state={answers:[],statuses:[],errors:0,lastChecked:[]};
+
+  function ready(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:componentReady",
+      apiVersion:1
+    },"*");
+  }
+
+  function setHeight(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setFrameHeight",
+      height:document.documentElement.scrollHeight+8
+    },"*");
+  }
+
+  function storageKey(){
+    return "ludo_ex8_table_v2_"+storageId+"_"+String(generation);
+  }
+
+  function fresh(){
+    return{
+      answers:Array(rows.length).fill(""),
+      statuses:Array(rows.length).fill(""),
+      errors:0,
+      lastChecked:Array(rows.length).fill("")
+    };
+  }
+
+  function save(){
+    try{sessionStorage.setItem(storageKey(),JSON.stringify(state))}catch(e){}
+  }
+
+  function load(){
+    try{
+      const raw=sessionStorage.getItem(storageKey());
+      if(!raw)return fresh();
+      const p=JSON.parse(raw);
+      return{
+        answers:Array.from({length:rows.length},(_,i)=>p.answers?.[i]??""),
+        statuses:Array.from({length:rows.length},(_,i)=>p.statuses?.[i]??""),
+        errors:Number(p.errors||0),
+        lastChecked:Array.from({length:rows.length},(_,i)=>p.lastChecked?.[i]??"")
+      };
+    }catch(e){
+      return fresh();
+    }
+  }
+
+  function normalizeName(value){
+    return String(value||"")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/œ/g,"oe")
+      .replace(/[^a-z0-9 ]+/g," ")
+      .replace(/\s+/g," ")
+      .trim();
+  }
+
+  function isCorrect(row,value){
+    if(row.prompt_type==="name"){
+      // Pour un symbole chimique, la casse fait partie de la réponse.
+      return String(value||"").trim()===String(row.answer||"").trim();
+    }
+    return normalizeName(value)===normalizeName(row.answer);
+  }
+
+  function send(){
+    const correctCount=state.statuses.filter(x=>x==="correct").length;
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setComponentValue",
+      value:{
+        success:correctCount===rows.length,
+        correct_count:correctCount,
+        total:rows.length,
+        errors:state.errors,
+        answers:state.answers,
+        statuses:state.statuses
+      }
+    },"*");
+  }
+
+  function fixedCell(label,value){
+    const e=document.createElement("div");
+    e.className="cell fixed";
+    e.innerHTML=
+      '<div class="fixed-inner">'+
+      '<span class="fixed-label">'+label+'</span>'+
+      '<span class="fixed-value">'+value+'</span>'+
+      '</div>';
+    return e;
+  }
+
+  function answerCell(row,index,placeholder){
+    const box=document.createElement("div");
+    box.className="cell answer";
+    box.dataset.index=String(index);
+
+    const input=document.createElement("input");
+    input.type="text";
+    input.autocomplete="off";
+    input.spellcheck=false;
+    input.placeholder=placeholder;
+    input.value=state.answers[index]||"";
+    input.setAttribute("aria-label",placeholder);
+
+    const status=document.createElement("span");
+    status.className="status";
+
+    input.addEventListener("input",()=>{
+      state.answers[index]=input.value;
+      // Toute modification remet la case en bleu jusqu'à la prochaine validation.
+      state.statuses[index]="";
+      state.lastChecked[index]="";
+      updateCell(index);
+      save();
+      updateProgress();
+      send();
+    });
+
+    input.addEventListener("keydown",(event)=>{
+      if(event.key==="Enter"){
+        event.preventDefault();
+        validateOne(index,true);
+        const inputs=[...document.querySelectorAll(".answer input")];
+        const pos=inputs.indexOf(input);
+        if(pos>=0 && pos<inputs.length-1){
+          inputs[pos+1].focus();
+          inputs[pos+1].select();
+        }else{
+          input.blur();
+        }
+      }
+    });
+
+    input.addEventListener("change",()=>{
+      validateOne(index,true);
+    });
+
+    box.appendChild(input);
+    box.appendChild(status);
+    return box;
+  }
+
+  function tableButton(){
+    const button=document.createElement("button");
+    button.className="table-btn";
+    button.type="button";
+    button.innerHTML="🧪 Tableau";
+    button.addEventListener("click",openModal);
+    return button;
+  }
+
+  function updateCell(index){
+    const box=document.querySelector('.answer[data-index="'+index+'"]');
+    if(!box)return;
+    box.classList.remove("correct","wrong");
+    if(state.statuses[index])box.classList.add(state.statuses[index]);
+  }
+
+  function validateOne(index,countError){
+    const value=String(state.answers[index]||"").trim();
+
+    if(!value){
+      state.statuses[index]="";
+      state.lastChecked[index]="";
+      updateCell(index);
+      save();
+      updateProgress();
+      send();
+      return;
+    }
+
+    const ok=isCorrect(rows[index],value);
+
+    if(ok){
+      state.statuses[index]="correct";
+    }else{
+      state.statuses[index]="wrong";
+      if(countError && state.lastChecked[index]!==value){
+        state.errors+=1;
+      }
+    }
+
+    state.lastChecked[index]=value;
+    updateCell(index);
+    save();
+    updateProgress();
+    send();
+  }
+
+  function updateProgress(){
+    const correct=state.statuses.filter(x=>x==="correct").length;
+    const progress=document.getElementById("progress");
+
+    if(correct===rows.length && rows.length){
+      progress.className="progress done";
+      progress.textContent="✅ Toutes les correspondances sont correctes.";
+    }else{
+      progress.className="progress";
+      progress.textContent=correct+" / "+rows.length+" réponse(s) correcte(s)";
+    }
+  }
+
+  function build(){
+    const grid=document.getElementById("tableGrid");
+
+    // garder uniquement les 3 en-têtes
+    while(grid.children.length>3)grid.removeChild(grid.lastChild);
+
+    rows.forEach((row,i)=>{
+      if(row.prompt_type==="name"){
+        grid.appendChild(fixedCell("Élément",row.prompt));
+        grid.appendChild(answerCell(row,i,"Symbole"));
+      }else{
+        grid.appendChild(answerCell(row,i,"Nom de l’élément"));
+        grid.appendChild(fixedCell("Symbole",row.prompt));
+      }
+      grid.appendChild(tableButton());
+    });
+
+    rows.forEach((_,i)=>updateCell(i));
+    updateProgress();
+    prepareViewer();
+    setTimeout(setHeight,50);
+  }
+
+  function prepareViewer(){
+    const viewer=document.getElementById("viewer");
+    if(pdfData){
+      viewer.innerHTML=
+        '<iframe title="Tableau périodique" '+
+        'src="data:application/pdf;base64,'+pdfData+
+        '#toolbar=1&navpanes=0&view=FitH"></iframe>';
+    }else{
+      viewer.innerHTML=
+        '<div class="no-pdf">Le fichier du tableau périodique n’est pas encore disponible dans les assets.</div>';
+    }
+  }
+
+  function openModal(){
+    const modal=document.getElementById("modal");
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden","false");
+  }
+
+  function closeModal(){
+    const modal=document.getElementById("modal");
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden","true");
+  }
+
+  document.getElementById("closeModal").addEventListener("click",closeModal);
+  document.getElementById("modal").addEventListener("click",(event)=>{
+    if(event.target.id==="modal")closeModal();
+  });
+  document.addEventListener("keydown",(event)=>{
+    if(event.key==="Escape")closeModal();
+  });
+
+  window.addEventListener("message",(event)=>{
+    const d=event.data||{};
+    if(d.type!=="streamlit:render")return;
+
+    const args=d.args||{};
+    const nextGeneration=Number(args.generation||0);
+    const nextStorageId=String(args.storage_id||"prototype");
+    const nextRows=Array.isArray(args.rows)?args.rows:[];
+    const nextPdf=String(args.pdf_data||"");
+
+    const changed=
+      !initialized ||
+      nextGeneration!==generation ||
+      nextStorageId!==storageId ||
+      JSON.stringify(nextRows)!==JSON.stringify(rows);
+
+    generation=nextGeneration;
+    storageId=nextStorageId;
+    rows=nextRows;
+    pdfData=nextPdf;
+
+    if(changed){
+      state=load();
+      build();
+      initialized=true;
+    }else{
+      prepareViewer();
+      setHeight();
+    }
+  });
+
+  ready();
+})();
+</script>
+</body>
+</html>
+"""
+
+
+@st.cache_resource
+def _ex8_table_component_v2():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex8_table_component_v2"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "index.html").write_text(
+        EX8_INTERACTIVE_TABLE_HTML,
+        encoding="utf-8",
+    )
+    return components.declare_component(
+        "ex8_interactive_periodic_table_v2",
+        path=str(component_dir),
+    )
+
+
+def render_ex8_interactive_table(generation):
+    component = _ex8_table_component_v2()
+
+    student = st.session_state.get("app_student") or {}
+    storage_id = str(
+        student.get("id")
+        or st.session_state.get("teacher_id")
+        or "prototype"
+    )
+
+    periodic_path = _ex8_find_periodic_table()
+    pdf_data = ""
+    if periodic_path is not None:
+        pdf_data = base64.b64encode(periodic_path.read_bytes()).decode("ascii")
+
+    return component(
+        generation=int(generation),
+        storage_id=storage_id,
+        rows=EXERCISE8_ROWS,
+        pdf_data=pdf_data,
+        key=f"ex8_interactive_table_v2_{generation}",
+        default={
+            "success": False,
+            "correct_count": 0,
+            "total": len(EXERCISE8_ROWS),
+            "errors": 0,
+            "answers": [],
+            "statuses": [],
+        },
+    )
+
 def _ex8_render_periodic_table():
     path = _ex8_find_periodic_table()
 
@@ -10291,9 +10892,10 @@ def _ex8_record_restart_if_needed():
         return
 
     generation = int(st.session_state.get("ex8_generation", 0))
+    q1_state = st.session_state.get("ex8_q1_component_state") or {}
     touched = any(
-        str(st.session_state.get(f"ex8_q1_{i}_{generation}", "")).strip()
-        for i in range(len(EXERCISE8_ROWS))
+        str(value).strip()
+        for value in (q1_state.get("answers") or [])
     )
     touched = touched or bool(
         str(st.session_state.get(f"ex8_q2_{generation}", "")).strip()
@@ -10370,10 +10972,6 @@ def page_exercise8_element_symbols():
             padding:1rem 1.1rem;margin:.7rem 0 1rem;font-size:1.08rem;
             line-height:1.55;color:#314b69;
         }
-        .ex8-row{
-            background:#f8fafc;border:1px solid #e1e7f0;border-radius:13px;
-            padding:.65rem .8rem;margin:.25rem 0;
-        }
         div[data-testid="stTextInput"] input,
         div[data-testid="stTextArea"] textarea{
             font-size:1.12rem!important;line-height:1.5!important;
@@ -10398,53 +10996,21 @@ def page_exercise8_element_symbols():
         unsafe_allow_html=True,
     )
 
-    _ex8_render_periodic_table()
-
     generation = int(st.session_state.get("ex8_generation", 0))
 
     st.markdown("### 1. Complète le tableau à l’aide de la classification périodique.")
 
-    for i, row in enumerate(EXERCISE8_ROWS):
-        c1, c2 = st.columns([1.2, 1.2], gap="medium")
+    q1_state = render_ex8_interactive_table(generation)
 
-        if row["prompt_type"] == "name":
-            with c1:
-                st.markdown(
-                    f'<div class="ex8-row"><strong>Élément</strong><br>{row["prompt"]}</div>',
-                    unsafe_allow_html=True,
-                )
-            with c2:
-                st.text_input(
-                    f"Symbole de {row['prompt']}",
-                    key=f"ex8_q1_{i}_{generation}",
-                    label_visibility="collapsed",
-                    placeholder="Symbole",
-                    disabled=bool(st.session_state.get("ex8_q1_correct", False)),
-                )
-        else:
-            with c1:
-                st.text_input(
-                    f"Nom correspondant à {row['prompt']}",
-                    key=f"ex8_q1_{i}_{generation}",
-                    label_visibility="collapsed",
-                    placeholder="Nom de l’élément",
-                    disabled=bool(st.session_state.get("ex8_q1_correct", False)),
-                )
-            with c2:
-                st.markdown(
-                    f'<div class="ex8-row"><strong>Symbole</strong><br>{row["prompt"]}</div>',
-                    unsafe_allow_html=True,
-                )
+    if isinstance(q1_state, dict):
+        st.session_state["ex8_q1_component_state"] = q1_state
+        st.session_state["ex8_q1_correct"] = bool(q1_state.get("success"))
+        st.session_state["ex8_q1_errors"] = int(q1_state.get("errors", 0) or 0)
 
-    st.button(
-        "Valider le tableau",
-        key="ex8_validate_q1",
-        use_container_width=True,
-        type="primary",
-        on_click=_ex8_validate_q1,
-        disabled=bool(st.session_state.get("ex8_q1_correct", False)),
-    )
-    _ex8_feedback_q1()
+        if q1_state.get("success"):
+            st.success(
+                "✅ Tableau complété : toutes les correspondances nom ↔ symbole sont correctes."
+            )
 
     st.markdown(
         "### 2. Pourquoi certains symboles ont-ils deux lettres alors que d’autres n’en ont qu’une ?"
