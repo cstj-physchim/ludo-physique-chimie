@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE7_SNAP_DRAGDROP_V47
+# VERSION_UI_2026_08_25_EXERCISE7_TRUE_SUBSTITUTION_V48
 import re
 import base64
 import json
@@ -8879,11 +8879,10 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sa
 .nickel{width:48px;height:48px;background:#8d79d8;border:3px solid #55419d}
 .carbon{width:22px;height:22px;background:#2d3742;border:3px solid #111820}
 .fixed{pointer-events:none}
-.slot{position:absolute;width:52px;height:52px;border:2px dashed #b9c6d4;border-radius:50%;background:#f8fbff}
+.slot{display:none}
 .interstice{position:absolute;width:28px;height:28px;border:2px dashed #aebed0;border-radius:50%;background:#f8fbff}
-.slot{transition:.15s ease}
 .interstice{transition:.15s ease}
-.slot:hover,.interstice:hover{background:#eef6ff;border-color:#7fa8d6}
+.interstice:hover{background:#eef6ff;border-color:#7fa8d6}
 .tray{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;min-height:62px;padding:8px;border:1px solid #dbe4ee;border-radius:12px;background:#fff}
 .source{position:relative!important;left:auto!important;top:auto!important;cursor:grab;touch-action:none;user-select:none;flex:0 0 auto}
 .placed{display:none;z-index:30;cursor:grab;touch-action:none;user-select:none}
@@ -8904,7 +8903,8 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 <div class="intro">
   <strong>Construis les deux alliages.</strong>
   Pour l’acier, place les petits atomes de carbone dans les espaces du réseau de fer.
-  Pour le laiton, place les atomes de zinc et de nickel sur les emplacements laissés libres dans le réseau de cuivre.
+  Pour le laiton, dépose les atomes de zinc et de nickel directement sur des atomes de cuivre :
+  l’atome orange sera alors remplacé.
 </div>
 
 <div class="grid">
@@ -8923,13 +8923,8 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
   <div class="panel">
     <h3>Laiton — alliage de substitution</h3>
-    <p>Réseau de cuivre + atomes de zinc et de nickel</p>
-    <div class="model" id="brassModel">
-      <div class="slot" style="left:80px;top:66px"></div>
-      <div class="slot" style="left:180px;top:66px"></div>
-      <div class="slot" style="left:130px;top:154px"></div>
-      <div class="slot" style="left:230px;top:154px"></div>
-    </div>
+    <p>Réseau de cuivre ordonné : remplace certains atomes orange</p>
+    <div class="model" id="brassModel"></div>
     <div class="tray" id="brassTray"></div>
   </div>
 
@@ -8960,13 +8955,20 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   ];
 
   const brassFixed=[
-    [30,30],[130,30],[230,30],
-    [30,118],[230,118],
-    [30,206],[130,206],[230,206]
+    [30,30],[100,30],[170,30],[240,30],
+    [30,118],[100,118],[170,118],[240,118],
+    [30,206],[100,206],[170,206],[240,206]
   ];
 
   const steelTargets=[[90,80],[190,80],[140,160],[240,160]];
-  const brassTargets=[[80,66],[180,66],[130,154],[230,154]];
+
+  // Pour le laiton, chaque atome orange du réseau peut être substitué.
+  // Les cibles correspondent donc exactement aux positions des atomes de cuivre.
+  const brassTargets=[
+    [30,30],[100,30],[170,30],[240,30],
+    [30,118],[100,118],[170,118],[240,118],
+    [30,206],[100,206],[170,206],[240,206]
+  ];
 
   function fresh(){
     return{
@@ -8979,7 +8981,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
   let state=fresh();
 
-  function storageKey(){return "ludo_ex7_alloys_v2_"+storageId+"_"+String(generation)}
+  function storageKey(){return "ludo_ex7_alloys_v3_"+storageId+"_"+String(generation)}
   function save(){try{sessionStorage.setItem(storageKey(),JSON.stringify(state))}catch(e){}}
   function load(){
     try{
@@ -9014,10 +9016,12 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     },"*");
   }
 
-  function fixedAtom(cls,x,y){
+  function fixedAtom(cls,x,y,id=null){
     const e=document.createElement("div");
     e.className="atom "+cls+" fixed";
-    e.style.left=x+"px";e.style.top=y+"px";
+    e.style.left=x+"px";
+    e.style.top=y+"px";
+    if(id!==null)e.id=id;
     return e;
   }
 
@@ -9050,7 +9054,9 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     brassTray.innerHTML="";
 
     steelFixed.forEach(p=>steel.appendChild(fixedAtom("iron",p[0],p[1])));
-    brassFixed.forEach(p=>brass.appendChild(fixedAtom("copper",p[0],p[1])));
+    brassFixed.forEach((p,i)=>{
+      brass.appendChild(fixedAtom("copper",p[0],p[1],"copper-"+i));
+    });
 
     for(let i=0;i<NC;i++){
       carbonTray.appendChild(draggable("carbon",i,false));
@@ -9079,9 +9085,26 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     }
   }
 
+  function renderBrassBase(){
+    // Tous les atomes de cuivre sont visibles par défaut.
+    brassFixed.forEach((_,i)=>{
+      const e=document.getElementById("copper-"+i);
+      if(e)e.style.visibility="visible";
+    });
+
+    // Quand un atome de zinc/nickel occupe une position du réseau,
+    // l'atome de cuivre orange correspondant disparaît : vraie substitution.
+    state.brass.forEach(pos=>{
+      if(!pos || !Number.isInteger(pos.target))return;
+      const e=document.getElementById("copper-"+pos.target);
+      if(e)e.style.visibility="hidden";
+    });
+  }
+
   function renderAll(){
     for(let i=0;i<NC;i++)renderOne("carbon",i);
     for(let i=0;i<NB;i++)renderOne("brass",i);
+    renderBrassBase();
   }
 
   function startDrag(e){
@@ -9133,13 +9156,20 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   }
 
   function targetBoxSize(type){
-    return type==="carbon" ? 28 : 52;
+    return type==="carbon" ? 28 : 48;
   }
 
   function snappedPosition(type,targetIndex){
     const targets=targetList(type);
     const t=targets[targetIndex];
-    const delta=(targetBoxSize(type)-particleSize(type))/2;
+
+    // Pour l'acier, on centre le petit carbone dans l'interstice pointillé.
+    // Pour le laiton, la particule de substitution prend exactement
+    // la place de l'atome orange de cuivre.
+    const delta = type==="carbon"
+      ? (targetBoxSize(type)-particleSize(type))/2
+      : 0;
+
     return{
       x:Math.round(t[0]+delta),
       y:Math.round(t[1]+delta),
@@ -9210,6 +9240,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
         state[drag.type][drag.index]=snappedPosition(drag.type,targetIndex);
         state.success=false;
         renderOne(drag.type,drag.index);
+        if(drag.type==="brass")renderBrassBase();
         save();
 
         setFeedback(
@@ -9222,13 +9253,17 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
         // On ne laisse plus l'atome flotter n'importe où dans le schéma.
         setFeedback(
           "hint",
-          "💡 Dépose l’atome sur l’un des cercles pointillés disponibles."
+          drag.type==="carbon"
+            ? "💡 Dépose l’atome de carbone sur l’un des petits cercles pointillés."
+            : "💡 Dépose l’atome vert ou violet directement sur un atome orange du réseau."
         );
       }
     }else{
       setFeedback(
         "hint",
-        "💡 Dépose l’atome à l’intérieur du modèle, sur un cercle pointillé."
+        drag.type==="carbon"
+          ? "💡 Dépose l’atome à l’intérieur du modèle, sur un petit cercle pointillé."
+          : "💡 Dépose l’atome dans le modèle du laiton, directement sur un atome orange."
       );
     }
 
@@ -9237,17 +9272,26 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   }
 
   function targetMatch(positions,type,targets,maxD){
-    if(positions.length!==targets.length)return false;
-
-    // Avec l'aimantation, chaque atome doit simplement occuper
-    // un emplacement différent parmi toutes les cibles prévues.
     const occupied=positions
       .map(p=>Number.isInteger(p.target)?p.target:null)
       .filter(v=>v!==null);
 
+    if(type==="carbon"){
+      // Les 4 petits carbones doivent occuper les 4 interstices.
+      return (
+        positions.length===steelTargets.length &&
+        occupied.length===steelTargets.length &&
+        new Set(occupied).size===steelTargets.length
+      );
+    }
+
+    // Pour le laiton, on accepte n'importe quels 4 atomes de cuivre substitués,
+    // à condition qu'ils correspondent à 4 positions différentes du réseau.
     return (
-      occupied.length===targets.length &&
-      new Set(occupied).size===targets.length
+      positions.length===NB &&
+      occupied.length===NB &&
+      new Set(occupied).size===NB &&
+      occupied.every(i=>i>=0 && i<brassTargets.length)
     );
   }
 
@@ -9267,15 +9311,15 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
     if(steelOk&&brassOk){
       state.success=true;
-      setFeedback("good","✅ Les deux modèles sont cohérents : carbone dans les interstices pour l’acier, zinc/nickel à la place d’atomes du réseau pour le laiton.");
+      setFeedback("good","✅ Les deux modèles sont cohérents : les petits atomes de carbone sont insérés entre les atomes de fer, tandis que les atomes de zinc et de nickel ont remplacé des atomes de cuivre dans le laiton.");
     }else{
       state.errors++;
       if(state.errors===1){
-        setFeedback("hint","💡 Observe bien la différence entre « s’insérer dans un espace » et « prendre la place d’un atome ».");
+        setFeedback("hint","💡 Compare les deux gestes : dans l’acier, le nouvel atome se place entre les atomes de fer ; dans le laiton, il doit remplacer un atome orange.");
       }else if(state.errors===2){
-        setFeedback("hint","💡 Pour l’acier, les petits atomes ne doivent pas remplacer le fer. Pour le laiton, les nouveaux atomes doivent occuper des positions du réseau.");
+        setFeedback("hint","💡 Pour l’acier, place les petits carbones dans les interstices. Pour le laiton, dépose les atomes verts et violets directement sur des atomes orange.");
       }else{
-        setFeedback("hint","💡 Acier : place les petits carbones dans les quatre interstices. Laiton : place zinc et nickel sur les quatre emplacements laissés libres.");
+        setFeedback("hint","💡 Acier : remplis les quatre interstices. Laiton : substitue quatre atomes orange du réseau par les deux atomes de zinc et les deux atomes de nickel.");
       }
     }
 
@@ -9295,8 +9339,15 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   function resetType(type){
     state[type]=Array(type==="carbon"?NC:NB).fill(null);
     state.success=false;
-    renderAll();save();send();
-    setFeedback("neutral",type==="carbon"?"Modèle de l’acier remis à zéro.":"Modèle du laiton remis à zéro.");
+    renderAll();
+    save();
+    send();
+    setFeedback(
+      "neutral",
+      type==="carbon"
+        ? "Modèle de l’acier remis à zéro."
+        : "Modèle du laiton remis à zéro : tous les atomes de cuivre sont de nouveau visibles."
+    );
   }
 
   function resetAll(){
@@ -9331,18 +9382,18 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
 
 @st.cache_resource
-def _ex7_component_v2():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex7_alloys_component_v2"
+def _ex7_component_v3():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex7_alloys_component_v3"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX7_INTERACTIVE_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex7_alloys_models_v2",
+        "ex7_alloys_models_v3",
         path=str(component_dir),
     )
 
 
 def render_ex7_models(generation):
-    component = _ex7_component_v2()
+    component = _ex7_component_v3()
     student = st.session_state.get("app_student") or {}
     storage_id = str(
         student.get("id")
@@ -9352,7 +9403,7 @@ def render_ex7_models(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex7_alloys_v2_{generation}",
+        key=f"ex7_alloys_v3_{generation}",
         default={
             "success": False,
             "errors": 0,
