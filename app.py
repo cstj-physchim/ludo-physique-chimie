@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_MOLECULE_COMMON_SCALE_V61
+# VERSION_UI_2026_08_26_MOLECULE_COMPACT_CANVAS_V62
 import re
 import base64
 import json
@@ -13643,8 +13643,10 @@ def _uniform_molecule_image_bytes(path_string):
         detected_w = max(1, right - left)
         detected_h = max(1, bottom - top)
 
-        pad_x = max(10, int(detected_w * 0.045))
-        pad_y = max(10, int(detected_h * 0.045))
+        # Marge réduite : on conserve juste assez d'air pour ne pas couper
+        # les ombres, mais on évite le grand halo blanc autour du modèle.
+        pad_x = max(6, int(detected_w * 0.02))
+        pad_y = max(6, int(detected_h * 0.02))
 
         left = max(0, left - pad_x)
         top = max(0, top - pad_y)
@@ -13692,8 +13694,9 @@ def _uniform_molecule_image_bytes(path_string):
         Image.Resampling.LANCZOS,
     )
 
-    # Même canevas pour tous : cela garantit l'alignement des champs.
-    canvas_w, canvas_h = 760, 430
+    # Même canevas pour tous, mais plus compact :
+    # on gagne de la place verticale tout en gardant l'alignement des champs.
+    canvas_w, canvas_h = 620, 320
     canvas = Image.new("RGB", (canvas_w, canvas_h), (255, 255, 255))
 
     x = (canvas_w - molecule.width) // 2
@@ -13707,8 +13710,9 @@ def _uniform_molecule_image_bytes(path_string):
 
 def _render_uniform_molecule_image(image_path):
     """
-    Affiche les modèles sur un canevas identique.
-    Les champs Nom/Formule restent donc parfaitement alignés entre colonnes.
+    Affiche les modèles sur un canevas identique et compact.
+    Les champs Nom/Formule restent parfaitement alignés entre colonnes,
+    avec beaucoup moins de blanc autour des molécules.
     """
     image_bytes = _uniform_molecule_image_bytes(str(image_path))
     st.image(image_bytes, use_container_width=True)
