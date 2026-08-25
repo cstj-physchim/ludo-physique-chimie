@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE3_ENTER_AND_TARGETED_FEEDBACK_V19
+# VERSION_UI_2026_08_25_EXERCISE4_OXYGEN_MODEL_PROTO_V20
 import re
 import base64
 import json
@@ -149,6 +149,13 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 9,
         "description": "Identifier l’état de la matière à partir de la disposition des molécules.",
+        "resource_ready": True,
+    },
+    "exercise4_oxygen_bottle": {
+        "label": "Exercice 4 — Propriétés et bouteille de dioxygène",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 11,
+        "description": "Relier propriétés moléculaires, état physique et modélisation d’une bouteille de dioxygène.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -2010,6 +2017,7 @@ def tracked_exercise_ids():
         "exercise1_states_water",
         "exercise2_water_properties",
         "exercise3_particle_models",
+        "exercise4_oxygen_bottle",
         "exercise_states_matter",
     ]
 
@@ -3925,6 +3933,16 @@ def page_exercise_topics():
             "key": "start_ex3_particle_models",
         })
 
+    if resource_is_available_for_current_user("exercise4_oxygen_bottle"):
+        exercises.append({
+            "icon": "🫧",
+            "title": "Exercice 4 — Propriétés et bouteille de dioxygène",
+            "description": "Relie propriétés moléculaires, zones de la bouteille et construction d’un modèle.",
+            "color": "card-green",
+            "page": "exercise4_oxygen_bottle",
+            "key": "start_ex4_oxygen_bottle",
+        })
+
     if states_matter_available_for_current_user():
         exercises.append({
             "icon": "🧊",
@@ -5427,6 +5445,617 @@ def page_exercise3_particle_models():
                 errors=total_errors,
             )
             st.session_state["ex3_result_saved"] = True
+
+
+
+# ============================================================
+# EXERCICE 4 — PROPRIÉTÉS ET BOUTEILLE DE DIOXYGÈNE
+# ============================================================
+
+EXERCISE4_OXYGEN_IMAGE = "assets/chapitre_1/exercice_4/bouteille d oxygene.png"
+
+EXERCISE4_PROPERTIES = [
+    {
+        "label": "Les molécules se touchent.",
+        "answers": {"Solide", "Liquide"},
+        "hint": "Dans quels états les molécules restent-elles très proches les unes des autres ?",
+        "explanation": "Dans un solide et dans un liquide, les molécules sont compactes : elles sont très proches.",
+    },
+    {
+        "label": "Les molécules sont espacées.",
+        "answers": {"Gazeux"},
+        "hint": "Cherche l’état dans lequel les molécules occupent tout le volume disponible.",
+        "explanation": "Dans un gaz, les molécules sont dispersées et donc beaucoup plus espacées.",
+    },
+    {
+        "label": "Les molécules sont disposées de façon ordonnée.",
+        "answers": {"Solide"},
+        "hint": "Dans quel état les molécules restent-elles rangées régulièrement ?",
+        "explanation": "Dans un solide, les molécules sont compactes et ordonnées.",
+    },
+    {
+        "label": "Les molécules sont disposées de façon désordonnée.",
+        "answers": {"Liquide", "Gazeux"},
+        "hint": "Deux états ont des molécules qui ne sont pas rangées régulièrement.",
+        "explanation": "Dans un liquide et dans un gaz, les molécules sont désordonnées.",
+    },
+    {
+        "label": "Les molécules sont libres de se déplacer.",
+        "answers": {"Liquide", "Gazeux"},
+        "hint": "Dans quels états les molécules peuvent-elles changer de position les unes par rapport aux autres ?",
+        "explanation": "Dans un liquide et dans un gaz, les molécules sont mobiles.",
+    },
+]
+
+EXERCISE4_MODEL_GRID = {
+    "rows": 5,
+    "cols": 7,
+    "max_molecules": 9,
+}
+
+
+def _ex4_prop_state(index, state_name):
+    return st.session_state.get(f"ex4_prop_{index}_{state_name}", "idle")
+
+
+def _ex4_handle_prop_click(index, state_name, answers):
+    mapping = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}
+    label = mapping[state_name]
+    key = f"ex4_prop_{index}_{state_name}"
+
+    if label in answers:
+        st.session_state[key] = "correct"
+    else:
+        st.session_state[key] = "wrong"
+        err_key = f"ex4_prop_errors_{index}"
+        st.session_state[err_key] = int(st.session_state.get(err_key, 0)) + 1
+
+    good_states = [
+        s for s, human in mapping.items()
+        if human in answers
+    ]
+    complete = all(
+        st.session_state.get(f"ex4_prop_{index}_{s}") == "correct"
+        for s in good_states
+    )
+    st.session_state[f"ex4_prop_complete_{index}"] = complete
+
+
+def _ex4_render_prop_button(index, state_name, answers):
+    state = _ex4_prop_state(index, state_name)
+    human = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}[state_name]
+
+    if state == "correct":
+        label = f"✓ {human}"
+        btype = "primary"
+    elif state == "wrong":
+        label = f"✕ {human}"
+        btype = "secondary"
+    else:
+        label = human
+        btype = "secondary"
+
+    st.button(
+        label,
+        key=f"ex4_prop_btn_{index}_{state_name}",
+        use_container_width=True,
+        type=btype,
+        on_click=_ex4_handle_prop_click,
+        args=(index, state_name, answers),
+    )
+    css_class = {
+        "idle": "ex4-choice-idle",
+        "correct": "ex4-choice-correct",
+        "wrong": "ex4-choice-wrong",
+    }[state]
+    st.markdown(f'<div class="{css_class}"></div>', unsafe_allow_html=True)
+
+
+def _normalize_oxygen_zone(value):
+    value = str(value or "").strip().lower()
+    value = (
+        value.replace("é", "e")
+        .replace("è", "e")
+        .replace("ê", "e")
+        .replace("’", "'")
+    )
+    value = " ".join(value.split())
+
+    aliases = {
+        "dioxygene gazeux": "gaz",
+        "dioxygene gaz": "gaz",
+        "gaz": "gaz",
+        "gazeux": "gaz",
+        "etat gazeux": "gaz",
+        "dioxygene liquide": "liquide",
+        "liquide": "liquide",
+        "etat liquide": "liquide",
+    }
+    return aliases.get(value, value)
+
+
+def _ex4_validate_zone(zone):
+    generation = int(st.session_state.get("ex4_generation", 0))
+    answer_key = f"ex4_zone_{generation}_{zone}"
+    given = _normalize_oxygen_zone(st.session_state.get(answer_key, ""))
+    expected = "gaz" if zone == "a" else "liquide"
+
+    if not given:
+        st.session_state[f"ex4_zone_empty_{zone}"] = True
+        return
+
+    st.session_state[f"ex4_zone_empty_{zone}"] = False
+
+    if given == expected:
+        st.session_state[f"ex4_zone_correct_{zone}"] = True
+    else:
+        st.session_state[f"ex4_zone_correct_{zone}"] = False
+        key = f"ex4_zone_errors_{zone}"
+        st.session_state[key] = int(st.session_state.get(key, 0)) + 1
+
+
+def _ex4_grid_key(zone):
+    return f"ex4_grid_{zone}"
+
+
+def _ex4_get_grid(zone):
+    return set(st.session_state.get(_ex4_grid_key(zone), []))
+
+
+def _ex4_toggle_grid_cell(zone, row, col):
+    cells = _ex4_get_grid(zone)
+    cell = (row, col)
+
+    if cell in cells:
+        cells.remove(cell)
+    elif len(cells) < EXERCISE4_MODEL_GRID["max_molecules"]:
+        cells.add(cell)
+
+    st.session_state[_ex4_grid_key(zone)] = list(cells)
+    st.session_state.pop(f"ex4_model_feedback_{zone}", None)
+    st.session_state.pop(f"ex4_model_correct_{zone}", None)
+
+
+def _ex4_grid_metrics(cells):
+    """Approximate compactness/order from positions chosen by the pupil."""
+    if len(cells) < 2:
+        return {"compact": False, "ordered": False, "spread": False}
+
+    pts = [(r, c) for r, c in cells]
+
+    # Compactness: each molecule should have a close neighbour in most cases.
+    close_count = 0
+    for i, (r1, c1) in enumerate(pts):
+        nearest = min(
+            math.hypot(r1 - r2, c1 - c2)
+            for j, (r2, c2) in enumerate(pts)
+            if i != j
+        )
+        if nearest <= 1.45:
+            close_count += 1
+    compact = close_count / len(pts) >= 0.75
+
+    # Spread: occupied area and average pairwise distance.
+    rows = [r for r, _ in pts]
+    cols = [c for _, c in pts]
+    bbox_area = (max(rows) - min(rows) + 1) * (max(cols) - min(cols) + 1)
+    avg_dist = sum(
+        math.hypot(r1-r2, c1-c2)
+        for i, (r1, c1) in enumerate(pts)
+        for j, (r2, c2) in enumerate(pts)
+        if j > i
+    ) / max(1, (len(pts) * (len(pts)-1) / 2))
+    spread = bbox_area >= 20 and avg_dist >= 2.3 and not compact
+
+    # Order: most points align on a regular lattice with neighbours horizontally/vertically.
+    neighbour_links = 0
+    for r, c in pts:
+        for dr, dc in [(0,1), (1,0)]:
+            if (r+dr, c+dc) in cells:
+                neighbour_links += 1
+    ordered = compact and neighbour_links >= max(4, len(pts)-2)
+
+    return {"compact": compact, "ordered": ordered, "spread": spread}
+
+
+def _ex4_check_model(zone):
+    cells = _ex4_get_grid(zone)
+    if len(cells) < 6:
+        st.session_state[f"ex4_model_feedback_{zone}"] = (
+            "Place encore quelques molécules avant de vérifier ton modèle."
+        )
+        st.session_state[f"ex4_model_correct_{zone}"] = False
+        return
+
+    metrics = _ex4_grid_metrics(cells)
+    expected = "gaz" if zone == "a" else "liquide"
+
+    if expected == "gaz":
+        correct = metrics["spread"] and not metrics["ordered"]
+        if correct:
+            msg = "✅ Ton modèle convient : les molécules sont espacées et désordonnées."
+        elif metrics["compact"]:
+            msg = "💡 Tes molécules sont encore trop regroupées pour représenter un gaz."
+        else:
+            msg = "💡 Essaie de mieux répartir les molécules dans toute la zone."
+    else:
+        correct = metrics["compact"] and not metrics["ordered"]
+        if correct:
+            msg = "✅ Ton modèle convient : les molécules sont proches mais désordonnées."
+        elif not metrics["compact"]:
+            msg = "💡 Pour un liquide, les molécules doivent rester beaucoup plus proches."
+        elif metrics["ordered"]:
+            msg = "💡 Elles sont proches, mais leur disposition est trop régulière pour un liquide."
+        else:
+            msg = "💡 Réorganise légèrement les molécules puis vérifie à nouveau."
+
+    st.session_state[f"ex4_model_feedback_{zone}"] = msg
+    st.session_state[f"ex4_model_correct_{zone}"] = correct
+
+    if not correct:
+        key = f"ex4_model_errors_{zone}"
+        st.session_state[key] = int(st.session_state.get(key, 0)) + 1
+
+
+def _ex4_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    touched = 0
+    errors = 0
+
+    if any(
+        st.session_state.get(f"ex4_prop_{i}_{s}", "idle") != "idle"
+        for i in range(len(EXERCISE4_PROPERTIES))
+        for s in ("solid", "liquid", "gas")
+    ):
+        touched += 1
+
+    generation = int(st.session_state.get("ex4_generation", 0))
+    if any(
+        str(st.session_state.get(f"ex4_zone_{generation}_{z}", "")).strip()
+        for z in ("a", "b")
+    ):
+        touched += 1
+
+    if _ex4_get_grid("a") or _ex4_get_grid("b"):
+        touched += 1
+
+    errors += sum(
+        int(st.session_state.get(f"ex4_prop_errors_{i}", 0))
+        for i in range(len(EXERCISE4_PROPERTIES))
+    )
+    errors += sum(
+        int(st.session_state.get(f"ex4_zone_errors_{z}", 0))
+        for z in ("a", "b")
+    )
+    errors += sum(
+        int(st.session_state.get(f"ex4_model_errors_{z}", 0))
+        for z in ("a", "b")
+    )
+
+    if touched == 0:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        row for row in rows
+        if row.get("student_id") == student.get("id")
+        and row.get("resource_id") == "exercise4_oxygen_bottle"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise4_oxygen_bottle",
+        "resource_label": PILOT_CONTENTS["exercise4_oxygen_bottle"]["label"],
+        "chapter": PILOT_CONTENTS["exercise4_oxygen_bottle"]["chapter"],
+        "score_percent": None,
+        "completed_items": touched,
+        "total_items": 3,
+        "errors": errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise4_oxygen_bottle():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex4_"):
+            st.session_state.pop(key, None)
+
+
+def _ex4_start_new_attempt():
+    _ex4_record_restart_if_needed()
+    generation = int(st.session_state.get("ex4_generation", 0))
+    reset_exercise4_oxygen_bottle()
+    st.session_state["ex4_generation"] = generation + 1
+
+
+def page_exercise4_oxygen_bottle():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise4_oxygen_bottle"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex4-box {
+            background:#f5f9ff;
+            border:1px solid #cfe0fb;
+            border-radius:16px;
+            padding:.9rem 1rem;
+            margin:.5rem 0 1rem 0;
+            color:#324a68;
+        }
+        .ex4-row-label {
+            min-height:48px;
+            display:flex;
+            align-items:center;
+            padding:0 .8rem;
+            background:#f1f3f6;
+            border:1px solid #dfe6ef;
+            border-radius:12px;
+            font-weight:800;
+            color:#162b4d;
+        }
+        .ex4-feedback {
+            min-height:48px;
+            display:flex;
+            align-items:center;
+            padding:0 .7rem;
+            border-radius:12px;
+            font-size:.88rem;
+            font-weight:700;
+            background:#f8fafc;
+            border:1px solid #e3e9f2;
+        }
+        .ex4-ok {background:#eefaf2;border-color:#cdebd6;color:#24623a;}
+        .ex4-hint {background:#fff7e6;border-color:#f4d69b;color:#73541c;}
+        .ex4-bad {background:#fff1f1;border-color:#f0c8c8;color:#7b2c2c;}
+
+        div[data-testid="stButton"]:has(+ .ex4-choice-wrong) button {
+            background:#e05656 !important;
+            border-color:#bd3d3d !important;
+            color:white !important;
+        }
+        div[data-testid="stButton"]:has(+ .ex4-choice-correct) button {
+            background:#2fb05b !important;
+            border-color:#268f4b !important;
+            color:white !important;
+        }
+
+        .ex4-grid-title {
+            font-weight:800;
+            color:#16335f;
+            margin:.25rem 0 .4rem 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Propriétés et bouteille de dioxygène</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">🫧 Exercice 4 — Propriétés et bouteille de dioxygène</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ---------------- PARTIE 1 ----------------
+    st.markdown("### 1. Propriétés des molécules")
+    st.markdown(
+        '<div class="ex4-box">Pour chaque proposition, clique sur le ou les états correspondants. '
+        'La correction est immédiate.</div>',
+        unsafe_allow_html=True,
+    )
+
+    for i, item in enumerate(EXERCISE4_PROPERTIES):
+        c1, c2, c3, c4, c5 = st.columns([2.9, 1, 1, 1, 2.5], gap="small")
+        with c1:
+            st.markdown(f'<div class="ex4-row-label">{item["label"]}</div>', unsafe_allow_html=True)
+        with c2:
+            _ex4_render_prop_button(i, "solid", item["answers"])
+        with c3:
+            _ex4_render_prop_button(i, "liquid", item["answers"])
+        with c4:
+            _ex4_render_prop_button(i, "gas", item["answers"])
+
+        errors = int(st.session_state.get(f"ex4_prop_errors_{i}", 0))
+        complete = bool(st.session_state.get(f"ex4_prop_complete_{i}", False))
+        with c5:
+            if complete:
+                fb = '<div class="ex4-feedback ex4-ok">✅ Bonne réponse.</div>'
+            elif errors == 1:
+                fb = f'<div class="ex4-feedback ex4-hint">💡 {item["hint"]}</div>'
+            elif errors >= 2:
+                ans = " + ".join(sorted(item["answers"]))
+                fb = f'<div class="ex4-feedback ex4-bad">❌ {ans} — {item["explanation"]}</div>'
+            else:
+                fb = '<div class="ex4-feedback">Correction</div>'
+            st.markdown(fb, unsafe_allow_html=True)
+
+    # ---------------- PARTIE 2 ----------------
+    st.markdown("### 2. Identifier les zones de la bouteille")
+    st.markdown(
+        '<div class="ex4-box">La bouteille contient uniquement du dioxygène. '
+        'Lorsqu’on la déplace, on entend le bruit caractéristique d’un liquide. '
+        'Identifie l’état du dioxygène dans les zones a et b.</div>',
+        unsafe_allow_html=True,
+    )
+
+    img_path = Path(EXERCISE4_OXYGEN_IMAGE)
+    if img_path.exists():
+        st.image(str(img_path), width=700)
+    else:
+        st.warning(
+            "Image manquante : ajoute « bouteille d oxygene.png » dans "
+            "assets/chapitre_1/exercice_4/."
+        )
+
+    generation = int(st.session_state.get("ex4_generation", 0))
+    z1, z2 = st.columns(2, gap="large")
+
+    for col, zone in [(z1, "a"), (z2, "b")]:
+        with col:
+            st.text_input(
+                f"Zone {zone} — Quel est l’état du dioxygène ?",
+                key=f"ex4_zone_{generation}_{zone}",
+                placeholder="Écris ta réponse puis appuie sur Entrée",
+                on_change=_ex4_validate_zone,
+                args=(zone,),
+                disabled=bool(st.session_state.get(f"ex4_zone_correct_{zone}", False)),
+            )
+            st.button(
+                "Vérifier",
+                key=f"ex4_zone_btn_{zone}",
+                use_container_width=True,
+                on_click=_ex4_validate_zone,
+                args=(zone,),
+                disabled=bool(st.session_state.get(f"ex4_zone_correct_{zone}", False)),
+            )
+
+            errors = int(st.session_state.get(f"ex4_zone_errors_{zone}", 0))
+            correct = bool(st.session_state.get(f"ex4_zone_correct_{zone}", False))
+
+            if correct:
+                expected = "gazeux" if zone == "a" else "liquide"
+                st.success(f"✅ Zone {zone} : dioxygène {expected}.")
+            elif errors == 1:
+                if zone == "a":
+                    st.info("💡 Observe la partie supérieure de la bouteille : quel état occupe tout l’espace disponible ?")
+                else:
+                    st.info("💡 Le document précise qu’on entend le bruit caractéristique d’un liquide lorsqu’on déplace la bouteille.")
+            elif errors >= 2:
+                expected = "gazeux" if zone == "a" else "liquide"
+                st.error(f"❌ Zone {zone} : le dioxygène y est {expected}.")
+
+    # ---------------- PARTIE 3 ----------------
+    st.markdown("### 3. Construire un modèle moléculaire")
+    st.markdown(
+        '<div class="ex4-box">'
+        '<strong>Prototype :</strong> place jusqu’à 9 molécules dans chaque zone en cliquant sur les cases. '
+        'Clique à nouveau sur une molécule pour l’enlever, puis utilise « Vérifier mon modèle ». '
+        'Le logiciel analyse si les molécules sont proches, ordonnées ou dispersées.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    for zone in ("a", "b"):
+        st.markdown(
+            f'<div class="ex4-grid-title">Zone {zone} — '
+            f'{"dioxygène gazeux" if zone == "a" else "dioxygène liquide"}</div>',
+            unsafe_allow_html=True,
+        )
+
+        rows = EXERCISE4_MODEL_GRID["rows"]
+        cols = EXERCISE4_MODEL_GRID["cols"]
+        selected = _ex4_get_grid(zone)
+
+        for r in range(rows):
+            grid_cols = st.columns(cols, gap="small")
+            for c, gc in enumerate(grid_cols):
+                with gc:
+                    occupied = (r, c) in selected
+                    st.button(
+                        "●" if occupied else " ",
+                        key=f"ex4_grid_{zone}_{r}_{c}",
+                        use_container_width=True,
+                        type="primary" if occupied else "secondary",
+                        on_click=_ex4_toggle_grid_cell,
+                        args=(zone, r, c),
+                    )
+
+        st.caption(
+            f"{len(selected)} / {EXERCISE4_MODEL_GRID['max_molecules']} molécules placées"
+        )
+
+        if st.button(
+            f"Vérifier mon modèle — zone {zone}",
+            key=f"ex4_check_model_{zone}",
+            use_container_width=True,
+            on_click=_ex4_check_model,
+            args=(zone,),
+        ):
+            pass
+
+        feedback = st.session_state.get(f"ex4_model_feedback_{zone}")
+        if feedback:
+            if st.session_state.get(f"ex4_model_correct_{zone}", False):
+                st.success(feedback)
+            else:
+                st.info(feedback)
+
+    # ---------------- BILAN ----------------
+    part1_ok = all(
+        st.session_state.get(f"ex4_prop_complete_{i}", False)
+        for i in range(len(EXERCISE4_PROPERTIES))
+    )
+    part2_ok = all(
+        st.session_state.get(f"ex4_zone_correct_{z}", False)
+        for z in ("a", "b")
+    )
+    part3_ok = all(
+        st.session_state.get(f"ex4_model_correct_{z}", False)
+        for z in ("a", "b")
+    )
+
+    completed_parts = sum([part1_ok, part2_ok, part3_ok])
+
+    st.markdown("### Ton avancement")
+    st.progress(completed_parts / 3)
+    st.write(f"**{completed_parts} / 3 parties réussies**")
+
+    c_reset, c_space = st.columns([1.3, 4.7])
+    with c_reset:
+        if st.button(
+            "↻ Recommencer",
+            key="restart_ex4_oxygen_bottle",
+            use_container_width=True,
+        ):
+            _ex4_start_new_attempt()
+            st.rerun()
+
+    if completed_parts == 3:
+        st.success("🎉 Bravo ! Tu as réussi l’ensemble de l’exercice.")
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex4_result_saved", False)
+        ):
+            total_errors = (
+                sum(int(st.session_state.get(f"ex4_prop_errors_{i}", 0)) for i in range(len(EXERCISE4_PROPERTIES)))
+                + sum(int(st.session_state.get(f"ex4_zone_errors_{z}", 0)) for z in ("a", "b"))
+                + sum(int(st.session_state.get(f"ex4_model_errors_{z}", 0)) for z in ("a", "b"))
+            )
+            record_training_result(
+                student,
+                "exercise4_oxygen_bottle",
+                round(100 * 3 / max(3, 3 + total_errors)),
+                3,
+                3,
+                errors=total_errors,
+            )
+            st.session_state["ex4_result_saved"] = True
 
 
 def reset_states_matter_training():
@@ -7706,6 +8335,8 @@ elif page == "exercise2_water_properties":
     page_exercise2_water_properties()
 elif page == "exercise3_particle_models":
     page_exercise3_particle_models()
+elif page == "exercise4_oxygen_bottle":
+    page_exercise4_oxygen_bottle()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
