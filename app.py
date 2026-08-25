@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE1_MODERN_TABLE
+# VERSION_UI_2026_08_25_EXERCISE1_ROW_VALIDATION_V3
 import re
 import base64
 import json
@@ -476,38 +476,48 @@ st.markdown(
     }
 
     .ex1-row-label {
-        min-height: 54px;
+        min-height: 58px;
         display: flex;
         align-items: center;
-        gap: .55rem;
-        padding: 0.3rem 0.9rem;
-        background: #ffffff;
+        padding: 0.3rem 1rem;
         border-left: 1px solid #e3e9f2;
-        border-bottom: 1px solid #e8edf4;
+        border-bottom: 1px solid #dfe6ef;
         color: #162b4d;
         font-weight: 750;
         font-size: 0.98rem;
     }
 
-    .ex1-row-label:nth-child(even) {
-        background: #fbfdff;
+    .ex1-row-white {
+        background: #ffffff;
     }
 
-    .ex1-row-emoji {
-        font-size: 1.35rem;
-        width: 1.55rem;
-        text-align: center;
-        flex: 0 0 auto;
+    .ex1-row-gray {
+        background: #f2f4f7;
     }
 
-    /* Agrandit visuellement les cases à cocher de cet exercice */
-    div[data-testid="stCheckbox"] {
-        min-height: 54px;
+    /* Chaque ligne checkbox adopte le même fond alterné */
+    .ex1-check-wrap {
+        min-height: 58px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-bottom: 1px solid #e8edf4;
-        background: #fff;
+        border-bottom: 1px solid #dfe6ef;
+    }
+
+    .ex1-check-white {
+        background: #ffffff;
+    }
+
+    .ex1-check-gray {
+        background: #f2f4f7;
+    }
+
+    /* Cases à cocher plus grandes et bien contrastées */
+    div[data-testid="stCheckbox"] {
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         margin: 0 !important;
         padding: 0 !important;
     }
@@ -517,22 +527,30 @@ st.markdown(
         justify-content: center !important;
         align-items: center !important;
         width: 100% !important;
-        min-height: 54px !important;
+        min-height: 58px !important;
         margin: 0 !important;
         padding: 0 !important;
     }
 
-    div[data-testid="stCheckbox"] [data-testid="stCheckbox"] {
-        min-height: 54px;
+    div[data-testid="stCheckbox"] span[data-baseweb="checkbox"] {
+        transform: scale(1.38);
+        transform-origin: center center;
+    }
+
+    div[data-testid="stCheckbox"] span[data-baseweb="checkbox"] > div {
+        border: 2px solid #6f7f95 !important;
+        border-radius: 5px !important;
+        background: white !important;
+    }
+
+    div[data-testid="stCheckbox"] input:checked + div {
+        background: #2f6fe4 !important;
+        border-color: #2f6fe4 !important;
     }
 
     div[data-testid="stCheckbox"] svg {
-        width: 26px !important;
-        height: 26px !important;
-    }
-
-    div[data-testid="stCheckbox"] span[data-baseweb="checkbox"] {
-        transform: scale(1.22);
+        width: 24px !important;
+        height: 24px !important;
     }
 
     .ex1-tip {
@@ -3901,7 +3919,7 @@ EXERCISE1_STATES_WATER = [
 
 def reset_exercise1_states_water():
     for key in list(st.session_state.keys()):
-        if str(key).startswith("ex1_water_"):
+        if str(key).startswith("ex1_water_") or str(key).startswith("ex1_validate_row_"):
             st.session_state.pop(key, None)
     st.session_state.pop("ex1_water_attempts", None)
     st.session_state.pop("ex1_water_result_saved", None)
@@ -3954,8 +3972,8 @@ def page_exercise1_states_water():
         unsafe_allow_html=True,
     )
 
-    # En-tête moderne du tableau.
-    h1, h2, h3, h4 = st.columns([3.2, 1.2, 1.2, 1.2], gap="small")
+    # En-tête du tableau
+    h1, h2, h3, h4, h5 = st.columns([3.2, 1.1, 1.1, 1.1, 0.75], gap="small")
     with h1:
         st.markdown(
             '<div class="ex1-header-cell ex1-header-left">Proposition</div>',
@@ -3973,101 +3991,125 @@ def page_exercise1_states_water():
         )
     with h4:
         st.markdown(
-            '<div class="ex1-header-cell ex1-header-right">☁️&nbsp;&nbsp;Gazeux</div>',
+            '<div class="ex1-header-cell">☁️&nbsp;&nbsp;Gazeux</div>',
             unsafe_allow_html=True,
         )
-
-    icons = {
-        "Glacier": "🧊",
-        "Pluie": "🌧️",
-        "Brouillard": "🌫️",
-        "Neige": "❄️",
-        "Atmosphère": "🌍",
-        "Vapeur d’eau": "♨️",
-        "Givre": "🌨️",
-        "Lacs": "🏞️",
-        "Nuage": "☁️",
-        "Nappes phréatiques": "💧",
-        "Rivières et fleuves": "🏞️",
-    }
+    with h5:
+        st.markdown(
+            '<div class="ex1-header-cell ex1-header-right">Valider</div>',
+            unsafe_allow_html=True,
+        )
 
     selections = {}
 
     for index, item in enumerate(EXERCISE1_STATES_WATER):
-        c1, c2, c3, c4 = st.columns([3.2, 1.2, 1.2, 1.2], gap="small")
+        row_class = "ex1-row-gray" if index % 2 else "ex1-row-white"
+        check_class = "ex1-check-gray" if index % 2 else "ex1-check-white"
+
+        c1, c2, c3, c4, c5 = st.columns([3.2, 1.1, 1.1, 1.1, 0.75], gap="small")
 
         with c1:
             st.markdown(
-                f"""
-                <div class="ex1-row-label">
-                    <span class="ex1-row-emoji">{icons.get(item['label'], '•')}</span>
-                    <span>{item['label']}</span>
-                </div>
-                """,
+                f'<div class="ex1-row-label {row_class}">{item["label"]}</div>',
                 unsafe_allow_html=True,
             )
 
         row_selection = set()
 
         with c2:
+            st.markdown(f'<div class="ex1-check-wrap {check_class}">', unsafe_allow_html=True)
             if st.checkbox(
                 f"{item['label']} — solide",
                 key=f"ex1_water_{index}_solid",
                 label_visibility="collapsed",
             ):
                 row_selection.add("Solide")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         with c3:
+            st.markdown(f'<div class="ex1-check-wrap {check_class}">', unsafe_allow_html=True)
             if st.checkbox(
                 f"{item['label']} — liquide",
                 key=f"ex1_water_{index}_liquid",
                 label_visibility="collapsed",
             ):
                 row_selection.add("Liquide")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         with c4:
+            st.markdown(f'<div class="ex1-check-wrap {check_class}">', unsafe_allow_html=True)
             if st.checkbox(
                 f"{item['label']} — gazeux",
                 key=f"ex1_water_{index}_gas",
                 label_visibility="collapsed",
             ):
                 row_selection.add("Gazeux")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         selections[index] = row_selection
 
-        # Aide/correction progressive sous la ligne concernée.
-        if st.session_state.get("ex1_water_checked", False):
-            is_correct = row_selection == item["answers"]
-            error_count = int(st.session_state.get(f"ex1_water_errors_{index}", 0))
+        with c5:
+            st.markdown(f'<div class="ex1-check-wrap {check_class}">', unsafe_allow_html=True)
+            if st.button(
+                "✓",
+                key=f"ex1_validate_row_{index}",
+                use_container_width=True,
+                help=f"Valider la ligne « {item['label']} »",
+            ):
+                # Ne compte une erreur que si l'élève a réellement proposé quelque chose.
+                # Une ligne vide validée est quand même considérée comme une tentative.
+                signature = tuple(sorted(row_selection))
+                sig_key = f"ex1_water_last_signature_{index}"
 
-            if is_correct and error_count > 0:
-                st.markdown(
-                    f'<div class="ex1-feedback-ok">✅ <strong>{item["label"]}</strong> : bonne correction.</div>',
-                    unsafe_allow_html=True,
-                )
-            elif error_count == 1:
-                st.markdown(
-                    f'<div class="ex1-feedback-hint">💡 <strong>Indice — {item["label"]}</strong> : '
-                    f'{ex1_hint_for_item(item["label"])}</div>',
-                    unsafe_allow_html=True,
-                )
-            elif error_count >= 2:
-                correct_text = " + ".join(sorted(item["answers"]))
-                st.markdown(
-                    f'<div class="ex1-feedback-correction">❌ <strong>{item["label"]}</strong> : '
-                    f'la bonne réponse est <strong>{correct_text}</strong>.<br>'
-                    f'📘 {item["explanation"]}</div>',
-                    unsafe_allow_html=True,
-                )
+                if st.session_state.get(sig_key) != signature:
+                    st.session_state[sig_key] = signature
+
+                    if row_selection == item["answers"]:
+                        st.session_state[f"ex1_water_validated_{index}"] = True
+                    else:
+                        err_key = f"ex1_water_errors_{index}"
+                        st.session_state[err_key] = int(st.session_state.get(err_key, 0)) + 1
+                        st.session_state[f"ex1_water_validated_{index}"] = False
+
+                st.session_state["ex1_water_checked"] = True
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # Feedback juste sous la ligne validée.
+        if st.session_state.get("ex1_water_checked", False):
+            validated_key = f"ex1_water_validated_{index}"
+            if validated_key in st.session_state:
+                is_correct = bool(st.session_state.get(validated_key))
+                error_count = int(st.session_state.get(f"ex1_water_errors_{index}", 0))
+
+                if is_correct:
+                    st.markdown(
+                        f'<div class="ex1-feedback-ok">✅ <strong>{item["label"]}</strong> : correct.</div>',
+                        unsafe_allow_html=True,
+                    )
+                elif error_count == 1:
+                    st.markdown(
+                        f'<div class="ex1-feedback-hint">💡 <strong>Indice — {item["label"]}</strong> : '
+                        f'{ex1_hint_for_item(item["label"])}</div>',
+                        unsafe_allow_html=True,
+                    )
+                elif error_count >= 2:
+                    correct_text = " + ".join(sorted(item["answers"]))
+                    st.markdown(
+                        f'<div class="ex1-feedback-correction">❌ <strong>{item["label"]}</strong> : '
+                        f'la bonne réponse est <strong>{correct_text}</strong>.<br>'
+                        f'📘 {item["explanation"]}</div>',
+                        unsafe_allow_html=True,
+                    )
 
     st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
 
-    # Barre basse façon maquette.
-    tip_col, reset_col, validate_col = st.columns([2.6, 1.3, 1.6])
+    # Barre basse
+    tip_col, reset_col = st.columns([3.5, 1.4])
 
     with tip_col:
         st.markdown(
-            '<div class="ex1-tip">💡 Tu peux cocher plusieurs cases sur une même ligne.</div>',
+            '<div class="ex1-tip">💡 Tu peux cocher plusieurs cases sur une même ligne, puis valider la ligne avec ✓.</div>',
             unsafe_allow_html=True,
         )
 
@@ -4080,46 +4122,27 @@ def page_exercise1_states_water():
             reset_exercise1_states_water()
             st.rerun()
 
-    with validate_col:
-        if st.button(
-            "✓ Vérifier mes réponses",
-            type="primary",
-            use_container_width=True,
-            key="validate_ex1_states_water",
-        ):
-            signature = tuple(
-                tuple(sorted(selections[i]))
-                for i in range(len(EXERCISE1_STATES_WATER))
-            )
+    # Bilan global automatique : aucune validation générale nécessaire.
+    validated_rows = [
+        index
+        for index in range(len(EXERCISE1_STATES_WATER))
+        if f"ex1_water_validated_{index}" in st.session_state
+    ]
 
-            if st.session_state.get("ex1_water_last_signature") != signature:
-                st.session_state["ex1_water_attempts"] = int(
-                    st.session_state.get("ex1_water_attempts", 0)
-                ) + 1
-                st.session_state["ex1_water_last_signature"] = signature
-
-                # Seules les lignes fausses prennent une erreur supplémentaire.
-                for index, item in enumerate(EXERCISE1_STATES_WATER):
-                    if selections[index] != item["answers"]:
-                        key = f"ex1_water_errors_{index}"
-                        st.session_state[key] = int(st.session_state.get(key, 0)) + 1
-
-            st.session_state["ex1_water_checked"] = True
-            st.rerun()
-
-    if st.session_state.get("ex1_water_checked", False):
+    if validated_rows:
         correct_rows = sum(
             1
-            for index, item in enumerate(EXERCISE1_STATES_WATER)
-            if selections[index] == item["answers"]
+            for index in validated_rows
+            if st.session_state.get(f"ex1_water_validated_{index}", False)
         )
-
         total = len(EXERCISE1_STATES_WATER)
-        score_percent = round(100 * correct_rows / total)
 
-        st.markdown("### Ton résultat")
+        st.markdown("### Ton avancement")
         st.progress(correct_rows / total)
-        st.write(f"**{correct_rows} / {total} lignes correctes — {score_percent} %**")
+        st.write(
+            f"**{correct_rows} / {total} lignes correctes** "
+            f"({len(validated_rows)} ligne(s) déjà vérifiée(s))."
+        )
 
         if correct_rows == total:
             st.success("🎉 Bravo ! Toutes tes réponses sont correctes.")
@@ -4148,12 +4171,6 @@ def page_exercise1_states_water():
                     errors=total_errors,
                 )
                 st.session_state["ex1_water_result_saved"] = True
-        else:
-            remaining = total - correct_rows
-            st.info(
-                f"Il reste {remaining} ligne(s) à corriger. "
-                "Première erreur : un indice. Deuxième erreur sur la même ligne : la correction expliquée."
-            )
 
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
