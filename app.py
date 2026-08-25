@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE6_12_WATER_5_BIG_ALCOHOL_V40
+# VERSION_UI_2026_08_25_EXERCISE6_SYMBOLIC_MODEL_V41
 import re
 import base64
 import json
@@ -7588,9 +7588,9 @@ def _ex6_feedback(question):
         if errors == 1:
             msg = "💡 Reprends l’analogie précédente et compare maintenant la taille des molécules d’eau et d’alcool."
         elif errors == 2:
-            msg = "📘 Les molécules d’eau sont plus petites. Cherche ce qu’elles peuvent faire dans les espaces existant entre les molécules d’alcool."
+            msg = "📘 Dans le modèle simplifié utilisé ici, les molécules d’eau sont représentées plus petites. Réfléchis à la façon dont les deux sortes de molécules peuvent se réorganiser lors du mélange."
         else:
-            msg = "🔎 Les molécules d’eau, plus petites, peuvent occuper une partie des espaces entre les molécules d’alcool. Le mélange devient plus compact : le volume final est inférieur à la somme des volumes initiaux."
+            msg = "🔎 Lors du mélange, les molécules d’eau et d’alcool se réorganisent de façon plus compacte. Dans notre modèle simplifié, cela peut être rapproché de l’analogie des petites particules qui occupent des espaces entre de plus grosses."
 
     else:
         if errors == 1:
@@ -7619,103 +7619,267 @@ EX6_MIXTURE_HTML = r"""
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#17345f;background:#fff}
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:#17345f;
+  background:#fff;
+}
 .wrap{max-width:1120px;margin:auto;padding:8px 10px 14px}
-.intro{background:#f5f9ff;border:1px solid #cfe0fb;border-radius:14px;padding:11px 14px;margin-bottom:12px;line-height:1.45}
-.legend{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin:8px 0 12px;font-size:13px}
-.legend span{display:flex;align-items:center;gap:7px}
-.dot{display:inline-block;border-radius:50%;border:3px solid}
-.dot.water{width:24px;height:24px;background:#36bdf1;border-color:#147ba6}
-.dot.alcohol{width:56px;height:56px;background:#ff9a32;border-color:#c86a13}
-.section-title{text-align:center;font-weight:900;color:#16335f;margin:8px 0}
-.initial{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:760px;margin:0 auto 18px}
-.beaker-card{text-align:center}
-.beaker-label{font-weight:850;margin-bottom:6px}
-.beaker{position:relative;height:190px;border:5px solid #25313b;border-top:0;border-radius:0 0 30px 30px;overflow:hidden;background:linear-gradient(90deg,#f3fffd,#fff,#f0fbff)}
-.initial .beaker{height:170px}
-.particle{position:absolute;border-radius:50%;box-shadow:0 2px 5px #0002}
-.particle.water{width:24px;height:24px;background:radial-gradient(circle at 32% 28%,#a9ecff 0 18%,#36bdf1 20% 100%);border:3px solid #147ba6}
-.particle.alcohol{width:68px;height:68px;background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);border:4px solid #c86a13}
-.final-area{display:grid;grid-template-columns:270px 1fr 270px;gap:18px;align-items:start}
-.tray{background:#f7f9fc;border:1px solid #cfdbea;border-radius:16px;padding:12px;min-height:275px;text-align:center}
-.tray h4{margin:0 0 5px}
-.tray p{margin:0 0 10px;color:#6e7c90;font-size:12px}
-.pool{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;min-height:155px}
-.source{position:relative;flex:0 0 auto;cursor:grab;touch-action:none;user-select:none}
-.placed{display:none;z-index:30;cursor:grab;touch-action:none;user-select:none}
-.ghost{position:fixed!important;z-index:99999!important;pointer-events:none!important;transform:scale(1.06)}
+.intro{
+  background:#f5f9ff;
+  border:1px solid #cfe0fb;
+  border-radius:14px;
+  padding:12px 15px;
+  margin-bottom:10px;
+  line-height:1.5;
+  font-size:14px;
+}
+.model-note{
+  background:#fff8e8;
+  border:1px solid #efd89c;
+  color:#6f541d;
+  border-radius:12px;
+  padding:10px 13px;
+  margin:0 0 14px;
+  line-height:1.45;
+  font-size:13px;
+}
+.legend{
+  display:flex;
+  justify-content:center;
+  gap:28px;
+  flex-wrap:wrap;
+  margin:8px 0 16px;
+  font-size:13px
+}
+.legend span{display:flex;align-items:center;gap:8px}
+.dot{
+  display:inline-block;
+  border-radius:50%;
+  border:3px solid
+}
+.dot.water{
+  width:24px;height:24px;
+  background:#36bdf1;border-color:#147ba6
+}
+.dot.alcohol{
+  width:34px;height:34px;
+  background:#ff9a32;border-color:#c86a13
+}
+
+.activity-title{
+  text-align:center;
+  font-weight:900;
+  font-size:17px;
+  color:#16335f;
+  margin:4px 0 12px;
+}
+
+.final-area{
+  display:grid;
+  grid-template-columns:240px 1fr 240px;
+  gap:18px;
+  align-items:start
+}
+.tray{
+  background:#f7f9fc;
+  border:1px solid #cfdbea;
+  border-radius:16px;
+  padding:13px;
+  min-height:245px;
+  text-align:center
+}
+.tray h4{
+  margin:0 0 5px;
+  font-size:16px;
+  color:#17345f
+}
+.tray p{
+  margin:0 0 11px;
+  color:#6e7c90;
+  font-size:12px;
+  line-height:1.4
+}
+.pool{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+  align-content:flex-start;
+  min-height:145px;
+  padding-top:5px
+}
+
+.particle{
+  position:absolute;
+  border-radius:50%;
+  box-shadow:0 2px 5px #0002
+}
+.particle.water{
+  width:28px;height:28px;
+  background:radial-gradient(circle at 32% 28%,#a9ecff 0 18%,#36bdf1 20% 100%);
+  border:3px solid #147ba6
+}
+.particle.alcohol{
+  width:40px;height:40px;
+  background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);
+  border:3px solid #c86a13
+}
+.source{
+  position:relative;
+  flex:0 0 auto;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none
+}
+.placed{
+  display:none;
+  z-index:30;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none
+}
+.ghost{
+  position:fixed!important;
+  z-index:99999!important;
+  pointer-events:none!important;
+  transform:scale(1.05)
+}
+
 .center{min-width:0}
+.final-label{
+  text-align:center;
+  font-weight:900;
+  font-size:16px;
+  margin:0 0 8px;
+  color:#17345f
+}
+.final-subtitle{
+  text-align:center;
+  font-size:12px;
+  color:#6e7c90;
+  margin:-3px 0 8px
+}
 .final-beaker-wrap{max-width:430px;margin:auto}
-.final-beaker{position:relative;height:315px;border:5px solid #25313b;border-top:0;border-radius:0 0 46px 46px;overflow:hidden;background:linear-gradient(90deg,#f3fffd,#fff,#f0fbff)}
-.volume-line{position:absolute;left:0;right:0;border-top:2px dashed #88a4ba;pointer-events:none}
-.volume400{top:42px}
-.volume380{top:68px}
-.vol-label{position:absolute;right:7px;background:#fff;border:1px solid #ccd9e4;border-radius:10px;padding:2px 7px;font-size:11px;color:#61758a}
-.label400{top:27px}.label380{top:54px}
-.controls{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin:12px 0 8px}
-button{border:1px solid #bfcde0;border-radius:11px;padding:9px 14px;font-weight:750;background:#fff;color:#17345f;cursor:pointer}
-button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
-.feedback{border-radius:12px;padding:10px 12px;font-weight:700;margin-top:8px}
-.neutral{background:#f7f9fc;border:1px solid #dfe6ef;color:#6e7c90}
-.good{background:#eaf8ef;border:1px solid #b8e2c4;color:#24623a}
-.hint{background:#fff8e8;border:1px solid #efd89c;color:#73541c}
+.final-beaker{
+  position:relative;
+  height:310px;
+  border:5px solid #25313b;
+  border-top:0;
+  border-radius:0 0 46px 46px;
+  overflow:hidden;
+  background:linear-gradient(90deg,#f3fffd,#fff,#f0fbff)
+}
+.bottom-zone{
+  position:absolute;
+  left:0;right:0;bottom:0;height:72%;
+  background:linear-gradient(to top,rgba(96,211,221,.08),rgba(255,255,255,0));
+  pointer-events:none
+}
+
+.controls{
+  display:flex;
+  justify-content:center;
+  gap:9px;
+  flex-wrap:wrap;
+  margin:13px 0 8px
+}
+button{
+  border:1px solid #bfcde0;
+  border-radius:11px;
+  padding:9px 14px;
+  font-weight:750;
+  background:#fff;
+  color:#17345f;
+  cursor:pointer
+}
+button.primary{
+  background:#1f6fd6;
+  border-color:#1b61b9;
+  color:#fff
+}
+.feedback{
+  border-radius:12px;
+  padding:11px 13px;
+  font-weight:700;
+  margin-top:8px;
+  line-height:1.45
+}
+.neutral{
+  background:#f7f9fc;
+  border:1px solid #dfe6ef;
+  color:#6e7c90
+}
+.good{
+  background:#eaf8ef;
+  border:1px solid #b8e2c4;
+  color:#24623a
+}
+.hint{
+  background:#fff8e8;
+  border:1px solid #efd89c;
+  color:#73541c
+}
+
 @media(max-width:900px){
   .final-area{grid-template-columns:1fr}
   .tray{min-height:0}
-  .pool{min-height:70px}
+  .pool{min-height:80px}
 }
 </style>
 </head>
+
 <body>
 <div class="wrap">
+
   <div class="intro">
     <strong>4. Modélise l’état initial et l’état final.</strong><br>
-    L’état initial est représenté à gauche : les molécules d’eau et d’alcool sont séparées.
-    Pour l’état final, fais glisser les <strong>12 petites molécules d’eau</strong> et les
-    <strong>5 grosses molécules d’alcool</strong> dans le même récipient afin de représenter le mélange.
+    À gauche et à droite, les deux sortes de molécules sont séparées :
+    c’est l’<strong>état initial</strong>. Fais-les glisser dans le récipient central
+    pour construire un modèle de l’<strong>état final après le mélange</strong>.
+  </div>
+
+  <div class="model-note">
+    <strong>Attention : c’est un modèle simplifié.</strong>
+    La taille et le nombre des pastilles ne sont pas à l’échelle et ne représentent
+    pas le nombre réel de molécules contenues dans 200 mL. Les pastilles servent
+    seulement à montrer que les molécules se réorganisent et qu’aucune matière ne disparaît.
   </div>
 
   <div class="legend">
-    <span><i class="dot water"></i> petite molécule d’eau</span>
-    <span><i class="dot alcohol"></i> grosse molécule d’alcool</span>
+    <span><i class="dot water"></i> molécule d’eau</span>
+    <span><i class="dot alcohol"></i> molécule d’alcool</span>
   </div>
 
-  <div class="section-title">État initial</div>
-  <div class="initial">
-    <div class="beaker-card">
-      <div class="beaker-label">Eau liquide — 200 mL</div>
-      <div class="beaker" id="initialWater"></div>
-    </div>
-    <div class="beaker-card">
-      <div class="beaker-label">Alcool liquide — 200 mL</div>
-      <div class="beaker" id="initialAlcohol"></div>
-    </div>
-  </div>
+  <div class="activity-title">État initial séparé → construis l’état final mélangé</div>
 
-  <div class="section-title">État final à construire — mélange eau + alcool</div>
   <div class="final-area">
+
     <div class="tray">
-      <h4>Molécules d’eau</h4>
-      <p>12 petites molécules</p>
+      <h4>État initial — eau</h4>
+      <p>8 pastilles bleues du modèle</p>
       <div class="pool" id="waterPool"></div>
     </div>
 
     <div class="center">
+      <div class="final-label">État final — mélange eau + alcool</div>
+      <div class="final-subtitle">Déplace toutes les pastilles dans ce récipient.</div>
       <div class="final-beaker-wrap">
         <div class="final-beaker" id="finalBeaker">
-          <div class="volume-line volume400"></div>
-          <div class="volume-line volume380"></div>
-          <div class="vol-label label400">400 mL</div>
-          <div class="vol-label label380">380 mL</div>
+          <div class="bottom-zone"></div>
         </div>
       </div>
     </div>
 
     <div class="tray">
-      <h4>Molécules d’alcool</h4>
-      <p>5 grosses molécules</p>
+      <h4>État initial — alcool</h4>
+      <p>8 pastilles orange du modèle</p>
       <div class="pool" id="alcoholPool"></div>
     </div>
+
   </div>
 
   <div class="controls">
@@ -7726,13 +7890,14 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   </div>
 
   <div id="feedback" class="feedback neutral">
-    Place les 17 molécules dans le récipient final, puis vérifie ton modèle.
+    Place les 16 pastilles dans le récipient final, puis vérifie ton modèle.
   </div>
+
 </div>
 
 <script>
 (function(){
-  const NW=12, NA=5;
+  const NW=8, NA=8;
   let generation=0, storageId="prototype", initialized=false, drag=null;
   let state=fresh();
 
@@ -7746,11 +7911,15 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   }
 
   function storageKey(){
-    return "ludo_ex6_mix_v3_"+storageId+"_"+String(generation);
+    return "ludo_ex6_symbolic_v4_"+storageId+"_"+String(generation);
   }
+
   function save(){
-    try{sessionStorage.setItem(storageKey(),JSON.stringify(state));}catch(e){}
+    try{
+      sessionStorage.setItem(storageKey(),JSON.stringify(state));
+    }catch(e){}
   }
+
   function load(){
     try{
       const raw=sessionStorage.getItem(storageKey());
@@ -7762,15 +7931,27 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
         errors:Number(p.errors||0),
         success:Boolean(p.success)
       };
-    }catch(e){return fresh();}
+    }catch(e){
+      return fresh();
+    }
   }
 
   function ready(){
-    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:componentReady",apiVersion:1},"*");
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:componentReady",
+      apiVersion:1
+    },"*");
   }
+
   function height(){
-    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setFrameHeight",height:document.documentElement.scrollHeight+8},"*");
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setFrameHeight",
+      height:document.documentElement.scrollHeight+8
+    },"*");
   }
+
   function send(){
     window.parent.postMessage({
       isStreamlitMessage:true,
@@ -7794,57 +7975,54 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     return e;
   }
 
-  function source(type,i){return document.getElementById("source-"+type+"-"+i)}
-  function placed(type,i){return document.getElementById("placed-"+type+"-"+i)}
+  function source(type,i){
+    return document.getElementById("source-"+type+"-"+i);
+  }
 
-  function buildInitial(){
-    const w=document.getElementById("initialWater");
-    const a=document.getElementById("initialAlcohol");
-    w.innerHTML=""; a.innerHTML="";
-    const wp=[
-      [32,108],[70,117],[108,108],[146,117],[184,108],[222,117],
-      [51,137],[89,146],[127,137],[165,146],[203,137],[241,146]
-    ];
-    const ap=[
-      [28,50],[103,50],[178,50],
-      [66,112],[141,112]
-    ];
-    wp.forEach((p,i)=>{
-      const e=document.createElement("div"); e.className="particle water";
-      e.style.left=p[0]+"px";e.style.top=p[1]+"px";w.appendChild(e);
-    });
-    ap.forEach((p,i)=>{
-      const e=document.createElement("div"); e.className="particle alcohol";
-      e.style.left=p[0]+"px";e.style.top=p[1]+"px";a.appendChild(e);
-    });
+  function placed(type,i){
+    return document.getElementById("placed-"+type+"-"+i);
   }
 
   function build(){
-    buildInitial();
     const wp=document.getElementById("waterPool");
     const ap=document.getElementById("alcoholPool");
     const beaker=document.getElementById("finalBeaker");
-    wp.innerHTML="";ap.innerHTML="";
+
+    wp.innerHTML="";
+    ap.innerHTML="";
     beaker.querySelectorAll(".particle").forEach(e=>e.remove());
 
-    for(let i=0;i<NW;i++){wp.appendChild(makeParticle("water",i,false));beaker.appendChild(makeParticle("water",i,true));}
-    for(let i=0;i<NA;i++){ap.appendChild(makeParticle("alcohol",i,false));beaker.appendChild(makeParticle("alcohol",i,true));}
+    for(let i=0;i<NW;i++){
+      wp.appendChild(makeParticle("water",i,false));
+      beaker.appendChild(makeParticle("water",i,true));
+    }
+
+    for(let i=0;i<NA;i++){
+      ap.appendChild(makeParticle("alcohol",i,false));
+      beaker.appendChild(makeParticle("alcohol",i,true));
+    }
+
     renderAll();
     renderFeedback();
     setTimeout(height,40);
   }
 
   function renderOne(type,i){
-    const pos=state[type][i], s=source(type,i), p=placed(type,i);
+    const pos=state[type][i];
+    const s=source(type,i);
+    const p=placed(type,i);
+
     if(pos){
       s.style.visibility="hidden";
       p.style.display="block";
-      p.style.left=pos.x+"px"; p.style.top=pos.y+"px";
+      p.style.left=pos.x+"px";
+      p.style.top=pos.y+"px";
     }else{
       s.style.visibility="visible";
       p.style.display="none";
     }
   }
+
   function renderAll(){
     for(let i=0;i<NW;i++)renderOne("water",i);
     for(let i=0;i<NA;i++)renderOne("alcohol",i);
@@ -7852,146 +8030,279 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
   function startDrag(e){
     e.preventDefault();
-    const el=e.currentTarget, rect=el.getBoundingClientRect();
+
+    const el=e.currentTarget;
+    const rect=el.getBoundingClientRect();
+
     const ghost=el.cloneNode(true);
-    ghost.removeAttribute("id");ghost.className="particle "+el.dataset.type+" ghost";
-    ghost.style.left=rect.left+"px";ghost.style.top=rect.top+"px";
+    ghost.removeAttribute("id");
+    ghost.className="particle "+el.dataset.type+" ghost";
+    ghost.style.left=rect.left+"px";
+    ghost.style.top=rect.top+"px";
     document.body.appendChild(ghost);
+
     drag={
-      type:el.dataset.type,index:Number(el.dataset.index),ghost,
-      pointerId:e.pointerId,offsetX:e.clientX-rect.left,offsetY:e.clientY-rect.top
+      type:el.dataset.type,
+      index:Number(el.dataset.index),
+      ghost,
+      pointerId:e.pointerId,
+      offsetX:e.clientX-rect.left,
+      offsetY:e.clientY-rect.top
     };
+
     document.addEventListener("pointermove",move,{passive:false});
     document.addEventListener("pointerup",drop,{passive:false});
     document.addEventListener("pointercancel",cancel,{passive:false});
   }
+
   function move(e){
     if(!drag||e.pointerId!==drag.pointerId)return;
     e.preventDefault();
+
     drag.ghost.style.left=(e.clientX-drag.offsetX)+"px";
     drag.ghost.style.top=(e.clientY-drag.offsetY)+"px";
   }
+
   function cleanup(){
     if(drag?.ghost?.parentNode)drag.ghost.remove();
+
     document.removeEventListener("pointermove",move);
     document.removeEventListener("pointerup",drop);
     document.removeEventListener("pointercancel",cancel);
   }
-  function cancel(){cleanup();drag=null;}
+
+  function cancel(){
+    cleanup();
+    drag=null;
+  }
+
+  function particleSize(type){
+    return type==="water" ? 28 : 40;
+  }
 
   function drop(e){
     if(!drag||e.pointerId!==drag.pointerId)return;
     e.preventDefault();
-    const b=document.getElementById("finalBeaker"), br=b.getBoundingClientRect();
-    const inside=e.clientX>=br.left&&e.clientX<=br.right&&e.clientY>=br.top&&e.clientY<=br.bottom;
+
+    const b=document.getElementById("finalBeaker");
+    const br=b.getBoundingClientRect();
+
+    const inside=
+      e.clientX>=br.left&&e.clientX<=br.right&&
+      e.clientY>=br.top&&e.clientY<=br.bottom;
+
     if(inside){
       const gr=drag.ghost.getBoundingClientRect();
-      const size=drag.type==="water"?24:68;
-      let x=gr.left-br.left, y=gr.top-br.top;
+      const size=particleSize(drag.type);
+
+      let x=gr.left-br.left;
+      let y=gr.top-br.top;
+
       x=Math.max(4,Math.min(b.clientWidth-size-4,x));
-      y=Math.max(74,Math.min(b.clientHeight-size-5,y));
-      state[drag.type][drag.index]={x:Math.round(x*10)/10,y:Math.round(y*10)/10};
+      y=Math.max(5,Math.min(b.clientHeight-size-5,y));
+
+      state[drag.type][drag.index]={
+        x:Math.round(x*10)/10,
+        y:Math.round(y*10)/10
+      };
+
       state.success=false;
       renderOne(drag.type,drag.index);
       save();
     }
-    cleanup();drag=null;
-  }
 
-  function particleSize(type){
-    return type==="water" ? 24 : 68;
+    cleanup();
+    drag=null;
   }
 
   function centre(point,type){
     const s=particleSize(type);
-    return {x:point.x+s/2,y:point.y+s/2};
+    return {
+      x:point.x+s/2,
+      y:point.y+s/2
+    };
   }
 
-  function nearestDistance(point, pointType, others, otherType){
+  function nearestDistance(point,pointType,others,otherType){
     const p=centre(point,pointType);
     let d=Infinity;
+
     others.forEach(o=>{
       const q=centre(o,otherType);
       d=Math.min(d,Math.hypot(p.x-q.x,p.y-q.y));
     });
+
     return d;
   }
 
   function validate(){
-    const w=state.water.filter(Boolean), a=state.alcohol.filter(Boolean);
+    const w=state.water.filter(Boolean);
+    const a=state.alcohol.filter(Boolean);
+
     state.success=false;
 
     if(w.length<NW||a.length<NA){
       state.errors++;
-      setFeedback("hint","💡 Place d’abord les 12 molécules d’eau et les 5 molécules d’alcool dans le récipient final.");
-      save();send();return;
+      setFeedback(
+        "hint",
+        "💡 Toutes les pastilles de l’état initial doivent se retrouver dans l’état final."
+      );
+      save();
+      send();
+      return;
     }
 
-    const all=[...w,...a];
-    const ys=all.map(p=>p.y);
+    const all=[
+      ...w.map(p=>({p,type:"water"})),
+      ...a.map(p=>({p,type:"alcohol"}))
+    ];
+
+    const centres=all.map(x=>centre(x.p,x.type));
+    const ys=centres.map(p=>p.y);
+
     const occupiedHeight=Math.max(...ys)-Math.min(...ys);
-
-    // Intermixing: most water molecules should be reasonably close to at least one alcohol molecule.
-    const waterNearAlcohol=w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=92).length/NW;
-
-    // Compactness: final particles should mainly occupy the lower part and not a very tall region.
     const meanY=ys.reduce((x,y)=>x+y,0)/ys.length;
-    const compact=occupiedHeight<=205 && meanY>=150;
-    const mixed=waterNearAlcohol>=0.65;
+
+    // Les deux espèces doivent être réellement mélangées :
+    // une majorité de chaque espèce doit avoir un voisin de l'autre espèce.
+    const waterNearAlcohol=
+      w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=66).length/NW;
+
+    const alcoholNearWater=
+      a.filter(p=>nearestDistance(p,"alcohol",w,"water")<=66).length/NA;
+
+    // Le modèle représente un liquide : les molécules restent regroupées
+    // dans une zone plutôt basse du récipient, sans exiger un niveau précis.
+    const compact=
+      occupiedHeight<=205 &&
+      meanY>=145;
+
+    const mixed=
+      waterNearAlcohol>=0.70 &&
+      alcoholNearWater>=0.70;
 
     if(compact&&mixed){
       state.success=true;
-      setFeedback("good","✅ Ton état final est cohérent : les deux sortes de molécules sont mélangées et les petites molécules d’eau occupent une partie des espaces entre les grosses molécules d’alcool.");
+      setFeedback(
+        "good",
+        "✅ Ton modèle est cohérent : les deux sortes de molécules sont mélangées et toutes les pastilles de départ sont conservées."
+      );
     }else{
       state.errors++;
+
       if(state.errors===1){
-        setFeedback("hint","💡 Ton modèle ne traduit pas encore un volume final inférieur à la somme des volumes initiaux. Compare l’espace occupé avant et après.");
+        setFeedback(
+          "hint",
+          "💡 Ton état final n’est pas encore convaincant. Observe si les deux sortes de molécules sont réellement mélangées."
+        );
       }else if(state.errors===2){
-        setFeedback("hint","💡 Reprends l’analogie des grosses billes et du sable : observe les espaces entre les grosses molécules.");
+        setFeedback(
+          "hint",
+          "💡 Vérifie aussi que les molécules restent regroupées comme dans un liquide et que toutes les pastilles de départ sont présentes."
+        );
       }else{
-        setFeedback("hint","💡 Les petites molécules d’eau doivent pouvoir occuper une partie des espaces entre les grosses molécules d’alcool, sans qu’aucune molécule ne disparaisse.");
+        setFeedback(
+          "hint",
+          "💡 Dans l’état final, les deux espèces doivent être mélangées, proches et désordonnées. Aucune pastille ne doit disparaître."
+        );
       }
     }
-    save();send();
+
+    save();
+    send();
   }
 
   function setFeedback(kind,msg){
     const e=document.getElementById("feedback");
-    e.className="feedback "+kind;e.textContent=msg;
+    e.className="feedback "+kind;
+    e.textContent=msg;
   }
+
   function renderFeedback(){
-    if(state.success)setFeedback("good","✅ Modèle validé.");
-    else setFeedback("neutral","Place les 17 molécules dans le récipient final, puis vérifie ton modèle.");
+    if(state.success){
+      setFeedback("good","✅ Modèle validé.");
+    }else{
+      setFeedback(
+        "neutral",
+        "Place les 16 pastilles dans le récipient final, puis vérifie ton modèle."
+      );
+    }
   }
 
   function resetType(type){
     state[type]=Array(type==="water"?NW:NA).fill(null);
-    state.success=false;renderAll();save();send();
-    setFeedback("neutral",(type==="water"?"Molécules d’eau":"Molécules d’alcool")+" remises à côté.");
-  }
-  function resetAll(){
-    state.water=Array(NW).fill(null);state.alcohol=Array(NA).fill(null);state.success=false;
-    renderAll();save();send();setFeedback("neutral","Toutes les molécules ont été remises à côté.");
+    state.success=false;
+
+    renderAll();
+    save();
+    send();
+
+    setFeedback(
+      "neutral",
+      (type==="water"?"Molécules d’eau":"Molécules d’alcool")+
+      " remises dans l’état initial."
+    );
   }
 
-  document.getElementById("resetWater").addEventListener("click",()=>resetType("water"));
-  document.getElementById("resetAlcohol").addEventListener("click",()=>resetType("alcohol"));
-  document.getElementById("resetAll").addEventListener("click",resetAll);
-  document.getElementById("check").addEventListener("click",validate);
+  function resetAll(){
+    state.water=Array(NW).fill(null);
+    state.alcohol=Array(NA).fill(null);
+    state.success=false;
+
+    renderAll();
+    save();
+    send();
+
+    setFeedback(
+      "neutral",
+      "Toutes les molécules ont été remises dans l’état initial."
+    );
+  }
+
+  document.getElementById("resetWater")
+    .addEventListener("click",()=>resetType("water"));
+
+  document.getElementById("resetAlcohol")
+    .addEventListener("click",()=>resetType("alcohol"));
+
+  document.getElementById("resetAll")
+    .addEventListener("click",resetAll);
+
+  document.getElementById("check")
+    .addEventListener("click",validate);
 
   window.addEventListener("message",event=>{
     const d=event.data||{};
+
     if(d.type==="streamlit:render"){
       const args=d.args||{};
-      const ng=Number(args.generation||0), ns=String(args.storage_id||"prototype");
+      const ng=Number(args.generation||0);
+      const ns=String(args.storage_id||"prototype");
+
       if(!initialized||ng!==generation||ns!==storageId){
-        generation=ng;storageId=ns;state=load();build();initialized=true;
-      }else height();
+        generation=ng;
+        storageId=ns;
+        state=load();
+        build();
+        initialized=true;
+      }else{
+        height();
+      }
     }
   });
 
   ready();
-  setTimeout(()=>{if(!initialized){generation=0;storageId="standalone";state=load();build();initialized=true;}},250);
+
+  setTimeout(()=>{
+    if(!initialized){
+      generation=0;
+      storageId="standalone";
+      state=load();
+      build();
+      initialized=true;
+    }
+  },250);
+
 })();
 </script>
 </body>
@@ -8000,28 +8311,30 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
 
 @st.cache_resource
-def _ex6_component_v3():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_mix_component_v3"
+def _ex6_component_v4():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_symbolic_component_v4"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX6_MIXTURE_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex6_water_alcohol_mix_v3",
+        "ex6_water_alcohol_symbolic_v4",
         path=str(component_dir),
     )
 
 
 def render_ex6_model(generation):
-    component = _ex6_component_v3()
+    component = _ex6_component_v4()
+
     student = st.session_state.get("app_student") or {}
     storage_id = str(
         student.get("id")
         or st.session_state.get("teacher_id")
         or "prototype"
     )
+
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex6_mix_v3_{generation}",
+        key=f"ex6_symbolic_v4_{generation}",
         default={
             "success": False,
             "errors": 0,
