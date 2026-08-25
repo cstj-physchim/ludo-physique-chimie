@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE1_ROW_VALIDATION_V3
+# VERSION_UI_2026_08_25_EXERCISE1_TURQUOISE_CHECKBOXES_V4
 import re
 import base64
 import json
@@ -487,12 +487,9 @@ st.markdown(
         font-size: 0.98rem;
     }
 
-    .ex1-row-white {
-        background: #ffffff;
-    }
-
+    .ex1-row-white,
     .ex1-row-gray {
-        background: #f2f4f7;
+        background: #f1f3f6;
     }
 
     /* Chaque ligne checkbox adopte le même fond alterné */
@@ -504,12 +501,9 @@ st.markdown(
         border-bottom: 1px solid #dfe6ef;
     }
 
-    .ex1-check-white {
-        background: #ffffff;
-    }
-
+    .ex1-check-white,
     .ex1-check-gray {
-        background: #f2f4f7;
+        background: #f1f3f6;
     }
 
     /* Cases à cocher plus grandes et bien contrastées */
@@ -533,24 +527,34 @@ st.markdown(
     }
 
     div[data-testid="stCheckbox"] span[data-baseweb="checkbox"] {
-        transform: scale(1.38);
+        transform: scale(1.48);
         transform-origin: center center;
     }
 
     div[data-testid="stCheckbox"] span[data-baseweb="checkbox"] > div {
-        border: 2px solid #6f7f95 !important;
-        border-radius: 5px !important;
-        background: white !important;
+        width: 24px !important;
+        height: 24px !important;
+        border: 2px solid #0f9fb3 !important;
+        border-radius: 6px !important;
+        background: #bfeff4 !important;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
     }
 
     div[data-testid="stCheckbox"] input:checked + div {
-        background: #2f6fe4 !important;
-        border-color: #2f6fe4 !important;
+        background: #10a9bd !important;
+        border-color: #087f91 !important;
     }
 
     div[data-testid="stCheckbox"] svg {
-        width: 24px !important;
-        height: 24px !important;
+        width: 22px !important;
+        height: 22px !important;
+        color: white !important;
+        stroke-width: 3 !important;
+    }
+
+    div[data-testid="stCheckbox"] label:hover span[data-baseweb="checkbox"] > div {
+        border-color: #087f91 !important;
+        background: #a9e8ef !important;
     }
 
     .ex1-tip {
@@ -4003,8 +4007,8 @@ def page_exercise1_states_water():
     selections = {}
 
     for index, item in enumerate(EXERCISE1_STATES_WATER):
-        row_class = "ex1-row-gray" if index % 2 else "ex1-row-white"
-        check_class = "ex1-check-gray" if index % 2 else "ex1-check-white"
+        row_class = "ex1-row-gray"
+        check_class = "ex1-check-gray"
 
         c1, c2, c3, c4, c5 = st.columns([3.2, 1.1, 1.1, 1.1, 0.75], gap="small")
 
