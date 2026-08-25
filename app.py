@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE5_LARGER_INPUT_TEXT_V35
+# VERSION_UI_2026_08_25_EXERCISE6_WATER_ALCOHOL_V36
 import re
 import base64
 import json
@@ -166,6 +166,13 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 13,
         "description": "Différencier un corps pur et un mélange à l’échelle microscopique.",
+        "resource_ready": True,
+    },
+    "exercise6_water_alcohol_volume": {
+        "label": "Exercice 6 — Le mystère du volume perdu : eau + alcool",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 15,
+        "description": "Raisonner sur l’organisation des molécules et la conservation de la masse lors d’un mélange.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -2029,6 +2036,7 @@ def tracked_exercise_ids():
         "exercise3_particle_models",
         "exercise4_oxygen_bottle",
         "exercise5_seawater_mixture",
+        "exercise6_water_alcohol_volume",
         "exercise_states_matter",
     ]
 
@@ -3962,6 +3970,16 @@ def page_exercise_topics():
             "color": "card-cyan",
             "page": "exercise5_seawater_mixture",
             "key": "start_ex5_seawater_mixture",
+        })
+
+    if resource_is_available_for_current_user("exercise6_water_alcohol_volume"):
+        exercises.append({
+            "icon": "🧪",
+            "title": "Exercice 6 — Le mystère du volume perdu : eau + alcool",
+            "description": "Explique la diminution de volume et modélise le mélange à l’échelle microscopique.",
+            "color": "card-purple",
+            "page": "exercise6_water_alcohol_volume",
+            "key": "start_ex6_water_alcohol_volume",
         })
 
     if states_matter_available_for_current_user():
@@ -7409,6 +7427,840 @@ def page_exercise5_seawater_mixture():
             st.session_state["ex5_result_saved"] = True
 
 
+
+# ============================================================
+# EXERCICE 6 — LE MYSTÈRE DU VOLUME PERDU : EAU + ALCOOL
+# ============================================================
+
+def _ex6_normalize(value):
+    value = str(value or "").strip().lower()
+    replacements = {
+        "é": "e", "è": "e", "ê": "e", "ë": "e",
+        "à": "a", "â": "a", "ä": "a",
+        "î": "i", "ï": "i",
+        "ô": "o", "ö": "o",
+        "ù": "u", "û": "u", "ü": "u",
+        "ç": "c", "’": "'", "œ": "oe",
+    }
+    for old, new in replacements.items():
+        value = value.replace(old, new)
+    value = re.sub(r"[^a-z0-9' ]+", " ", value)
+    return " ".join(value.split())
+
+
+def _ex6_clear_feedback(question):
+    st.session_state.pop(f"ex6_q{question}_feedback", None)
+
+
+def _ex6_q1_ok(value):
+    """Analogie billes/sable : les grains fins occupent les espaces entre les grosses billes."""
+    v = _ex6_normalize(value)
+    idea_gap = any(x in v for x in [
+        "espace", "espaces", "interstice", "interstices", "trou", "trous",
+        "vide", "vides", "entre les billes", "entre elles",
+    ])
+    idea_fill = any(x in v for x in [
+        "sable", "grain", "grains", "petit", "petits", "fine", "fin",
+        "remplit", "remplissent", "occupe", "occupent", "se glisse", "se glissent",
+    ])
+    idea_not_sum = any(x in v for x in [
+        "moins", "inferieur", "pas egal", "n est pas egal", "ne sera pas egal",
+        "diminue", "plus petit",
+    ])
+    return (idea_gap and idea_fill) or (idea_not_sum and idea_fill)
+
+
+def _ex6_q2_ok(value):
+    """Les molécules d'eau, plus petites, occupent des espaces entre celles d'alcool."""
+    v = _ex6_normalize(value)
+    water = "eau" in v
+    smaller = any(x in v for x in ["plus petite", "plus petites", "petite", "petites"])
+    alcohol = "alcool" in v
+    gap = any(x in v for x in [
+        "espace", "espaces", "interstice", "interstices", "entre",
+        "se glisse", "se glissent", "occupe", "occupent",
+    ])
+    compact = any(x in v for x in [
+        "moins de place", "moins de volume", "volume diminue",
+        "volume baisse", "plus compact", "rapproche",
+    ])
+    return water and alcohol and smaller and gap and (compact or "volume" in v)
+
+
+def _ex6_q3_ok(value):
+    """Conservation de la masse : aucune molécule ne disparaît, même quantité de matière."""
+    v = _ex6_normalize(value)
+    same_matter = any(x in v for x in [
+        "meme nombre", "autant de molecule", "autant de molecules",
+        "aucune molecule ne disparait", "aucune molecule disparait",
+        "rien ne disparait", "rien n est perdu", "matiere se conserve",
+        "masse se conserve", "meme quantite", "quantite de matiere",
+        "molecules sont toujours presentes", "molecules restent presentes",
+    ])
+    no_loss = any(x in v for x in [
+        "ne disparait", "ne disparaissent", "pas perdu", "pas de perte",
+        "conserve", "conservation",
+    ])
+    return same_matter or (("molecule" in v or "matiere" in v) and no_loss)
+
+
+def _ex6_validate_q1():
+    generation = int(st.session_state.get("ex6_generation", 0))
+    value = st.session_state.get(f"ex6_q1_{generation}", "")
+    if not str(value).strip():
+        st.session_state["ex6_q1_feedback"] = "empty"
+        return
+    if _ex6_q1_ok(value):
+        st.session_state["ex6_q1_correct"] = True
+        st.session_state["ex6_q1_feedback"] = "correct"
+    else:
+        st.session_state["ex6_q1_correct"] = False
+        st.session_state["ex6_q1_errors"] = int(st.session_state.get("ex6_q1_errors", 0)) + 1
+        st.session_state["ex6_q1_feedback"] = "wrong"
+
+
+def _ex6_validate_q2():
+    generation = int(st.session_state.get("ex6_generation", 0))
+    value = st.session_state.get(f"ex6_q2_{generation}", "")
+    if not str(value).strip():
+        st.session_state["ex6_q2_feedback"] = "empty"
+        return
+    if _ex6_q2_ok(value):
+        st.session_state["ex6_q2_correct"] = True
+        st.session_state["ex6_q2_feedback"] = "correct"
+    else:
+        st.session_state["ex6_q2_correct"] = False
+        st.session_state["ex6_q2_errors"] = int(st.session_state.get("ex6_q2_errors", 0)) + 1
+        st.session_state["ex6_q2_feedback"] = "wrong"
+
+
+def _ex6_validate_q3():
+    generation = int(st.session_state.get("ex6_generation", 0))
+    value = st.session_state.get(f"ex6_q3_{generation}", "")
+    if not str(value).strip():
+        st.session_state["ex6_q3_feedback"] = "empty"
+        return
+    if _ex6_q3_ok(value):
+        st.session_state["ex6_q3_correct"] = True
+        st.session_state["ex6_q3_feedback"] = "correct"
+    else:
+        st.session_state["ex6_q3_correct"] = False
+        st.session_state["ex6_q3_errors"] = int(st.session_state.get("ex6_q3_errors", 0)) + 1
+        st.session_state["ex6_q3_feedback"] = "wrong"
+
+
+def _ex6_feedback(question):
+    feedback = st.session_state.get(f"ex6_q{question}_feedback")
+    errors = int(st.session_state.get(f"ex6_q{question}_errors", 0))
+    correct = bool(st.session_state.get(f"ex6_q{question}_correct", False))
+
+    if correct:
+        messages = {
+            1: "✅ Bonne réponse ! Tu as bien utilisé l’analogie entre les grosses billes et le sable fin.",
+            2: "✅ Bonne réponse ! Ton explication relie correctement la taille des molécules et la diminution du volume.",
+            3: "✅ Bonne réponse ! Le volume peut changer sans disparition de matière : la masse se conserve.",
+        }
+        st.markdown(
+            f'<div class="ex6-feedback ex6-ok">{messages[question]}</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    if feedback == "empty":
+        st.markdown(
+            '<div class="ex6-feedback ex6-hint">✏️ Écris une réponse avant de valider.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    if feedback != "wrong":
+        return
+
+    if question == 1:
+        if errors == 1:
+            msg = "💡 Imagine ce qu’il reste entre de grosses billes placées les unes contre les autres."
+        elif errors == 2:
+            msg = "📘 Le sable est constitué de grains beaucoup plus petits que les grosses billes. Que peuvent faire ces petits grains ?"
+        else:
+            msg = "🔎 Les grains de sable peuvent occuper une partie des espaces laissés entre les grosses billes : le volume final peut donc être inférieur à la somme des deux volumes de départ."
+
+    elif question == 2:
+        if errors == 1:
+            msg = "💡 Reprends l’analogie précédente et compare maintenant la taille des molécules d’eau et d’alcool."
+        elif errors == 2:
+            msg = "📘 Les molécules d’eau sont plus petites. Cherche ce qu’elles peuvent faire dans les espaces existant entre les molécules d’alcool."
+        else:
+            msg = "🔎 Les molécules d’eau, plus petites, peuvent occuper une partie des espaces entre les molécules d’alcool. Le mélange devient plus compact et son volume diminue."
+
+    else:
+        if errors == 1:
+            msg = "💡 Demande-toi si des molécules ont disparu pendant le mélange."
+        elif errors == 2:
+            msg = "📘 Compare le nombre de molécules avant et après : la disposition peut changer sans que la matière disparaisse."
+        else:
+            msg = "🔎 Aucune molécule n’est perdue : on retrouve la même quantité de matière avant et après le mélange. La masse totale reste donc la même."
+
+    css = "ex6-hint" if errors < 3 else "ex6-correction"
+    st.markdown(
+        f'<div class="ex6-feedback {css}">{msg}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
+# MODULE INTERACTIF EXERCICE 6 — MODÉLISATION EAU + ALCOOL
+# ============================================================
+
+EX6_MIXTURE_HTML = r"""
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#17345f;background:#fff}
+.wrap{max-width:1120px;margin:auto;padding:8px 10px 14px}
+.intro{background:#f5f9ff;border:1px solid #cfe0fb;border-radius:14px;padding:11px 14px;margin-bottom:12px;line-height:1.45}
+.legend{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin:8px 0 12px;font-size:13px}
+.legend span{display:flex;align-items:center;gap:7px}
+.dot{display:inline-block;border-radius:50%;border:3px solid}
+.dot.water{width:23px;height:23px;background:#36bdf1;border-color:#147ba6}
+.dot.alcohol{width:34px;height:34px;background:#ff9a32;border-color:#c86a13}
+.section-title{text-align:center;font-weight:900;color:#16335f;margin:8px 0}
+.initial{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:760px;margin:0 auto 18px}
+.beaker-card{text-align:center}
+.beaker-label{font-weight:850;margin-bottom:6px}
+.beaker{position:relative;height:190px;border:5px solid #25313b;border-top:0;border-radius:0 0 30px 30px;overflow:hidden;background:linear-gradient(90deg,#f3fffd,#fff,#f0fbff)}
+.initial .beaker{height:170px}
+.particle{position:absolute;border-radius:50%;box-shadow:0 2px 5px #0002}
+.particle.water{width:23px;height:23px;background:radial-gradient(circle at 32% 28%,#a9ecff 0 18%,#36bdf1 20% 100%);border:3px solid #147ba6}
+.particle.alcohol{width:34px;height:34px;background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);border:3px solid #c86a13}
+.final-area{display:grid;grid-template-columns:210px 1fr 210px;gap:18px;align-items:start}
+.tray{background:#f7f9fc;border:1px solid #cfdbea;border-radius:16px;padding:12px;min-height:210px;text-align:center}
+.tray h4{margin:0 0 5px}
+.tray p{margin:0 0 10px;color:#6e7c90;font-size:12px}
+.pool{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;align-content:flex-start;min-height:120px}
+.source{position:relative;flex:0 0 auto;cursor:grab;touch-action:none;user-select:none}
+.placed{display:none;z-index:30;cursor:grab;touch-action:none;user-select:none}
+.ghost{position:fixed!important;z-index:99999!important;pointer-events:none!important;transform:scale(1.06)}
+.center{min-width:0}
+.final-beaker-wrap{max-width:430px;margin:auto}
+.final-beaker{position:relative;height:315px;border:5px solid #25313b;border-top:0;border-radius:0 0 46px 46px;overflow:hidden;background:linear-gradient(90deg,#f3fffd,#fff,#f0fbff)}
+.volume-line{position:absolute;left:0;right:0;border-top:2px dashed #88a4ba;pointer-events:none}
+.volume400{top:42px}
+.volume380{top:68px}
+.vol-label{position:absolute;right:7px;background:#fff;border:1px solid #ccd9e4;border-radius:10px;padding:2px 7px;font-size:11px;color:#61758a}
+.label400{top:27px}.label380{top:54px}
+.controls{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin:12px 0 8px}
+button{border:1px solid #bfcde0;border-radius:11px;padding:9px 14px;font-weight:750;background:#fff;color:#17345f;cursor:pointer}
+button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
+.feedback{border-radius:12px;padding:10px 12px;font-weight:700;margin-top:8px}
+.neutral{background:#f7f9fc;border:1px solid #dfe6ef;color:#6e7c90}
+.good{background:#eaf8ef;border:1px solid #b8e2c4;color:#24623a}
+.hint{background:#fff8e8;border:1px solid #efd89c;color:#73541c}
+@media(max-width:900px){
+  .final-area{grid-template-columns:1fr}
+  .tray{min-height:0}
+  .pool{min-height:70px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <strong>4. Modélise l’état initial et l’état final.</strong><br>
+    L’état initial est représenté à gauche : les molécules d’eau et d’alcool sont séparées.
+    Pour l’état final, fais glisser les <strong>8 petites molécules d’eau</strong> et les
+    <strong>8 grosses molécules d’alcool</strong> dans le même récipient afin de représenter le mélange.
+  </div>
+
+  <div class="legend">
+    <span><i class="dot water"></i> petite molécule d’eau</span>
+    <span><i class="dot alcohol"></i> grosse molécule d’alcool</span>
+  </div>
+
+  <div class="section-title">État initial</div>
+  <div class="initial">
+    <div class="beaker-card">
+      <div class="beaker-label">Eau liquide — 200 mL</div>
+      <div class="beaker" id="initialWater"></div>
+    </div>
+    <div class="beaker-card">
+      <div class="beaker-label">Alcool liquide — 200 mL</div>
+      <div class="beaker" id="initialAlcohol"></div>
+    </div>
+  </div>
+
+  <div class="section-title">État final à construire — mélange eau + alcool</div>
+  <div class="final-area">
+    <div class="tray">
+      <h4>Molécules d’eau</h4>
+      <p>8 petites molécules</p>
+      <div class="pool" id="waterPool"></div>
+    </div>
+
+    <div class="center">
+      <div class="final-beaker-wrap">
+        <div class="final-beaker" id="finalBeaker">
+          <div class="volume-line volume400"></div>
+          <div class="volume-line volume380"></div>
+          <div class="vol-label label400">400 mL</div>
+          <div class="vol-label label380">380 mL</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tray">
+      <h4>Molécules d’alcool</h4>
+      <p>8 grosses molécules</p>
+      <div class="pool" id="alcoholPool"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="resetWater">↻ Remettre l’eau</button>
+    <button id="resetAlcohol">↻ Remettre l’alcool</button>
+    <button id="resetAll">↻ Tout remettre</button>
+    <button class="primary" id="check">Vérifier mon modèle</button>
+  </div>
+
+  <div id="feedback" class="feedback neutral">
+    Place les 16 molécules dans le récipient final, puis vérifie ton modèle.
+  </div>
+</div>
+
+<script>
+(function(){
+  const NW=8, NA=8;
+  let generation=0, storageId="prototype", initialized=false, drag=null;
+  let state=fresh();
+
+  function fresh(){
+    return {
+      water:Array(NW).fill(null),
+      alcohol:Array(NA).fill(null),
+      errors:0,
+      success:false
+    };
+  }
+
+  function storageKey(){
+    return "ludo_ex6_mix_v1_"+storageId+"_"+String(generation);
+  }
+  function save(){
+    try{sessionStorage.setItem(storageKey(),JSON.stringify(state));}catch(e){}
+  }
+  function load(){
+    try{
+      const raw=sessionStorage.getItem(storageKey());
+      if(!raw)return fresh();
+      const p=JSON.parse(raw);
+      return {
+        water:Array.from({length:NW},(_,i)=>p.water?.[i]??null),
+        alcohol:Array.from({length:NA},(_,i)=>p.alcohol?.[i]??null),
+        errors:Number(p.errors||0),
+        success:Boolean(p.success)
+      };
+    }catch(e){return fresh();}
+  }
+
+  function ready(){
+    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:componentReady",apiVersion:1},"*");
+  }
+  function height(){
+    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setFrameHeight",height:document.documentElement.scrollHeight+8},"*");
+  }
+  function send(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setComponentValue",
+      value:{
+        success:state.success,
+        errors:state.errors,
+        water_positions:state.water.filter(Boolean),
+        alcohol_positions:state.alcohol.filter(Boolean)
+      }
+    },"*");
+  }
+
+  function makeParticle(type,index,placed){
+    const e=document.createElement("div");
+    e.className="particle "+type+" "+(placed?"placed":"source");
+    e.dataset.type=type;
+    e.dataset.index=String(index);
+    e.id=(placed?"placed-":"source-")+type+"-"+index;
+    e.addEventListener("pointerdown",startDrag);
+    return e;
+  }
+
+  function source(type,i){return document.getElementById("source-"+type+"-"+i)}
+  function placed(type,i){return document.getElementById("placed-"+type+"-"+i)}
+
+  function buildInitial(){
+    const w=document.getElementById("initialWater");
+    const a=document.getElementById("initialAlcohol");
+    w.innerHTML=""; a.innerHTML="";
+    const wp=[[24,125],[55,130],[86,123],[117,132],[148,124],[179,130],[210,123],[241,132]];
+    const ap=[[25,112],[65,119],[105,111],[145,120],[185,112],[225,119],[265,111],[305,120]];
+    wp.forEach((p,i)=>{
+      const e=document.createElement("div"); e.className="particle water";
+      e.style.left=p[0]+"px";e.style.top=p[1]+"px";w.appendChild(e);
+    });
+    ap.forEach((p,i)=>{
+      const e=document.createElement("div"); e.className="particle alcohol";
+      e.style.left=p[0]+"px";e.style.top=p[1]+"px";a.appendChild(e);
+    });
+  }
+
+  function build(){
+    buildInitial();
+    const wp=document.getElementById("waterPool");
+    const ap=document.getElementById("alcoholPool");
+    const beaker=document.getElementById("finalBeaker");
+    wp.innerHTML="";ap.innerHTML="";
+    beaker.querySelectorAll(".particle").forEach(e=>e.remove());
+
+    for(let i=0;i<NW;i++){wp.appendChild(makeParticle("water",i,false));beaker.appendChild(makeParticle("water",i,true));}
+    for(let i=0;i<NA;i++){ap.appendChild(makeParticle("alcohol",i,false));beaker.appendChild(makeParticle("alcohol",i,true));}
+    renderAll();
+    renderFeedback();
+    setTimeout(height,40);
+  }
+
+  function renderOne(type,i){
+    const pos=state[type][i], s=source(type,i), p=placed(type,i);
+    if(pos){
+      s.style.visibility="hidden";
+      p.style.display="block";
+      p.style.left=pos.x+"px"; p.style.top=pos.y+"px";
+    }else{
+      s.style.visibility="visible";
+      p.style.display="none";
+    }
+  }
+  function renderAll(){
+    for(let i=0;i<NW;i++)renderOne("water",i);
+    for(let i=0;i<NA;i++)renderOne("alcohol",i);
+  }
+
+  function startDrag(e){
+    e.preventDefault();
+    const el=e.currentTarget, rect=el.getBoundingClientRect();
+    const ghost=el.cloneNode(true);
+    ghost.removeAttribute("id");ghost.className="particle "+el.dataset.type+" ghost";
+    ghost.style.left=rect.left+"px";ghost.style.top=rect.top+"px";
+    document.body.appendChild(ghost);
+    drag={
+      type:el.dataset.type,index:Number(el.dataset.index),ghost,
+      pointerId:e.pointerId,offsetX:e.clientX-rect.left,offsetY:e.clientY-rect.top
+    };
+    document.addEventListener("pointermove",move,{passive:false});
+    document.addEventListener("pointerup",drop,{passive:false});
+    document.addEventListener("pointercancel",cancel,{passive:false});
+  }
+  function move(e){
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    e.preventDefault();
+    drag.ghost.style.left=(e.clientX-drag.offsetX)+"px";
+    drag.ghost.style.top=(e.clientY-drag.offsetY)+"px";
+  }
+  function cleanup(){
+    if(drag?.ghost?.parentNode)drag.ghost.remove();
+    document.removeEventListener("pointermove",move);
+    document.removeEventListener("pointerup",drop);
+    document.removeEventListener("pointercancel",cancel);
+  }
+  function cancel(){cleanup();drag=null;}
+
+  function drop(e){
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    e.preventDefault();
+    const b=document.getElementById("finalBeaker"), br=b.getBoundingClientRect();
+    const inside=e.clientX>=br.left&&e.clientX<=br.right&&e.clientY>=br.top&&e.clientY<=br.bottom;
+    if(inside){
+      const gr=drag.ghost.getBoundingClientRect();
+      const size=drag.type==="water"?23:34;
+      let x=gr.left-br.left, y=gr.top-br.top;
+      x=Math.max(4,Math.min(b.clientWidth-size-4,x));
+      y=Math.max(74,Math.min(b.clientHeight-size-5,y));
+      state[drag.type][drag.index]={x:Math.round(x*10)/10,y:Math.round(y*10)/10};
+      state.success=false;
+      renderOne(drag.type,drag.index);
+      save();
+    }
+    cleanup();drag=null;
+  }
+
+  function nearestDistance(point, others){
+    let d=Infinity;
+    others.forEach(o=>{
+      const dx=(point.x)-(o.x),dy=(point.y)-(o.y);
+      d=Math.min(d,Math.hypot(dx,dy));
+    });
+    return d;
+  }
+
+  function validate(){
+    const w=state.water.filter(Boolean), a=state.alcohol.filter(Boolean);
+    state.success=false;
+
+    if(w.length<NW||a.length<NA){
+      state.errors++;
+      setFeedback("hint","💡 Place d’abord les 8 molécules d’eau et les 8 molécules d’alcool dans le récipient final.");
+      save();send();return;
+    }
+
+    const all=[...w,...a];
+    const ys=all.map(p=>p.y);
+    const occupiedHeight=Math.max(...ys)-Math.min(...ys);
+
+    // Intermixing: most water molecules should be reasonably close to at least one alcohol molecule.
+    const waterNearAlcohol=w.filter(p=>nearestDistance(p,a)<=62).length/NW;
+
+    // Compactness: final particles should mainly occupy the lower part and not a very tall region.
+    const meanY=ys.reduce((x,y)=>x+y,0)/ys.length;
+    const compact=occupiedHeight<=180 && meanY>=160;
+    const mixed=waterNearAlcohol>=0.65;
+
+    if(compact&&mixed){
+      state.success=true;
+      setFeedback("good","✅ Ton état final est cohérent : les deux sortes de molécules sont mélangées et l’ensemble est plus compact.");
+    }else{
+      state.errors++;
+      if(state.errors===1){
+        setFeedback("hint","💡 Ton modèle ne traduit pas encore la diminution de volume. Compare l’espace occupé avant et après.");
+      }else if(state.errors===2){
+        setFeedback("hint","💡 Reprends l’analogie des grosses billes et du sable : observe les espaces entre les grosses molécules.");
+      }else{
+        setFeedback("hint","💡 Les petites molécules d’eau doivent pouvoir occuper une partie des espaces entre les grosses molécules d’alcool, sans qu’aucune molécule ne disparaisse.");
+      }
+    }
+    save();send();
+  }
+
+  function setFeedback(kind,msg){
+    const e=document.getElementById("feedback");
+    e.className="feedback "+kind;e.textContent=msg;
+  }
+  function renderFeedback(){
+    if(state.success)setFeedback("good","✅ Modèle validé.");
+    else setFeedback("neutral","Place les 16 molécules dans le récipient final, puis vérifie ton modèle.");
+  }
+
+  function resetType(type){
+    state[type]=Array(type==="water"?NW:NA).fill(null);
+    state.success=false;renderAll();save();send();
+    setFeedback("neutral",(type==="water"?"Molécules d’eau":"Molécules d’alcool")+" remises à côté.");
+  }
+  function resetAll(){
+    state.water=Array(NW).fill(null);state.alcohol=Array(NA).fill(null);state.success=false;
+    renderAll();save();send();setFeedback("neutral","Toutes les molécules ont été remises à côté.");
+  }
+
+  document.getElementById("resetWater").addEventListener("click",()=>resetType("water"));
+  document.getElementById("resetAlcohol").addEventListener("click",()=>resetType("alcohol"));
+  document.getElementById("resetAll").addEventListener("click",resetAll);
+  document.getElementById("check").addEventListener("click",validate);
+
+  window.addEventListener("message",event=>{
+    const d=event.data||{};
+    if(d.type==="streamlit:render"){
+      const args=d.args||{};
+      const ng=Number(args.generation||0), ns=String(args.storage_id||"prototype");
+      if(!initialized||ng!==generation||ns!==storageId){
+        generation=ng;storageId=ns;state=load();build();initialized=true;
+      }else height();
+    }
+  });
+
+  ready();
+  setTimeout(()=>{if(!initialized){generation=0;storageId="standalone";state=load();build();initialized=true;}},250);
+})();
+</script>
+</body>
+</html>
+"""
+
+
+@st.cache_resource
+def _ex6_component():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_mix_component_v1"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "index.html").write_text(EX6_MIXTURE_HTML, encoding="utf-8")
+    return components.declare_component(
+        "ex6_water_alcohol_mix_v1",
+        path=str(component_dir),
+    )
+
+
+def render_ex6_model(generation):
+    component = _ex6_component()
+    student = st.session_state.get("app_student") or {}
+    storage_id = str(
+        student.get("id")
+        or st.session_state.get("teacher_id")
+        or "prototype"
+    )
+    return component(
+        generation=int(generation),
+        storage_id=storage_id,
+        key=f"ex6_mix_v1_{generation}",
+        default={
+            "success": False,
+            "errors": 0,
+            "water_positions": [],
+            "alcohol_positions": [],
+        },
+    )
+
+
+def _ex6_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    generation = int(st.session_state.get("ex6_generation", 0))
+    touched = 0
+    for q in (1,2,3):
+        if str(st.session_state.get(f"ex6_q{q}_{generation}", "")).strip():
+            touched += 1
+
+    model_state = st.session_state.get("ex6_model_state")
+    if isinstance(model_state, dict):
+        if model_state.get("water_positions") or model_state.get("alcohol_positions"):
+            touched += 1
+
+    if touched == 0:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    errors = sum(
+        int(st.session_state.get(f"ex6_q{q}_errors", 0))
+        for q in (1,2,3)
+    )
+    if isinstance(model_state, dict):
+        errors += int(model_state.get("errors", 0) or 0)
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        r for r in rows
+        if r.get("student_id") == student.get("id")
+        and r.get("resource_id") == "exercise6_water_alcohol_volume"
+        and r.get("activity_kind") == "training"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise6_water_alcohol_volume",
+        "resource_label": PILOT_CONTENTS["exercise6_water_alcohol_volume"]["label"],
+        "chapter": PILOT_CONTENTS["exercise6_water_alcohol_volume"]["chapter"],
+        "score_percent": None,
+        "completed_items": touched,
+        "total_items": 4,
+        "errors": errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise6_water_alcohol():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex6_"):
+            st.session_state.pop(key, None)
+
+
+def _ex6_start_new_attempt():
+    _ex6_record_restart_if_needed()
+    generation = int(st.session_state.get("ex6_generation", 0))
+    reset_exercise6_water_alcohol()
+    st.session_state["ex6_generation"] = generation + 1
+
+
+def page_exercise6_water_alcohol_volume():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise6_water_alcohol_volume"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex6-box{
+            background:#f5f9ff;border:1px solid #cfe0fb;border-radius:16px;
+            padding:.95rem 1rem;margin:.55rem 0 1rem;color:#324a68;line-height:1.5;
+        }
+        .ex6-question{
+            background:#f8fafc;border:1px solid #e1e7f0;border-radius:15px;
+            padding:.95rem 1rem .5rem;margin:1rem 0;
+        }
+        .ex6-feedback{
+            border-radius:12px;padding:.82rem 1rem;margin:.5rem 0 .9rem;
+            font-weight:700;line-height:1.45;font-size:1rem;
+        }
+        .ex6-ok{background:#eefaf2;border:1px solid #cdebd6;color:#24623a}
+        .ex6-hint{background:#fff7e6;border:1px solid #f4d69b;color:#73541c}
+        .ex6-correction{background:#fff1f1;border:1px solid #f0c8c8;color:#7b2c2c}
+        div[data-testid="stTextArea"] textarea{
+            font-size:1.15rem!important;line-height:1.55!important;padding:.8rem .9rem!important;
+        }
+        div[data-testid="stTextArea"] label{
+            font-size:1rem!important;font-weight:700!important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Le mystère du volume perdu</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">🧪 Exercice 6 — Le mystère du volume perdu : eau + alcool</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="ex6-box"><strong>Objectif :</strong> raisonner sur la taille des molécules '
+        'et la conservation de la masse.<br><br>'
+        'Au laboratoire, un élève mélange <strong>200 mL d’eau liquide</strong> et '
+        '<strong>200 mL d’alcool liquide</strong>. À sa grande surprise, le volume final '
+        'mesuré est de <strong>380 mL</strong> au lieu de 400 mL. En revanche, la masse '
+        'mesurée sur la balance n’a pas changé.</div>',
+        unsafe_allow_html=True,
+    )
+
+    generation = int(st.session_state.get("ex6_generation", 0))
+
+    # Question 1
+    st.markdown('<div class="ex6-question">', unsafe_allow_html=True)
+    st.markdown(
+        "### 1. Analogie : si tu mélanges un verre rempli de grosses billes et un verre "
+        "rempli de sable fin, le volume total sera-t-il égal à la somme des deux verres ? Explique."
+    )
+    st.text_area(
+        "Ta réponse",
+        key=f"ex6_q1_{generation}",
+        height=110,
+        placeholder="Explique ce qui peut se passer entre les grosses billes et les grains de sable.",
+        disabled=bool(st.session_state.get("ex6_q1_correct", False)),
+        on_change=_ex6_clear_feedback,args=(1,),
+    )
+    st.button(
+        "Valider la question 1",key="ex6_validate_q1",use_container_width=True,
+        on_click=_ex6_validate_q1,disabled=bool(st.session_state.get("ex6_q1_correct", False)),
+    )
+    _ex6_feedback(1)
+    st.markdown('</div>',unsafe_allow_html=True)
+
+    # Question 2
+    st.markdown('<div class="ex6-question">', unsafe_allow_html=True)
+    st.markdown(
+        "### 2. Interprétation microscopique : sachant que les molécules d’eau sont plus "
+        "petites que les molécules d’alcool, explique pourquoi le volume du mélange diminue."
+    )
+    st.text_area(
+        "Ta réponse",
+        key=f"ex6_q2_{generation}",
+        height=110,
+        placeholder="Utilise l’analogie précédente pour raisonner à l’échelle des molécules.",
+        disabled=bool(st.session_state.get("ex6_q2_correct", False)),
+        on_change=_ex6_clear_feedback,args=(2,),
+    )
+    st.button(
+        "Valider la question 2",key="ex6_validate_q2",use_container_width=True,
+        on_click=_ex6_validate_q2,disabled=bool(st.session_state.get("ex6_q2_correct", False)),
+    )
+    _ex6_feedback(2)
+    st.markdown('</div>',unsafe_allow_html=True)
+
+    # Question 3
+    st.markdown('<div class="ex6-question">', unsafe_allow_html=True)
+    st.markdown(
+        "### 3. Conservation de la masse : explique pourquoi la masse totale ne varie pas, "
+        "alors que le volume a diminué."
+    )
+    st.text_area(
+        "Ta réponse",
+        key=f"ex6_q3_{generation}",
+        height=110,
+        placeholder="Réfléchis à ce qu’il advient des molécules pendant le mélange.",
+        disabled=bool(st.session_state.get("ex6_q3_correct", False)),
+        on_change=_ex6_clear_feedback,args=(3,),
+    )
+    st.button(
+        "Valider la question 3",key="ex6_validate_q3",use_container_width=True,
+        on_click=_ex6_validate_q3,disabled=bool(st.session_state.get("ex6_q3_correct", False)),
+    )
+    _ex6_feedback(3)
+    st.markdown('</div>',unsafe_allow_html=True)
+
+    # Question 4 interactive model
+    st.markdown("### 4. Modélise l’état initial et l’état final")
+    model_state = render_ex6_model(generation)
+    if isinstance(model_state, dict):
+        st.session_state["ex6_model_state"] = model_state
+        q4_ok = bool(model_state.get("success"))
+    else:
+        q4_ok = False
+
+    completed = (
+        int(bool(st.session_state.get("ex6_q1_correct", False)))
+        + int(bool(st.session_state.get("ex6_q2_correct", False)))
+        + int(bool(st.session_state.get("ex6_q3_correct", False)))
+        + int(q4_ok)
+    )
+
+    st.markdown("### Ton avancement")
+    st.progress(completed/4)
+    st.write(f"**{completed} / 4 parties réussies**")
+
+    c_reset,_ = st.columns([1.4,4.6])
+    with c_reset:
+        if st.button("↻ Recommencer",key="restart_ex6",use_container_width=True):
+            _ex6_start_new_attempt()
+            st.rerun()
+
+    if completed==4:
+        st.success(
+            "🎉 Bravo ! Tu as relié la diminution de volume à l’organisation des molécules "
+            "tout en conservant la même quantité de matière."
+        )
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type")=="student"
+            and student
+            and not st.session_state.get("ex6_result_saved",False)
+        ):
+            model_errors = int(model_state.get("errors",0) or 0) if isinstance(model_state,dict) else 0
+            total_errors = (
+                int(st.session_state.get("ex6_q1_errors",0))
+                + int(st.session_state.get("ex6_q2_errors",0))
+                + int(st.session_state.get("ex6_q3_errors",0))
+                + model_errors
+            )
+            score = round(100*4/max(4,4+total_errors))
+            record_training_result(
+                student,"exercise6_water_alcohol_volume",score,4,4,errors=total_errors
+            )
+            st.session_state["ex6_result_saved"]=True
+
+
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
         if (
@@ -9690,6 +10542,8 @@ elif page == "exercise4_oxygen_bottle":
     page_exercise4_oxygen_bottle()
 elif page == "exercise5_seawater_mixture":
     page_exercise5_seawater_mixture()
+elif page == "exercise6_water_alcohol_volume":
+    page_exercise6_water_alcohol_volume()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
