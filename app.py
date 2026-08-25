@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE7_TRUE_SUBSTITUTION_V48
+# VERSION_UI_2026_08_25_EXERCISE7_Q4_JUSTIFICATIONS_V49
 import re
 import base64
 import json
@@ -8686,12 +8686,46 @@ def _ex7_q3_ok(value):
     return insertion and substitution
 
 
-def _ex7_q4_ok(brass, steel):
+def _ex7_q4_ok(brass, brass_justification, steel, steel_justification):
+    """Valide le type d'alliage ET le raisonnement pour le laiton et l'acier."""
     b = _ex7_normalize(brass)
+    bj = _ex7_normalize(brass_justification)
     s = _ex7_normalize(steel)
-    brass_ok = "substitution" in b
-    steel_ok = "insertion" in s
-    return brass_ok and steel_ok
+    sj = _ex7_normalize(steel_justification)
+
+    brass_type_ok = "substitution" in b
+    steel_type_ok = "insertion" in s
+
+    brass_replace = any(x in bj for x in [
+        "remplace", "remplacent", "remplacement",
+        "prend la place", "prennent la place",
+        "a la place", "substitue", "substituent",
+    ])
+    brass_atoms = any(x in bj for x in [
+        "atome", "atomes", "cuivre", "zinc", "nickel", "metal", "metaux"
+    ])
+    brass_justification_ok = brass_replace and brass_atoms
+
+    steel_carbon = any(x in sj for x in [
+        "carbone", "petit atome", "petits atomes"
+    ])
+    steel_gap = any(x in sj for x in [
+        "espace", "espaces", "interstice", "interstices",
+        "entre les atomes", "entre les atomes de fer",
+        "entre", "se glisse", "se glissent",
+        "s insere", "s inserent",
+    ])
+    steel_structure = any(x in sj for x in [
+        "fer", "reseau", "atome", "atomes"
+    ])
+    steel_justification_ok = steel_carbon and steel_gap and steel_structure
+
+    return (
+        brass_type_ok
+        and steel_type_ok
+        and brass_justification_ok
+        and steel_justification_ok
+    )
 
 
 def _ex7_validate_q1():
@@ -8742,17 +8776,33 @@ def _ex7_validate_q3():
 
 def _ex7_validate_q4():
     generation = int(st.session_state.get("ex7_generation", 0))
+
     brass = st.session_state.get(f"ex7_q4_brass_{generation}", "")
+    brass_justification = st.session_state.get(
+        f"ex7_q4_brass_justification_{generation}", ""
+    )
     steel = st.session_state.get(f"ex7_q4_steel_{generation}", "")
-    if not str(brass).strip() or not str(steel).strip():
+    steel_justification = st.session_state.get(
+        f"ex7_q4_steel_justification_{generation}", ""
+    )
+
+    if (
+        not str(brass).strip()
+        or not str(brass_justification).strip()
+        or not str(steel).strip()
+        or not str(steel_justification).strip()
+    ):
         st.session_state["ex7_q4_feedback"] = "empty"
         return
-    if _ex7_q4_ok(brass, steel):
+
+    if _ex7_q4_ok(brass, brass_justification, steel, steel_justification):
         st.session_state["ex7_q4_correct"] = True
         st.session_state["ex7_q4_feedback"] = "correct"
     else:
         st.session_state["ex7_q4_correct"] = False
-        st.session_state["ex7_q4_errors"] = int(st.session_state.get("ex7_q4_errors", 0)) + 1
+        st.session_state["ex7_q4_errors"] = (
+            int(st.session_state.get("ex7_q4_errors", 0)) + 1
+        )
         st.session_state["ex7_q4_feedback"] = "wrong"
 
 
@@ -8766,7 +8816,7 @@ def _ex7_feedback(question):
             1: "✅ Bonne réponse ! Tu as identifié les éléments essentiels de la définition d’un alliage.",
             2: "✅ Bonne réponse ! Le laiton est bien un mélange solide de plusieurs métaux.",
             3: "✅ Bonne réponse ! Tu distingues correctement insertion et substitution.",
-            4: "✅ Bonne réponse ! Le laiton est un alliage de substitution et l’acier un alliage d’insertion.",
+            4: "✅ Bonne réponse ! Tu as identifié les deux types d’alliages et justifié tes choix à partir de l’organisation des atomes.",
         }
         st.markdown(
             f'<div class="ex7-feedback ex7-ok">{messages[question]}</div>',
@@ -8810,11 +8860,22 @@ def _ex7_feedback(question):
 
     else:
         if errors == 1:
-            msg = "💡 Relis le document 3 et compare la manière dont les nouveaux atomes prennent place dans la structure du solide."
+            msg = (
+                "💡 Relis le document 3 et explique, pour chacun des deux matériaux, "
+                "où se placent les nouveaux atomes dans la structure."
+            )
         elif errors == 2:
-            msg = "📘 Acier : de petits atomes de carbone se placent dans les espaces. Laiton : des atomes métalliques de taille voisine prennent la place d’autres atomes."
+            msg = (
+                "📘 Pour l’acier, observe le rôle des petits atomes de carbone. "
+                "Pour le laiton, demande-toi ce que font les atomes métalliques "
+                "de taille proche dans le réseau."
+            )
         else:
-            msg = "🔎 L’acier est un alliage d’insertion ; le laiton est un alliage de substitution."
+            msg = (
+                "🔎 Vérifie que ta justification contient bien ces idées : "
+                "dans l’acier, de petits atomes se placent dans des espaces du réseau ; "
+                "dans le laiton, certains atomes métalliques prennent la place d’autres atomes."
+            )
 
     css = "ex7-hint" if errors < 3 else "ex7-correction"
     st.markdown(
@@ -9427,7 +9488,9 @@ def _ex7_record_restart_if_needed():
         f"ex7_q2_justification_{generation}",
         f"ex7_q3_{generation}",
         f"ex7_q4_brass_{generation}",
+        f"ex7_q4_brass_justification_{generation}",
         f"ex7_q4_steel_{generation}",
+        f"ex7_q4_steel_justification_{generation}",
     ]
     if any(str(st.session_state.get(k, "")).strip() for k in keys):
         touched = 1
@@ -9704,30 +9767,68 @@ def page_exercise7_solid_mixtures_alloys():
 
     # Q4
     st.markdown('<div class="ex7-question">', unsafe_allow_html=True)
-    st.markdown("### 4. À quel type d’alliage appartiennent le laiton et l’acier ?")
-    c1,c2=st.columns(2,gap="large")
+    st.markdown(
+        "### 4. À quel type d’alliage appartiennent le laiton et l’acier ? "
+        "Justifie tes réponses."
+    )
+
+    c1, c2 = st.columns(2, gap="large")
+
     with c1:
+        st.markdown("#### Laiton")
         st.text_input(
-            "Laiton",
+            "Type d’alliage",
             key=f"ex7_q4_brass_{generation}",
             placeholder="Insertion ou substitution ?",
             disabled=bool(st.session_state.get("ex7_q4_correct", False)),
-            on_change=_ex7_clear_feedback,args=(4,),
+            on_change=_ex7_clear_feedback,
+            args=(4,),
         )
+        st.text_area(
+            "Justification pour le laiton",
+            key=f"ex7_q4_brass_justification_{generation}",
+            height=105,
+            placeholder=(
+                "Explique ce que deviennent certains atomes du réseau "
+                "lorsqu’on ajoute les autres métaux."
+            ),
+            disabled=bool(st.session_state.get("ex7_q4_correct", False)),
+            on_change=_ex7_clear_feedback,
+            args=(4,),
+        )
+
     with c2:
+        st.markdown("#### Acier")
         st.text_input(
-            "Acier",
+            "Type d’alliage",
             key=f"ex7_q4_steel_{generation}",
             placeholder="Insertion ou substitution ?",
             disabled=bool(st.session_state.get("ex7_q4_correct", False)),
-            on_change=_ex7_clear_feedback,args=(4,),
+            on_change=_ex7_clear_feedback,
+            args=(4,),
         )
+        st.text_area(
+            "Justification pour l’acier",
+            key=f"ex7_q4_steel_justification_{generation}",
+            height=105,
+            placeholder=(
+                "Explique où se placent les petits atomes de carbone "
+                "par rapport aux atomes de fer."
+            ),
+            disabled=bool(st.session_state.get("ex7_q4_correct", False)),
+            on_change=_ex7_clear_feedback,
+            args=(4,),
+        )
+
     st.button(
-        "Valider la question 4",key="ex7_validate_q4",use_container_width=True,
-        on_click=_ex7_validate_q4,disabled=bool(st.session_state.get("ex7_q4_correct", False)),
+        "Valider la question 4",
+        key="ex7_validate_q4",
+        use_container_width=True,
+        on_click=_ex7_validate_q4,
+        disabled=bool(st.session_state.get("ex7_q4_correct", False)),
     )
     _ex7_feedback(4)
-    st.markdown('</div>',unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Construction interactive
     st.markdown("### 5. Construis les deux modèles pour vérifier ta compréhension")
