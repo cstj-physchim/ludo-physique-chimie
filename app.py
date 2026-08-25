@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE3_TRUE_EMPTY_RESTART_V18_FIXED
+# VERSION_UI_2026_08_25_EXERCISE3_ENTER_AND_TARGETED_FEEDBACK_V19
 import re
 import base64
 import json
@@ -5015,26 +5015,62 @@ def _ex3_get_order():
     return st.session_state[key]
 
 
+
+def _ex3_specific_feedback(raw_value):
+    """Retour ciblé pour quelques confusions fréquentes, sans révéler la bonne réponse."""
+    value = _normalize_state_answer(raw_value)
+
+    if value == "eau":
+        return (
+            "❌ « Eau » désigne une matière, pas un état physique. "
+            "On te demande ici d’identifier un état de la matière."
+        )
+
+    if value in {"glace", "glacon", "glaçon"}:
+        return (
+            "❌ « Glace » n’est pas le nom attendu ici. "
+            "Cherche le nom de l’état physique correspondant."
+        )
+
+    if value in {"vapeur", "vapeur d'eau", "vapeur d’eau"}:
+        return (
+            "❌ « Vapeur d’eau » n’est pas le nom attendu ici. "
+            "Cherche le nom de l’état physique correspondant."
+        )
+
+    return None
+
+
 def _ex3_validate_model(model_key):
     generation = int(st.session_state.get("ex3_generation", 0))
     answer_key = f"ex3_answer_{generation}_{model_key}"
     errors_key = f"ex3_errors_{model_key}"
     correct_key = f"ex3_correct_{model_key}"
+    feedback_key = f"ex3_specific_feedback_{model_key}"
 
-    given = _normalize_state_answer(st.session_state.get(answer_key, ""))
+    raw_value = st.session_state.get(answer_key, "")
+    given = _normalize_state_answer(raw_value)
     expected = EXERCISE3_MODELS[model_key]["answer"]
 
     if not given:
         st.session_state[f"ex3_empty_{model_key}"] = True
+        st.session_state.pop(feedback_key, None)
         return
 
     st.session_state[f"ex3_empty_{model_key}"] = False
 
     if given == expected:
         st.session_state[correct_key] = True
+        st.session_state.pop(feedback_key, None)
     else:
         st.session_state[correct_key] = False
         st.session_state[errors_key] = int(st.session_state.get(errors_key, 0)) + 1
+
+        specific = _ex3_specific_feedback(raw_value)
+        if specific:
+            st.session_state[feedback_key] = specific
+        else:
+            st.session_state.pop(feedback_key, None)
 
 
 def _ex3_record_restart_if_needed():
@@ -5231,8 +5267,10 @@ def page_exercise3_particle_models():
             st.text_input(
                 "Quel état de la matière est représenté ?",
                 key=f"ex3_answer_{generation}_{model_key}",
-                placeholder="Écris ta réponse",
+                placeholder="Écris ta réponse puis appuie sur Entrée",
                 disabled=bool(st.session_state.get(f"ex3_correct_{model_key}", False)),
+                on_change=_ex3_validate_model,
+                args=(model_key,),
             )
 
             st.button(
@@ -5249,6 +5287,7 @@ def page_exercise3_particle_models():
 
             errors = int(st.session_state.get(f"ex3_errors_{model_key}", 0))
             correct = bool(st.session_state.get(f"ex3_correct_{model_key}", False))
+            specific_feedback = st.session_state.get(f"ex3_specific_feedback_{model_key}")
 
             if correct:
                 st.markdown(
@@ -5257,6 +5296,12 @@ def page_exercise3_particle_models():
                 )
 
             elif errors == 1:
+                if specific_feedback:
+                    st.markdown(
+                        f'<div class="ex3-help-1">{specific_feedback}</div>',
+                        unsafe_allow_html=True,
+                    )
+
                 st.markdown(
                     """
                     <div class="ex3-help-1">
@@ -5269,6 +5314,12 @@ def page_exercise3_particle_models():
                 )
 
             elif errors == 2:
+                if specific_feedback:
+                    st.markdown(
+                        f'<div class="ex3-help-1">{specific_feedback}</div>',
+                        unsafe_allow_html=True,
+                    )
+
                 st.markdown(
                     """
                     <div class="ex3-help-2">
@@ -5282,6 +5333,12 @@ def page_exercise3_particle_models():
                 )
 
             elif errors >= 3:
+                if specific_feedback:
+                    st.markdown(
+                        f'<div class="ex3-help-1">{specific_feedback}</div>',
+                        unsafe_allow_html=True,
+                    )
+
                 st.markdown(
                     """
                     <div class="ex3-help-3">
