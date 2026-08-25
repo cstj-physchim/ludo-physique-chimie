@@ -1,8 +1,9 @@
-# VERSION_UI_2026_08_25_EX4_MODEL_MATH_FIX_V22
+# VERSION_UI_2026_08_25_EX4_DRAGDROP_BOTTLE_V23
 import re
 import base64
 import json
 import math
+import tempfile
 import random
 import textwrap
 import secrets
@@ -16,6 +17,7 @@ import qrcode
 from PIL import Image
 
 import streamlit as st
+import streamlit.components.v1 as components
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -5445,6 +5447,602 @@ def page_exercise3_particle_models():
 
 
 
+
+# ============================================================
+# MODULE INTERACTIF — MODÉLISATION PAR GLISSER-DÉPOSER
+# ============================================================
+
+EX4_DRAGDROP_HTML = r"""
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --navy:#173b70;
+    --teal:#15d7b2;
+    --teal-dark:#087f76;
+    --pale:#f5f9ff;
+    --line:#cfdbea;
+    --good:#eaf8ef;
+    --good-line:#b8e2c4;
+    --hint:#fff8e8;
+    --hint-line:#efd89c;
+    --bad:#fff0f0;
+    --bad-line:#edc5c5;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    color:#17345f;
+    background:white;
+  }
+  .wrap{
+    max-width:1100px;
+    margin:0 auto;
+    padding:8px 10px 14px;
+  }
+  .intro{
+    background:var(--pale);
+    border:1px solid #cfe0fb;
+    border-radius:14px;
+    padding:11px 14px;
+    margin-bottom:12px;
+    font-size:14px;
+    line-height:1.45;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns: 220px 1fr 220px;
+    gap:16px;
+    align-items:start;
+  }
+  .tray{
+    background:#f7f9fc;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:12px;
+    min-height:220px;
+  }
+  .tray h4{
+    margin:0 0 6px;
+    text-align:center;
+    font-size:14px;
+  }
+  .tray p{
+    margin:0 0 12px;
+    text-align:center;
+    color:#63738a;
+    font-size:12px;
+  }
+  .molecule-pool{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:9px;
+    min-height:130px;
+    align-content:flex-start;
+  }
+  .mol{
+    position:absolute;
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:radial-gradient(circle at 31% 28%, #9affeb 0 16%, var(--teal) 18% 63%, #0da98f 65% 100%);
+    border:3px solid #075e64;
+    box-shadow:0 2px 6px rgba(0,0,0,.16);
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+    z-index:10;
+  }
+  .mol.dragging{
+    cursor:grabbing;
+    transform:scale(1.08);
+    box-shadow:0 5px 12px rgba(0,0,0,.25);
+    z-index:50;
+  }
+  .pool-mol{
+    position:relative;
+    display:inline-block;
+    flex:0 0 auto;
+  }
+
+  .center{
+    min-width:0;
+  }
+  .bottle-stage{
+    position:relative;
+    height:560px;
+    max-width:510px;
+    margin:0 auto;
+  }
+  .bottle{
+    position:absolute;
+    inset:0;
+    margin:auto;
+    width:360px;
+    height:530px;
+  }
+  .neck{
+    position:absolute;
+    width:126px;
+    height:76px;
+    left:117px;
+    top:4px;
+    border:5px solid #172027;
+    border-bottom:none;
+    border-radius:16px 16px 0 0;
+    background:rgba(255,255,255,.86);
+  }
+  .valve{
+    position:absolute;
+    width:76px;
+    height:18px;
+    border:4px solid #172027;
+    border-radius:4px;
+    left:142px;
+    top:-5px;
+    background:white;
+  }
+  .body{
+    position:absolute;
+    left:28px;
+    top:66px;
+    width:304px;
+    height:450px;
+    border:5px solid #172027;
+    border-radius:76px 76px 54px 54px;
+    background:linear-gradient(90deg,rgba(238,255,251,.72),rgba(255,255,255,.94),rgba(233,252,249,.72));
+    overflow:hidden;
+  }
+  .divider{
+    position:absolute;
+    left:0;
+    right:0;
+    top:304px;
+    height:4px;
+    background:#172027;
+  }
+  .zone-label{
+    position:absolute;
+    right:10px;
+    font-size:13px;
+    font-weight:800;
+    color:var(--navy);
+    background:rgba(255,255,255,.86);
+    border:1px solid #cfdbea;
+    border-radius:999px;
+    padding:4px 9px;
+    pointer-events:none;
+  }
+  .label-a{top:12px}
+  .label-b{top:320px}
+
+  .dropzone{
+    position:absolute;
+    left:0;
+    right:0;
+  }
+  #zoneA{top:0;height:304px}
+  #zoneB{top:308px;height:142px}
+
+  .dropzone.active{
+    background:rgba(21,215,178,.07);
+  }
+
+  .legend{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin-top:4px;
+    font-size:12px;
+    color:#5e6f85;
+  }
+  .legend-dot{
+    width:18px;height:18px;border-radius:50%;
+    background:var(--teal);
+    border:2px solid #075e64;
+  }
+
+  .controls{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin:12px 0 8px;
+    flex-wrap:wrap;
+  }
+  button{
+    border:1px solid #bfcde0;
+    border-radius:11px;
+    padding:9px 15px;
+    font-weight:750;
+    background:white;
+    color:#17345f;
+    cursor:pointer;
+  }
+  button.primary{
+    background:#1f6fd6;
+    border-color:#1b61b9;
+    color:white;
+  }
+  button:hover{filter:brightness(.98)}
+  .feedback{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:8px;
+  }
+  .msg{
+    min-height:52px;
+    display:flex;
+    align-items:center;
+    border-radius:12px;
+    padding:10px 12px;
+    font-size:13px;
+    font-weight:650;
+  }
+  .neutral{background:#f7f9fc;border:1px solid #dfe6ef;color:#6e7c90}
+  .good{background:var(--good);border:1px solid var(--good-line);color:#24623a}
+  .hint{background:var(--hint);border:1px solid var(--hint-line);color:#73541c}
+  .bad{background:var(--bad);border:1px solid var(--bad-line);color:#7b2c2c}
+
+  @media(max-width:900px){
+    .layout{grid-template-columns:1fr}
+    .tray{min-height:0}
+    .molecule-pool{min-height:70px}
+    .bottle-stage{height:540px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <strong>Modélise le contenu de la bouteille.</strong>
+    Fais glisser les 9 molécules de la zone <strong>a</strong> et les 9 molécules de la zone <strong>b</strong>
+    directement dans le schéma. Tu peux ensuite les déplacer librement avant de vérifier ton modèle.
+  </div>
+
+  <div class="layout">
+    <div class="tray" id="trayA">
+      <h4>Molécules pour la zone a</h4>
+      <p>9 molécules à placer</p>
+      <div class="molecule-pool" id="poolA"></div>
+    </div>
+
+    <div class="center">
+      <div class="bottle-stage">
+        <div class="bottle">
+          <div class="valve"></div>
+          <div class="neck"></div>
+          <div class="body" id="body">
+            <div class="dropzone" id="zoneA"></div>
+            <div class="divider"></div>
+            <div class="dropzone" id="zoneB"></div>
+            <div class="zone-label label-a">zone a</div>
+            <div class="zone-label label-b">zone b</div>
+          </div>
+        </div>
+      </div>
+      <div class="legend"><span class="legend-dot"></span> Chaque pastille représente une molécule de dioxygène.</div>
+    </div>
+
+    <div class="tray" id="trayB">
+      <h4>Molécules pour la zone b</h4>
+      <p>9 molécules à placer</p>
+      <div class="molecule-pool" id="poolB"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="reset">↻ Remettre les molécules à côté</button>
+    <button class="primary" id="check">Vérifier mon modèle</button>
+  </div>
+
+  <div class="feedback">
+    <div id="feedbackA" class="msg neutral">Zone a : modèle non vérifié.</div>
+    <div id="feedbackB" class="msg neutral">Zone b : modèle non vérifié.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const N = 9;
+  let args = {};
+  let positions = {a:[], b:[]};
+  let errors = {a:0,b:0};
+  let success = {a:false,b:false};
+  let drag = null;
+
+  function sendReady(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:componentReady",
+      apiVersion:1
+    },"*");
+  }
+  function setHeight(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setFrameHeight",
+      height:document.documentElement.scrollHeight + 8
+    },"*");
+  }
+  function sendValue(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setComponentValue",
+      value:{
+        zone_a:success.a,
+        zone_b:success.b,
+        errors_a:errors.a,
+        errors_b:errors.b,
+        positions:positions
+      }
+    },"*");
+  }
+
+  function makeMol(group, index){
+    const m=document.createElement("div");
+    m.className="mol pool-mol";
+    m.dataset.group=group;
+    m.dataset.index=index;
+    m.setAttribute("role","button");
+    m.setAttribute("aria-label",`Molécule ${index+1}, zone ${group}`);
+    m.addEventListener("pointerdown",startDrag);
+    return m;
+  }
+
+  function buildPools(){
+    const pa=document.getElementById("poolA");
+    const pb=document.getElementById("poolB");
+    pa.innerHTML="";
+    pb.innerHTML="";
+    for(let i=0;i<N;i++){
+      pa.appendChild(makeMol("a",i));
+      pb.appendChild(makeMol("b",i));
+    }
+    positions={a:[],b:[]};
+    success={a:false,b:false};
+    document.getElementById("feedbackA").className="msg neutral";
+    document.getElementById("feedbackA").textContent="Zone a : modèle non vérifié.";
+    document.getElementById("feedbackB").className="msg neutral";
+    document.getElementById("feedbackB").textContent="Zone b : modèle non vérifié.";
+    setTimeout(setHeight,50);
+  }
+
+  function startDrag(e){
+    const el=e.currentTarget;
+    const rect=el.getBoundingClientRect();
+    drag={
+      el,
+      group:el.dataset.group,
+      index:Number(el.dataset.index),
+      offsetX:e.clientX-rect.left,
+      offsetY:e.clientY-rect.top
+    };
+    el.classList.add("dragging");
+    el.setPointerCapture(e.pointerId);
+    el.addEventListener("pointermove",moveDrag);
+    el.addEventListener("pointerup",endDrag,{once:true});
+    el.addEventListener("pointercancel",endDrag,{once:true});
+  }
+
+  function moveDrag(e){
+    if(!drag)return;
+    const body=document.getElementById("body");
+    const br=body.getBoundingClientRect();
+    const x=e.clientX-br.left-drag.offsetX;
+    const y=e.clientY-br.top-drag.offsetY;
+
+    if(drag.el.parentElement!==body){
+      body.appendChild(drag.el);
+      drag.el.classList.remove("pool-mol");
+    }
+
+    drag.el.style.left=x+"px";
+    drag.el.style.top=y+"px";
+
+    document.getElementById("zoneA").classList.toggle("active",y<304);
+    document.getElementById("zoneB").classList.toggle("active",y>=304);
+  }
+
+  function endDrag(e){
+    if(!drag)return;
+    const body=document.getElementById("body");
+    const br=body.getBoundingClientRect();
+    const er=drag.el.getBoundingClientRect();
+    let x=er.left-br.left;
+    let y=er.top-br.top;
+
+    const maxX=body.clientWidth-drag.el.offsetWidth;
+    const maxY=body.clientHeight-drag.el.offsetHeight;
+    x=Math.max(2,Math.min(maxX-2,x));
+    y=Math.max(2,Math.min(maxY-2,y));
+
+    drag.el.style.left=x+"px";
+    drag.el.style.top=y+"px";
+    drag.el.classList.remove("dragging");
+    document.getElementById("zoneA").classList.remove("active");
+    document.getElementById("zoneB").classList.remove("active");
+
+    drag.el.removeEventListener("pointermove",moveDrag);
+
+    readPositions();
+    success[drag.group]=false;
+    drag=null;
+  }
+
+  function readPositions(){
+    positions={a:[],b:[]};
+    const body=document.getElementById("body");
+    const br=body.getBoundingClientRect();
+    body.querySelectorAll(".mol").forEach(el=>{
+      const r=el.getBoundingClientRect();
+      const cx=r.left-br.left+r.width/2;
+      const cy=r.top-br.top+r.height/2;
+      const group=el.dataset.group;
+      positions[group].push({x:cx,y:cy});
+    });
+  }
+
+  function stats(points){
+    if(points.length<2)return null;
+    let nearest=[];
+    for(let i=0;i<points.length;i++){
+      let d=Infinity;
+      for(let j=0;j<points.length;j++){
+        if(i===j)continue;
+        const dx=points[i].x-points[j].x;
+        const dy=points[i].y-points[j].y;
+        d=Math.min(d,Math.hypot(dx,dy));
+      }
+      nearest.push(d);
+    }
+    const avgNearest=nearest.reduce((a,b)=>a+b,0)/nearest.length;
+    const xs=points.map(p=>p.x), ys=points.map(p=>p.y);
+    const width=Math.max(...xs)-Math.min(...xs);
+    const height=Math.max(...ys)-Math.min(...ys);
+    const meanY=ys.reduce((a,b)=>a+b,0)/ys.length;
+
+    // Alignment score: points sharing nearly the same x or y with many others.
+    let alignedPairs=0,totalPairs=0;
+    for(let i=0;i<points.length;i++){
+      for(let j=i+1;j<points.length;j++){
+        totalPairs++;
+        if(Math.abs(points[i].x-points[j].x)<9 || Math.abs(points[i].y-points[j].y)<9){
+          alignedPairs++;
+        }
+      }
+    }
+    const alignment=totalPairs?alignedPairs/totalPairs:0;
+
+    return {avgNearest,width,height,meanY,alignment};
+  }
+
+  function setFeedback(zone,kind,msg){
+    const el=document.getElementById(zone==="a"?"feedbackA":"feedbackB");
+    el.className="msg "+kind;
+    el.textContent=msg;
+  }
+
+  function validate(){
+    readPositions();
+
+    // Require all 9 molecules of each group to have been dragged into the bottle.
+    const body=document.getElementById("body");
+    const countA=body.querySelectorAll('.mol[data-group="a"]').length;
+    const countB=body.querySelectorAll('.mol[data-group="b"]').length;
+
+    // Only analyse molecules physically in their intended zone.
+    const a=positions.a.filter(p=>p.y<304);
+    const b=positions.b.filter(p=>p.y>=308);
+
+    success.a=false; success.b=false;
+
+    if(countA<N || a.length<N){
+      errors.a++;
+      setFeedback("a","hint","Zone a : place les 9 molécules dans la partie supérieure de la bouteille.");
+    }else{
+      const s=stats(a);
+      // Gas: well spread through upper region, not in a regular lattice.
+      const ok=s.avgNearest>=62 && s.width>=180 && s.height>=185 && s.alignment<0.34;
+      success.a=ok;
+      if(ok){
+        setFeedback("a","good","✅ Zone a : ton modèle est cohérent. Les molécules sont espacées et désordonnées.");
+      }else{
+        errors.a++;
+        if(s.avgNearest<52){
+          setFeedback("a","hint","💡 Zone a : les molécules sont encore trop proches les unes des autres.");
+        }else if(s.width<160 || s.height<165){
+          setFeedback("a","hint","💡 Zone a : répartis davantage les molécules dans tout le volume disponible.");
+        }else{
+          setFeedback("a","hint","💡 Zone a : évite une disposition trop régulière ou alignée.");
+        }
+      }
+    }
+
+    if(countB<N || b.length<N){
+      errors.b++;
+      setFeedback("b","hint","Zone b : place les 9 molécules dans la partie inférieure de la bouteille.");
+    }else{
+      const s=stats(b);
+      // Liquid: close together, low in zone b, but not too regularly aligned.
+      const ok=s.avgNearest<=54 && s.height<=115 && s.meanY>=365 && s.alignment<0.46;
+      success.b=ok;
+      if(ok){
+        setFeedback("b","good","✅ Zone b : ton modèle est cohérent. Les molécules sont proches et désordonnées.");
+      }else{
+        errors.b++;
+        if(s.avgNearest>60){
+          setFeedback("b","hint","💡 Zone b : rapproche davantage les molécules.");
+        }else if(s.meanY<350){
+          setFeedback("b","hint","💡 Zone b : un liquide occupe le bas de son récipient.");
+        }else if(s.alignment>=0.46){
+          setFeedback("b","hint","💡 Zone b : les molécules sont trop régulièrement rangées pour un liquide.");
+        }else{
+          setFeedback("b","hint","💡 Zone b : regroupe-les près du fond tout en gardant une disposition désordonnée.");
+        }
+      }
+    }
+
+    sendValue();
+    setTimeout(setHeight,50);
+  }
+
+  document.getElementById("reset").addEventListener("click",()=>{
+    errors={a:0,b:0};
+    buildPools();
+    sendValue();
+  });
+  document.getElementById("check").addEventListener("click",validate);
+
+  window.addEventListener("message",(event)=>{
+    const data=event.data || {};
+    if(data.type==="streamlit:render"){
+      args=data.args || {};
+      setHeight();
+    }
+  });
+
+  sendReady();
+  buildPools();
+  setHeight();
+})();
+</script>
+</body>
+</html>
+"""
+
+
+@st.cache_resource
+def _ex4_dragdrop_component():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex4_dragdrop_component"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "index.html").write_text(EX4_DRAGDROP_HTML, encoding="utf-8")
+    return components.declare_component(
+        "ex4_dragdrop_model",
+        path=str(component_dir),
+    )
+
+
+def render_ex4_dragdrop_model(generation):
+    component = _ex4_dragdrop_component()
+    return component(
+        generation=int(generation),
+        key=f"ex4_dragdrop_{generation}",
+        default={
+            "zone_a": False,
+            "zone_b": False,
+            "errors_a": 0,
+            "errors_b": 0,
+            "positions": {"a": [], "b": []},
+        },
+    )
+
 # ============================================================
 # EXERCICE 4 — PROPRIÉTÉS ET BOUTEILLE DE DIOXYGÈNE
 # ============================================================
@@ -5484,214 +6082,6 @@ EXERCISE4_PROPERTIES = [
     },
 ]
 
-EXERCISE4_MODEL_GRID = {
-    "rows": 5,
-    "cols": 7,
-    "max_molecules": 9,
-}
-
-
-def _ex4_prop_state(index, state_name):
-    return st.session_state.get(f"ex4_prop_{index}_{state_name}", "idle")
-
-
-def _ex4_handle_prop_click(index, state_name, answers):
-    key = f"ex4_prop_{index}_{state_name}"
-    current = st.session_state.get(key, "idle")
-    st.session_state[key] = "selected" if current != "selected" else "idle"
-
-    st.session_state.pop(f"ex4_prop_feedback_{index}", None)
-    st.session_state.pop(f"ex4_prop_complete_{index}", None)
-
-
-def _ex4_validate_prop_row(index, answers):
-    mapping = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}
-
-    selected = {
-        human
-        for state_name, human in mapping.items()
-        if st.session_state.get(f"ex4_prop_{index}_{state_name}") == "selected"
-    }
-
-    if not selected:
-        st.session_state[f"ex4_prop_feedback_{index}"] = "empty"
-        return
-
-    if selected == set(answers):
-        st.session_state[f"ex4_prop_complete_{index}"] = True
-        st.session_state[f"ex4_prop_feedback_{index}"] = "correct"
-    else:
-        st.session_state[f"ex4_prop_complete_{index}"] = False
-        err_key = f"ex4_prop_errors_{index}"
-        st.session_state[err_key] = int(st.session_state.get(err_key, 0)) + 1
-        st.session_state[f"ex4_prop_feedback_{index}"] = "wrong"
-
-
-def _ex4_render_prop_button(index, state_name, answers):
-    state = _ex4_prop_state(index, state_name)
-    human = {"solid": "Solide", "liquid": "Liquide", "gas": "Gazeux"}[state_name]
-    selected = state == "selected"
-
-    st.button(
-        f"✓ {human}" if selected else human,
-        key=f"ex4_prop_btn_{index}_{state_name}",
-        use_container_width=True,
-        type="primary" if selected else "secondary",
-        on_click=_ex4_handle_prop_click,
-        args=(index, state_name, answers),
-    )
-    st.markdown(
-        f'<div class="{"ex4-choice-selected" if selected else "ex4-choice-idle"}"></div>',
-        unsafe_allow_html=True,
-    )
-
-
-def _normalize_oxygen_zone(value):
-    value = str(value or "").strip().lower()
-    value = (
-        value.replace("é", "e")
-        .replace("è", "e")
-        .replace("ê", "e")
-        .replace("’", "'")
-    )
-    value = " ".join(value.split())
-
-    aliases = {
-        "dioxygene gazeux": "gaz",
-        "dioxygene gaz": "gaz",
-        "gaz": "gaz",
-        "gazeux": "gaz",
-        "etat gazeux": "gaz",
-        "dioxygene liquide": "liquide",
-        "liquide": "liquide",
-        "etat liquide": "liquide",
-    }
-    return aliases.get(value, value)
-
-
-def _ex4_validate_zone(zone):
-    generation = int(st.session_state.get("ex4_generation", 0))
-    answer_key = f"ex4_zone_{generation}_{zone}"
-    given = _normalize_oxygen_zone(st.session_state.get(answer_key, ""))
-    expected = "gaz" if zone == "a" else "liquide"
-
-    if not given:
-        st.session_state[f"ex4_zone_empty_{zone}"] = True
-        return
-
-    st.session_state[f"ex4_zone_empty_{zone}"] = False
-
-    if given == expected:
-        st.session_state[f"ex4_zone_correct_{zone}"] = True
-    else:
-        st.session_state[f"ex4_zone_correct_{zone}"] = False
-        key = f"ex4_zone_errors_{zone}"
-        st.session_state[key] = int(st.session_state.get(key, 0)) + 1
-
-
-def _ex4_grid_key(zone):
-    return f"ex4_grid_{zone}"
-
-
-def _ex4_get_grid(zone):
-    return set(st.session_state.get(_ex4_grid_key(zone), []))
-
-
-def _ex4_toggle_grid_cell(zone, row, col):
-    cells = _ex4_get_grid(zone)
-    cell = (row, col)
-
-    if cell in cells:
-        cells.remove(cell)
-    elif len(cells) < EXERCISE4_MODEL_GRID["max_molecules"]:
-        cells.add(cell)
-
-    st.session_state[_ex4_grid_key(zone)] = list(cells)
-    st.session_state.pop(f"ex4_model_feedback_{zone}", None)
-    st.session_state.pop(f"ex4_model_correct_{zone}", None)
-
-
-def _ex4_grid_metrics(cells):
-    """Approximate compactness/order from positions chosen by the pupil."""
-    if len(cells) < 2:
-        return {"compact": False, "ordered": False, "spread": False}
-
-    pts = [(r, c) for r, c in cells]
-
-    # Compactness: each molecule should have a close neighbour in most cases.
-    close_count = 0
-    for i, (r1, c1) in enumerate(pts):
-        nearest = min(
-            math.hypot(r1 - r2, c1 - c2)
-            for j, (r2, c2) in enumerate(pts)
-            if i != j
-        )
-        if nearest <= 1.45:
-            close_count += 1
-    compact = close_count / len(pts) >= 0.75
-
-    # Spread: occupied area and average pairwise distance.
-    rows = [r for r, _ in pts]
-    cols = [c for _, c in pts]
-    bbox_area = (max(rows) - min(rows) + 1) * (max(cols) - min(cols) + 1)
-    avg_dist = sum(
-        math.hypot(r1-r2, c1-c2)
-        for i, (r1, c1) in enumerate(pts)
-        for j, (r2, c2) in enumerate(pts)
-        if j > i
-    ) / max(1, (len(pts) * (len(pts)-1) / 2))
-    spread = bbox_area >= 20 and avg_dist >= 2.3 and not compact
-
-    # Order: most points align on a regular lattice with neighbours horizontally/vertically.
-    neighbour_links = 0
-    for r, c in pts:
-        for dr, dc in [(0,1), (1,0)]:
-            if (r+dr, c+dc) in cells:
-                neighbour_links += 1
-    ordered = compact and neighbour_links >= max(4, len(pts)-2)
-
-    return {"compact": compact, "ordered": ordered, "spread": spread}
-
-
-def _ex4_check_model(zone):
-    cells = _ex4_get_grid(zone)
-    if len(cells) < 6:
-        st.session_state[f"ex4_model_feedback_{zone}"] = (
-            "Place encore quelques molécules avant de vérifier ton modèle."
-        )
-        st.session_state[f"ex4_model_correct_{zone}"] = False
-        return
-
-    metrics = _ex4_grid_metrics(cells)
-    expected = "gaz" if zone == "a" else "liquide"
-
-    if expected == "gaz":
-        correct = metrics["spread"] and not metrics["ordered"]
-        if correct:
-            msg = "✅ Ton modèle convient : les molécules sont espacées et désordonnées."
-        elif metrics["compact"]:
-            msg = "💡 Tes molécules sont encore trop regroupées pour représenter un gaz."
-        else:
-            msg = "💡 Essaie de mieux répartir les molécules dans toute la zone."
-    else:
-        correct = metrics["compact"] and not metrics["ordered"]
-        if correct:
-            msg = "✅ Ton modèle convient : les molécules sont proches mais désordonnées."
-        elif not metrics["compact"]:
-            msg = "💡 Pour un liquide, les molécules doivent rester beaucoup plus proches."
-        elif metrics["ordered"]:
-            msg = "💡 Elles sont proches, mais leur disposition est trop régulière pour un liquide."
-        else:
-            msg = "💡 Réorganise légèrement les molécules puis vérifie à nouveau."
-
-    st.session_state[f"ex4_model_feedback_{zone}"] = msg
-    st.session_state[f"ex4_model_correct_{zone}"] = correct
-
-    if not correct:
-        key = f"ex4_model_errors_{zone}"
-        st.session_state[key] = int(st.session_state.get(key, 0)) + 1
-
-
 def _ex4_record_restart_if_needed():
     student = st.session_state.get("app_student")
     if st.session_state.get("app_user_type") != "student" or not student:
@@ -5714,8 +6104,11 @@ def _ex4_record_restart_if_needed():
     ):
         touched += 1
 
-    if _ex4_get_grid("a") or _ex4_get_grid("b"):
-        touched += 1
+    model_state = st.session_state.get("ex4_dragdrop_last_state")
+    if isinstance(model_state, dict):
+        pos = model_state.get("positions", {})
+        if pos.get("a") or pos.get("b"):
+            touched += 1
 
     errors += sum(
         int(st.session_state.get(f"ex4_prop_errors_{i}", 0))
@@ -5725,10 +6118,9 @@ def _ex4_record_restart_if_needed():
         int(st.session_state.get(f"ex4_zone_errors_{z}", 0))
         for z in ("a", "b")
     )
-    errors += sum(
-        int(st.session_state.get(f"ex4_model_errors_{z}", 0))
-        for z in ("a", "b")
-    )
+    if isinstance(model_state, dict):
+        errors += int(model_state.get("errors_a", 0) or 0)
+        errors += int(model_state.get("errors_b", 0) or 0)
 
     if touched == 0:
         return
@@ -5958,57 +6350,22 @@ def page_exercise4_oxygen_bottle():
     st.markdown("### 3. Construire un modèle moléculaire")
     st.markdown(
         '<div class="ex4-box">'
-        '<strong>Prototype :</strong> place jusqu’à 9 molécules dans chaque zone en cliquant sur les cases. '
-        'Clique à nouveau sur une molécule pour l’enlever, puis utilise « Vérifier mon modèle ». '
-        'Le logiciel analyse si les molécules sont proches, ordonnées ou dispersées.'
+        'Fais glisser les molécules directement dans le schéma de la bouteille. '
+        'Pour la zone <strong>a</strong>, représente le dioxygène gazeux ; '
+        'pour la zone <strong>b</strong>, représente le dioxygène liquide. '
+        'Tu peux déplacer les molécules autant de fois que nécessaire avant de vérifier.'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    for zone in ("a", "b"):
-        st.markdown(
-            f'<div class="ex4-grid-title">Zone {zone} — '
-            f'{"dioxygène gazeux" if zone == "a" else "dioxygène liquide"}</div>',
-            unsafe_allow_html=True,
-        )
+    generation = int(st.session_state.get("ex4_generation", 0))
+    model_state = render_ex4_dragdrop_model(generation)
 
-        rows = EXERCISE4_MODEL_GRID["rows"]
-        cols = EXERCISE4_MODEL_GRID["cols"]
-        selected = _ex4_get_grid(zone)
-
-        for r in range(rows):
-            grid_cols = st.columns(cols, gap="small")
-            for c, gc in enumerate(grid_cols):
-                with gc:
-                    occupied = (r, c) in selected
-                    st.button(
-                        "●" if occupied else " ",
-                        key=f"ex4_grid_{zone}_{r}_{c}",
-                        use_container_width=True,
-                        type="primary" if occupied else "secondary",
-                        on_click=_ex4_toggle_grid_cell,
-                        args=(zone, r, c),
-                    )
-
-        st.caption(
-            f"{len(selected)} / {EXERCISE4_MODEL_GRID['max_molecules']} molécules placées"
-        )
-
-        if st.button(
-            f"Vérifier mon modèle — zone {zone}",
-            key=f"ex4_check_model_{zone}",
-            use_container_width=True,
-            on_click=_ex4_check_model,
-            args=(zone,),
-        ):
-            pass
-
-        feedback = st.session_state.get(f"ex4_model_feedback_{zone}")
-        if feedback:
-            if st.session_state.get(f"ex4_model_correct_{zone}", False):
-                st.success(feedback)
-            else:
-                st.info(feedback)
+    if isinstance(model_state, dict):
+        st.session_state["ex4_dragdrop_last_state"] = model_state
+        part3_ok = bool(model_state.get("zone_a")) and bool(model_state.get("zone_b"))
+    else:
+        part3_ok = False
 
     # ---------------- BILAN ----------------
     part1_ok = all(
@@ -6019,11 +6376,6 @@ def page_exercise4_oxygen_bottle():
         st.session_state.get(f"ex4_zone_correct_{z}", False)
         for z in ("a", "b")
     )
-    part3_ok = all(
-        st.session_state.get(f"ex4_model_correct_{z}", False)
-        for z in ("a", "b")
-    )
-
     completed_parts = sum([part1_ok, part2_ok, part3_ok])
 
     st.markdown("### Ton avancement")
@@ -6049,10 +6401,17 @@ def page_exercise4_oxygen_bottle():
             and student
             and not st.session_state.get("ex4_result_saved", False)
         ):
+            model_errors = 0
+            if isinstance(model_state, dict):
+                model_errors = (
+                    int(model_state.get("errors_a", 0) or 0)
+                    + int(model_state.get("errors_b", 0) or 0)
+                )
+
             total_errors = (
                 sum(int(st.session_state.get(f"ex4_prop_errors_{i}", 0)) for i in range(len(EXERCISE4_PROPERTIES)))
                 + sum(int(st.session_state.get(f"ex4_zone_errors_{z}", 0)) for z in ("a", "b"))
-                + sum(int(st.session_state.get(f"ex4_model_errors_{z}", 0)) for z in ("a", "b"))
+                + model_errors
             )
             record_training_result(
                 student,
