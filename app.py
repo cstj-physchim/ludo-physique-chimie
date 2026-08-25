@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_EX12_EX13_EX14_V59
+# VERSION_UI_2026_08_26_EX13_UNIFORM_IMAGES_V60
 import re
 import base64
 import json
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 import qrcode
-from PIL import Image
+from PIL import Image, ImageChops
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -13595,6 +13595,91 @@ def _exercise_image(candidates):
     return None
 
 
+@st.cache_data(show_spinner=False)
+def _uniform_molecule_image_bytes(path_string):
+    """
+    Prépare un modèle moléculaire pour un affichage homogène.
+
+    Les images sources n'ont pas toutes les mêmes marges blanches.
+    On détecte le fond, on rogne les marges inutiles, puis on recentre
+    la molécule sur un canevas identique. Les zones de réponse situées
+    sous les images restent ainsi parfaitement alignées.
+    """
+    path = Path(path_string)
+
+    with Image.open(path) as source:
+        image = source.convert("RGB")
+
+    width, height = image.size
+
+    # Couleur moyenne des quatre coins : elle représente le fond de l'image.
+    corners = [
+        image.getpixel((0, 0)),
+        image.getpixel((max(0, width - 1), 0)),
+        image.getpixel((0, max(0, height - 1))),
+        image.getpixel((max(0, width - 1), max(0, height - 1))),
+    ]
+    background_rgb = tuple(
+        int(round(sum(pixel[channel] for pixel in corners) / len(corners)))
+        for channel in range(3)
+    )
+
+    background = Image.new("RGB", image.size, background_rgb)
+    difference = ImageChops.difference(image, background).convert("L")
+
+    # Les très faibles différences correspondent au fond / aux artefacts.
+    mask = difference.point(lambda value: 255 if value > 12 else 0)
+    bbox = mask.getbbox()
+
+    if bbox:
+        left, top, right, bottom = bbox
+
+        detected_w = max(1, right - left)
+        detected_h = max(1, bottom - top)
+
+        # Petite marge autour de la molécule pour ne pas rogner les ombres.
+        pad_x = max(10, int(detected_w * 0.05))
+        pad_y = max(10, int(detected_h * 0.05))
+
+        left = max(0, left - pad_x)
+        top = max(0, top - pad_y)
+        right = min(width, right + pad_x)
+        bottom = min(height, bottom + pad_y)
+
+        molecule = image.crop((left, top, right, bottom))
+    else:
+        molecule = image
+
+    # Tous les modèles utilisent exactement le même support 16:9.
+    canvas_w, canvas_h = 760, 430
+    max_content_w, max_content_h = 650, 330
+
+    molecule.thumbnail(
+        (max_content_w, max_content_h),
+        Image.Resampling.LANCZOS,
+    )
+
+    canvas = Image.new("RGB", (canvas_w, canvas_h), (255, 255, 255))
+
+    x = (canvas_w - molecule.width) // 2
+    y = (canvas_h - molecule.height) // 2
+    canvas.paste(molecule, (x, y))
+
+    buffer = BytesIO()
+    canvas.save(buffer, format="PNG", optimize=True)
+    return buffer.getvalue()
+
+
+def _render_uniform_molecule_image(image_path):
+    """
+    Affiche les modèles avec la même hauteur visuelle.
+    Comme les deux colonnes ont la même largeur et que le canevas est identique,
+    les champs de réponses commencent exactement au même niveau.
+    """
+    image_bytes = _uniform_molecule_image_bytes(str(image_path))
+    st.image(image_bytes, use_container_width=True)
+
+
 def _chem_name_norm(value):
     return _ex8_norm(value).replace("'", " ")
 
@@ -13644,7 +13729,7 @@ def _ex13_render_item(index):
     )
 
     if image_path is not None:
-        st.image(str(image_path), width=300)
+        _render_uniform_molecule_image(image_path)
     else:
         st.warning(
             f"Image manquante pour le modèle {chr(ord('a') + index)}."
@@ -13704,6 +13789,24 @@ def page_exercise13_names_formulas():
     if not resource_is_available_for_current_user("exercise13_names_formulas"):
         st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
         return
+
+    st.markdown(
+        """
+        <style>
+        /* Exercice 13 : mêmes espacements dans les deux colonnes. */
+        .ex13-model-spacer {
+            height: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        div[data-testid="stTextInput"] input {
+            font-size: 1.08rem !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
@@ -13856,7 +13959,7 @@ def page_exercise14_molecule_formulas():
             st.markdown(f"#### Modèle {chr(ord('a') + index)}")
 
             if image_path is not None:
-                st.image(str(image_path), width=360)
+                _render_uniform_molecule_image(image_path)
             else:
                 st.warning("Image manquante.")
 
