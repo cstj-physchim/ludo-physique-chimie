@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE6_BIG_ALCOHOL_MOLECULES_V38
+# VERSION_UI_2026_08_25_EXERCISE6_12_WATER_5_BIG_ALCOHOL_V40
 import re
 import base64
 import json
@@ -7626,7 +7626,7 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sa
 .legend span{display:flex;align-items:center;gap:7px}
 .dot{display:inline-block;border-radius:50%;border:3px solid}
 .dot.water{width:24px;height:24px;background:#36bdf1;border-color:#147ba6}
-.dot.alcohol{width:46px;height:46px;background:#ff9a32;border-color:#c86a13}
+.dot.alcohol{width:56px;height:56px;background:#ff9a32;border-color:#c86a13}
 .section-title{text-align:center;font-weight:900;color:#16335f;margin:8px 0}
 .initial{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:760px;margin:0 auto 18px}
 .beaker-card{text-align:center}
@@ -7635,12 +7635,12 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sa
 .initial .beaker{height:170px}
 .particle{position:absolute;border-radius:50%;box-shadow:0 2px 5px #0002}
 .particle.water{width:24px;height:24px;background:radial-gradient(circle at 32% 28%,#a9ecff 0 18%,#36bdf1 20% 100%);border:3px solid #147ba6}
-.particle.alcohol{width:52px;height:52px;background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);border:4px solid #c86a13}
-.final-area{display:grid;grid-template-columns:240px 1fr 240px;gap:18px;align-items:start}
-.tray{background:#f7f9fc;border:1px solid #cfdbea;border-radius:16px;padding:12px;min-height:245px;text-align:center}
+.particle.alcohol{width:68px;height:68px;background:radial-gradient(circle at 32% 28%,#ffd09b 0 18%,#ff9a32 20% 100%);border:4px solid #c86a13}
+.final-area{display:grid;grid-template-columns:270px 1fr 270px;gap:18px;align-items:start}
+.tray{background:#f7f9fc;border:1px solid #cfdbea;border-radius:16px;padding:12px;min-height:275px;text-align:center}
 .tray h4{margin:0 0 5px}
 .tray p{margin:0 0 10px;color:#6e7c90;font-size:12px}
-.pool{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;align-content:flex-start;min-height:120px}
+.pool{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;min-height:155px}
 .source{position:relative;flex:0 0 auto;cursor:grab;touch-action:none;user-select:none}
 .placed{display:none;z-index:30;cursor:grab;touch-action:none;user-select:none}
 .ghost{position:fixed!important;z-index:99999!important;pointer-events:none!important;transform:scale(1.06)}
@@ -7671,8 +7671,8 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   <div class="intro">
     <strong>4. Modélise l’état initial et l’état final.</strong><br>
     L’état initial est représenté à gauche : les molécules d’eau et d’alcool sont séparées.
-    Pour l’état final, fais glisser les <strong>8 petites molécules d’eau</strong> et les
-    <strong>8 grosses molécules d’alcool</strong> dans le même récipient afin de représenter le mélange.
+    Pour l’état final, fais glisser les <strong>12 petites molécules d’eau</strong> et les
+    <strong>5 grosses molécules d’alcool</strong> dans le même récipient afin de représenter le mélange.
   </div>
 
   <div class="legend">
@@ -7696,7 +7696,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   <div class="final-area">
     <div class="tray">
       <h4>Molécules d’eau</h4>
-      <p>8 petites molécules</p>
+      <p>12 petites molécules</p>
       <div class="pool" id="waterPool"></div>
     </div>
 
@@ -7713,7 +7713,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
     <div class="tray">
       <h4>Molécules d’alcool</h4>
-      <p>8 grosses molécules</p>
+      <p>5 grosses molécules</p>
       <div class="pool" id="alcoholPool"></div>
     </div>
   </div>
@@ -7726,13 +7726,13 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   </div>
 
   <div id="feedback" class="feedback neutral">
-    Place les 16 molécules dans le récipient final, puis vérifie ton modèle.
+    Place les 17 molécules dans le récipient final, puis vérifie ton modèle.
   </div>
 </div>
 
 <script>
 (function(){
-  const NW=8, NA=8;
+  const NW=12, NA=5;
   let generation=0, storageId="prototype", initialized=false, drag=null;
   let state=fresh();
 
@@ -7746,7 +7746,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   }
 
   function storageKey(){
-    return "ludo_ex6_mix_v2_"+storageId+"_"+String(generation);
+    return "ludo_ex6_mix_v3_"+storageId+"_"+String(generation);
   }
   function save(){
     try{sessionStorage.setItem(storageKey(),JSON.stringify(state));}catch(e){}
@@ -7802,12 +7802,12 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     const a=document.getElementById("initialAlcohol");
     w.innerHTML=""; a.innerHTML="";
     const wp=[
-      [48,112],[93,121],[140,111],[186,120],
-      [70,139],[116,145],[162,138],[208,146]
+      [32,108],[70,117],[108,108],[146,117],[184,108],[222,117],
+      [51,137],[89,146],[127,137],[165,146],[203,137],[241,146]
     ];
     const ap=[
-      [32,64],[95,72],[158,64],[221,72],
-      [62,116],[125,124],[188,116],[251,124]
+      [28,50],[103,50],[178,50],
+      [66,112],[141,112]
     ];
     wp.forEach((p,i)=>{
       const e=document.createElement("div"); e.className="particle water";
@@ -7886,7 +7886,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     const inside=e.clientX>=br.left&&e.clientX<=br.right&&e.clientY>=br.top&&e.clientY<=br.bottom;
     if(inside){
       const gr=drag.ghost.getBoundingClientRect();
-      const size=drag.type==="water"?24:52;
+      const size=drag.type==="water"?24:68;
       let x=gr.left-br.left, y=gr.top-br.top;
       x=Math.max(4,Math.min(b.clientWidth-size-4,x));
       y=Math.max(74,Math.min(b.clientHeight-size-5,y));
@@ -7899,7 +7899,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   }
 
   function particleSize(type){
-    return type==="water" ? 24 : 52;
+    return type==="water" ? 24 : 68;
   }
 
   function centre(point,type){
@@ -7923,7 +7923,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
     if(w.length<NW||a.length<NA){
       state.errors++;
-      setFeedback("hint","💡 Place d’abord les 8 molécules d’eau et les 8 molécules d’alcool dans le récipient final.");
+      setFeedback("hint","💡 Place d’abord les 12 molécules d’eau et les 5 molécules d’alcool dans le récipient final.");
       save();send();return;
     }
 
@@ -7932,11 +7932,11 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
     const occupiedHeight=Math.max(...ys)-Math.min(...ys);
 
     // Intermixing: most water molecules should be reasonably close to at least one alcohol molecule.
-    const waterNearAlcohol=w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=72).length/NW;
+    const waterNearAlcohol=w.filter(p=>nearestDistance(p,"water",a,"alcohol")<=92).length/NW;
 
     // Compactness: final particles should mainly occupy the lower part and not a very tall region.
     const meanY=ys.reduce((x,y)=>x+y,0)/ys.length;
-    const compact=occupiedHeight<=190 && meanY>=155;
+    const compact=occupiedHeight<=205 && meanY>=150;
     const mixed=waterNearAlcohol>=0.65;
 
     if(compact&&mixed){
@@ -7961,7 +7961,7 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
   }
   function renderFeedback(){
     if(state.success)setFeedback("good","✅ Modèle validé.");
-    else setFeedback("neutral","Place les 16 molécules dans le récipient final, puis vérifie ton modèle.");
+    else setFeedback("neutral","Place les 17 molécules dans le récipient final, puis vérifie ton modèle.");
   }
 
   function resetType(type){
@@ -8000,18 +8000,18 @@ button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
 
 
 @st.cache_resource
-def _ex6_component_v2():
-    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_mix_component_v2"
+def _ex6_component_v3():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex6_mix_component_v3"
     component_dir.mkdir(parents=True, exist_ok=True)
     (component_dir / "index.html").write_text(EX6_MIXTURE_HTML, encoding="utf-8")
     return components.declare_component(
-        "ex6_water_alcohol_mix_v2",
+        "ex6_water_alcohol_mix_v3",
         path=str(component_dir),
     )
 
 
 def render_ex6_model(generation):
-    component = _ex6_component_v2()
+    component = _ex6_component_v3()
     student = st.session_state.get("app_student") or {}
     storage_id = str(
         student.get("id")
@@ -8021,7 +8021,7 @@ def render_ex6_model(generation):
     return component(
         generation=int(generation),
         storage_id=storage_id,
-        key=f"ex6_mix_v2_{generation}",
+        key=f"ex6_mix_v3_{generation}",
         default={
             "success": False,
             "errors": 0,
