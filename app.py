@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EX4_8_MOLECULES_PRECISE_DROP_V31
+# VERSION_UI_2026_08_25_EXERCISE5_SEAWATER_MIXTURE_V32
 import re
 import base64
 import json
@@ -159,6 +159,13 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 11,
         "description": "Relier propriétés moléculaires, état physique et modélisation d’une bouteille de dioxygène.",
+        "resource_ready": True,
+    },
+    "exercise5_seawater_mixture": {
+        "label": "Exercice 5 — Modéliser un mélange : l’eau de mer",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 13,
+        "description": "Différencier un corps pur et un mélange à l’échelle microscopique.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -2021,6 +2028,7 @@ def tracked_exercise_ids():
         "exercise2_water_properties",
         "exercise3_particle_models",
         "exercise4_oxygen_bottle",
+        "exercise5_seawater_mixture",
         "exercise_states_matter",
     ]
 
@@ -3944,6 +3952,16 @@ def page_exercise_topics():
             "color": "card-green",
             "page": "exercise4_oxygen_bottle",
             "key": "start_ex4_oxygen_bottle",
+        })
+
+    if resource_is_available_for_current_user("exercise5_seawater_mixture"):
+        exercises.append({
+            "icon": "🌊",
+            "title": "Exercice 5 — Modéliser un mélange : l’eau de mer",
+            "description": "Observe deux modèles microscopiques et distingue corps pur et mélange.",
+            "color": "card-cyan",
+            "page": "exercise5_seawater_mixture",
+            "key": "start_ex5_seawater_mixture",
         })
 
     if states_matter_available_for_current_user():
@@ -6751,6 +6769,571 @@ def page_exercise4_oxygen_bottle():
             st.session_state["ex4_result_saved"] = True
 
 
+
+# ============================================================
+# EXERCICE 5 — MODÉLISER UN MÉLANGE : L’EAU DE MER
+# ============================================================
+
+EXERCISE5_SEAWATER_IMAGE = "assets/chapitre_1/exercice 5/schéma melange eau de mer.png"
+
+
+def _ex5_normalize(value):
+    value = str(value or "").strip().lower()
+    replacements = {
+        "é": "e", "è": "e", "ê": "e", "ë": "e",
+        "à": "a", "â": "a", "ä": "a",
+        "î": "i", "ï": "i",
+        "ô": "o", "ö": "o",
+        "ù": "u", "û": "u", "ü": "u",
+        "ç": "c", "’": "'", "œ": "oe",
+    }
+    for old, new in replacements.items():
+        value = value.replace(old, new)
+
+    value = re.sub(r"[^a-z0-9' ]+", " ", value)
+    return " ".join(value.split())
+
+
+def _ex5_is_mixture(value):
+    v = _ex5_normalize(value)
+    return v in {"melange", "un melange", "c'est un melange", "c est un melange"}
+
+
+def _ex5_is_pure(value):
+    v = _ex5_normalize(value)
+    return v in {
+        "corps pur",
+        "un corps pur",
+        "c'est un corps pur",
+        "c est un corps pur",
+        "pur",
+    }
+
+
+def _ex5_q1_justification_ok(value):
+    """Accepte différentes formulations simples montrant que plusieurs constituants sont présents."""
+    v = _ex5_normalize(value)
+
+    strong_phrases = [
+        "eau et sel",
+        "eau + sel",
+        "plusieurs substances",
+        "plusieurs constituants",
+        "plusieurs especes",
+        "plusieurs sortes",
+        "differentes substances",
+        "differents constituants",
+        "sels dissous",
+        "sel dissous",
+    ]
+    if any(p in v for p in strong_phrases):
+        return True
+
+    words = set(v.split())
+    return (
+        ("sel" in words or "sels" in words)
+        and ("eau" in words or "substance" in words or "constituants" in words)
+    )
+
+
+def _ex5_q3_justification_ok(value):
+    """Accepte une justification montrant que le bon modèle contient plusieurs sortes de particules."""
+    v = _ex5_normalize(value)
+
+    phrases = [
+        "deux sortes",
+        "plusieurs sortes",
+        "deux types",
+        "plusieurs types",
+        "deux especes",
+        "plusieurs especes",
+        "particules differentes",
+        "particules de couleurs differentes",
+        "deux couleurs",
+        "vertes et orange",
+        "vert et orange",
+    ]
+    if any(p in v for p in phrases):
+        return True
+
+    # Formulations du type « il y a du vert et de l'orange »
+    return ("vert" in v and "orange" in v)
+
+
+def _ex5_validate_q1():
+    generation = int(st.session_state.get("ex5_generation", 0))
+    answer = st.session_state.get(f"ex5_q1_answer_{generation}", "")
+    justification = st.session_state.get(f"ex5_q1_justification_{generation}", "")
+
+    if not str(answer).strip() or not str(justification).strip():
+        st.session_state["ex5_q1_feedback"] = "empty"
+        return
+
+    if _ex5_is_mixture(answer) and _ex5_q1_justification_ok(justification):
+        st.session_state["ex5_q1_correct"] = True
+        st.session_state["ex5_q1_feedback"] = "correct"
+    else:
+        st.session_state["ex5_q1_correct"] = False
+        st.session_state["ex5_q1_errors"] = int(st.session_state.get("ex5_q1_errors", 0)) + 1
+        st.session_state["ex5_q1_feedback"] = "wrong"
+
+
+def _ex5_validate_q2():
+    generation = int(st.session_state.get("ex5_generation", 0))
+    lucas = st.session_state.get(f"ex5_q2_lucas_{generation}", "")
+    ines = st.session_state.get(f"ex5_q2_ines_{generation}", "")
+
+    if not str(lucas).strip() or not str(ines).strip():
+        st.session_state["ex5_q2_feedback"] = "empty"
+        return
+
+    if _ex5_is_pure(lucas) and _ex5_is_mixture(ines):
+        st.session_state["ex5_q2_correct"] = True
+        st.session_state["ex5_q2_feedback"] = "correct"
+    else:
+        st.session_state["ex5_q2_correct"] = False
+        st.session_state["ex5_q2_errors"] = int(st.session_state.get("ex5_q2_errors", 0)) + 1
+        st.session_state["ex5_q2_feedback"] = "wrong"
+
+
+def _ex5_validate_q3():
+    generation = int(st.session_state.get("ex5_generation", 0))
+    student_answer = _ex5_normalize(
+        st.session_state.get(f"ex5_q3_student_{generation}", "")
+    )
+    justification = st.session_state.get(f"ex5_q3_justification_{generation}", "")
+
+    if not student_answer or not str(justification).strip():
+        st.session_state["ex5_q3_feedback"] = "empty"
+        return
+
+    if student_answer == "ines" and _ex5_q3_justification_ok(justification):
+        st.session_state["ex5_q3_correct"] = True
+        st.session_state["ex5_q3_feedback"] = "correct"
+    else:
+        st.session_state["ex5_q3_correct"] = False
+        st.session_state["ex5_q3_errors"] = int(st.session_state.get("ex5_q3_errors", 0)) + 1
+        st.session_state["ex5_q3_feedback"] = "wrong"
+
+
+def _ex5_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    generation = int(st.session_state.get("ex5_generation", 0))
+
+    touched = 0
+    if (
+        str(st.session_state.get(f"ex5_q1_answer_{generation}", "")).strip()
+        or str(st.session_state.get(f"ex5_q1_justification_{generation}", "")).strip()
+    ):
+        touched += 1
+
+    if (
+        str(st.session_state.get(f"ex5_q2_lucas_{generation}", "")).strip()
+        or str(st.session_state.get(f"ex5_q2_ines_{generation}", "")).strip()
+    ):
+        touched += 1
+
+    if (
+        str(st.session_state.get(f"ex5_q3_student_{generation}", "")).strip()
+        or str(st.session_state.get(f"ex5_q3_justification_{generation}", "")).strip()
+    ):
+        touched += 1
+
+    if touched == 0:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    total_errors = sum(
+        int(st.session_state.get(key, 0))
+        for key in ("ex5_q1_errors", "ex5_q2_errors", "ex5_q3_errors")
+    )
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        row for row in rows
+        if row.get("student_id") == student.get("id")
+        and row.get("resource_id") == "exercise5_seawater_mixture"
+        and row.get("activity_kind") == "training"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise5_seawater_mixture",
+        "resource_label": PILOT_CONTENTS["exercise5_seawater_mixture"]["label"],
+        "chapter": PILOT_CONTENTS["exercise5_seawater_mixture"]["chapter"],
+        "score_percent": None,
+        "completed_items": touched,
+        "total_items": 3,
+        "errors": total_errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise5_seawater_mixture():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex5_"):
+            st.session_state.pop(key, None)
+
+
+def _ex5_start_new_attempt():
+    _ex5_record_restart_if_needed()
+    generation = int(st.session_state.get("ex5_generation", 0))
+    reset_exercise5_seawater_mixture()
+    st.session_state["ex5_generation"] = generation + 1
+
+
+def _ex5_feedback_box(question):
+    feedback = st.session_state.get(f"ex5_q{question}_feedback")
+    errors = int(st.session_state.get(f"ex5_q{question}_errors", 0))
+    correct = bool(st.session_state.get(f"ex5_q{question}_correct", False))
+
+    if correct:
+        if question == 1:
+            st.markdown(
+                '<div class="ex5-feedback ex5-ok">✅ Bonne réponse. '
+                'Ta réponse et ta justification sont cohérentes.</div>',
+                unsafe_allow_html=True,
+            )
+        elif question == 2:
+            st.markdown(
+                '<div class="ex5-feedback ex5-ok">✅ Bonne réponse pour les deux modèles.</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="ex5-feedback ex5-ok">✅ Bonne réponse. '
+                'Tu as correctement identifié le modèle de l’eau de mer.</div>',
+                unsafe_allow_html=True,
+            )
+        return
+
+    if feedback == "empty":
+        st.markdown(
+            '<div class="ex5-feedback ex5-hint">✏️ Complète toutes les parties de ta réponse avant de valider.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    if feedback != "wrong":
+        return
+
+    if question == 1:
+        if errors == 1:
+            msg = (
+                "💡 Réfléchis à ce que contient réellement l’eau de mer : "
+                "est-elle constituée d’une seule substance ?"
+            )
+        elif errors == 2:
+            msg = (
+                "📘 Rappel : un corps pur ne contient qu’une seule espèce chimique ; "
+                "un mélange en contient plusieurs."
+            )
+        else:
+            msg = (
+                "🔎 L’eau de mer contient de l’eau et des substances dissoutes, notamment des sels. "
+                "Elle correspond donc à un mélange."
+            )
+
+    elif question == 2:
+        if errors == 1:
+            msg = (
+                "💡 Observe uniquement le nombre de sortes de particules représentées "
+                "dans chacun des deux béchers."
+            )
+        elif errors == 2:
+            msg = (
+                "📘 Rappel : une seule sorte de particules correspond à un corps pur ; "
+                "plusieurs sortes correspondent à un mélange."
+            )
+        else:
+            msg = (
+                "🔎 Dans le modèle de Lucas, une seule sorte de particules est représentée : "
+                "c’est un corps pur. Dans celui d’Inès, deux sortes sont représentées : "
+                "c’est un mélange."
+            )
+
+    else:
+        if errors == 1:
+            msg = (
+                "💡 Compare le modèle de l’élève choisi avec ce que tu as établi "
+                "dans les deux questions précédentes."
+            )
+        elif errors == 2:
+            msg = (
+                "📘 Pour représenter un mélange, le modèle doit montrer plusieurs sortes de particules."
+            )
+        else:
+            msg = (
+                "🔎 C’est Inès qui a correctement représenté l’eau de mer : "
+                "son modèle comporte plusieurs sortes de particules."
+            )
+
+    css_class = "ex5-hint" if errors < 3 else "ex5-correction"
+    st.markdown(
+        f'<div class="ex5-feedback {css_class}">{msg}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def page_exercise5_seawater_mixture():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise5_seawater_mixture"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex5-box {
+            background:#f5f9ff;
+            border:1px solid #cfe0fb;
+            border-radius:16px;
+            padding:.9rem 1rem;
+            margin:.55rem 0 1rem 0;
+            color:#324a68;
+        }
+        .ex5-names {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:2rem;
+            margin:.35rem 7% .25rem 7%;
+        }
+        .ex5-name {
+            text-align:center;
+            font-weight:900;
+            font-size:1.25rem;
+            color:#ffffff;
+            padding:.48rem .7rem;
+            border-radius:999px;
+        }
+        .ex5-lucas {background:#139ed0;}
+        .ex5-ines {background:#8242b3;}
+        .ex5-feedback {
+            border-radius:12px;
+            padding:.72rem .88rem;
+            margin:.45rem 0 .8rem 0;
+            font-weight:650;
+            line-height:1.45;
+        }
+        .ex5-ok {
+            background:#eefaf2;
+            border:1px solid #cdebd6;
+            color:#24623a;
+        }
+        .ex5-hint {
+            background:#fff7e6;
+            border:1px solid #f4d69b;
+            color:#73541c;
+        }
+        .ex5-correction {
+            background:#fff1f1;
+            border:1px solid #f0c8c8;
+            color:#7b2c2c;
+        }
+        .ex5-question {
+            background:#f8fafc;
+            border:1px solid #e1e7f0;
+            border-radius:15px;
+            padding:.9rem 1rem .4rem 1rem;
+            margin:1rem 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Modéliser un mélange : l’eau de mer</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">🌊 Exercice 5 — Modéliser un mélange : l’eau de mer</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="ex5-box"><strong>Objectif :</strong> différencier un corps pur '
+        'et un mélange à l’échelle microscopique.<br><br>'
+        'Lucas et Inès cherchent à modéliser l’eau de mer. '
+        'Observe attentivement leurs deux propositions.</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="ex5-names">
+            <div class="ex5-name ex5-lucas">Lucas</div>
+            <div class="ex5-name ex5-ines">Inès</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    image_path = Path(EXERCISE5_SEAWATER_IMAGE)
+    if image_path.exists():
+        st.image(str(image_path), use_container_width=True)
+    else:
+        st.warning(
+            "Image manquante : ajoute « schéma melange eau de mer.png » dans "
+            "assets/chapitre_1/exercice 5/."
+        )
+
+    generation = int(st.session_state.get("ex5_generation", 0))
+
+    # ---------------- QUESTION 1 ----------------
+    st.markdown('<div class="ex5-question">', unsafe_allow_html=True)
+    st.markdown("### 1. L’eau de mer est-elle un mélange ou un corps pur ? Justifie.")
+
+    st.text_input(
+        "Ta réponse",
+        key=f"ex5_q1_answer_{generation}",
+        placeholder="Écris : corps pur ou mélange",
+        disabled=bool(st.session_state.get("ex5_q1_correct", False)),
+    )
+    st.text_area(
+        "Ta justification",
+        key=f"ex5_q1_justification_{generation}",
+        placeholder="Explique en une phrase pourquoi.",
+        height=90,
+        disabled=bool(st.session_state.get("ex5_q1_correct", False)),
+    )
+    st.button(
+        "Valider la question 1",
+        key="ex5_validate_q1",
+        use_container_width=True,
+        on_click=_ex5_validate_q1,
+        disabled=bool(st.session_state.get("ex5_q1_correct", False)),
+    )
+    _ex5_feedback_box(1)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ---------------- QUESTION 2 ----------------
+    st.markdown('<div class="ex5-question">', unsafe_allow_html=True)
+    st.markdown(
+        "### 2. Le modèle proposé par Lucas représente-t-il un corps pur ou un mélange ? "
+        "Et celui d’Inès ?"
+    )
+
+    c1, c2 = st.columns(2, gap="large")
+    with c1:
+        st.text_input(
+            "Modèle de Lucas",
+            key=f"ex5_q2_lucas_{generation}",
+            placeholder="Corps pur ou mélange ?",
+            disabled=bool(st.session_state.get("ex5_q2_correct", False)),
+        )
+    with c2:
+        st.text_input(
+            "Modèle d’Inès",
+            key=f"ex5_q2_ines_{generation}",
+            placeholder="Corps pur ou mélange ?",
+            disabled=bool(st.session_state.get("ex5_q2_correct", False)),
+        )
+
+    st.button(
+        "Valider la question 2",
+        key="ex5_validate_q2",
+        use_container_width=True,
+        on_click=_ex5_validate_q2,
+        disabled=bool(st.session_state.get("ex5_q2_correct", False)),
+    )
+    _ex5_feedback_box(2)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ---------------- QUESTION 3 ----------------
+    st.markdown('<div class="ex5-question">', unsafe_allow_html=True)
+    st.markdown(
+        "### 3. Lequel des deux élèves a correctement représenté l’eau de mer ? Explique pourquoi."
+    )
+
+    st.text_input(
+        "Nom de l’élève",
+        key=f"ex5_q3_student_{generation}",
+        placeholder="Lucas ou Inès",
+        disabled=bool(st.session_state.get("ex5_q3_correct", False)),
+    )
+    st.text_area(
+        "Ton explication",
+        key=f"ex5_q3_justification_{generation}",
+        placeholder="Explique ce que tu observes dans son modèle.",
+        height=90,
+        disabled=bool(st.session_state.get("ex5_q3_correct", False)),
+    )
+
+    st.button(
+        "Valider la question 3",
+        key="ex5_validate_q3",
+        use_container_width=True,
+        on_click=_ex5_validate_q3,
+        disabled=bool(st.session_state.get("ex5_q3_correct", False)),
+    )
+    _ex5_feedback_box(3)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ---------------- BILAN ----------------
+    completed = sum(
+        bool(st.session_state.get(f"ex5_q{i}_correct", False))
+        for i in (1, 2, 3)
+    )
+
+    st.markdown("### Ton avancement")
+    st.progress(completed / 3)
+    st.write(f"**{completed} / 3 questions réussies**")
+
+    c_reset, _ = st.columns([1.4, 4.6])
+    with c_reset:
+        if st.button(
+            "↻ Recommencer",
+            key="restart_ex5_seawater_mixture",
+            use_container_width=True,
+        ):
+            _ex5_start_new_attempt()
+            st.rerun()
+
+    if completed == 3:
+        st.success("🎉 Bravo ! Tu sais distinguer un corps pur d’un mélange à partir d’un modèle microscopique.")
+
+        student = st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type") == "student"
+            and student
+            and not st.session_state.get("ex5_result_saved", False)
+        ):
+            total_errors = sum(
+                int(st.session_state.get(key, 0))
+                for key in ("ex5_q1_errors", "ex5_q2_errors", "ex5_q3_errors")
+            )
+
+            score = round(100 * 3 / max(3, 3 + total_errors))
+
+            record_training_result(
+                student,
+                "exercise5_seawater_mixture",
+                score,
+                3,
+                3,
+                errors=total_errors,
+            )
+            st.session_state["ex5_result_saved"] = True
+
+
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
         if (
@@ -9030,6 +9613,8 @@ elif page == "exercise3_particle_models":
     page_exercise3_particle_models()
 elif page == "exercise4_oxygen_bottle":
     page_exercise4_oxygen_bottle()
+elif page == "exercise5_seawater_mixture":
+    page_exercise5_seawater_mixture()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
