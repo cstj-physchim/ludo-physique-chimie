@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_25_EXERCISE6_18WATER_4ALCOHOL_V45
+# VERSION_UI_2026_08_25_EXERCISE7_ALLOYS_V46
 import re
 import base64
 import json
@@ -173,6 +173,13 @@ PILOT_CONTENTS = {
         "chapter": "Chapitre 1 — Organisation de la matière",
         "order": 15,
         "description": "Raisonner sur l’organisation des molécules et la conservation de la masse lors d’un mélange.",
+        "resource_ready": True,
+    },
+    "exercise7_solid_mixtures_alloys": {
+        "label": "Exercice 7 — Les mélanges solides : les alliages",
+        "chapter": "Chapitre 1 — Organisation de la matière",
+        "order": 17,
+        "description": "Comprendre ce qu’est un alliage et distinguer insertion et substitution à l’échelle microscopique.",
         "resource_ready": True,
     },
     "exercise_states_matter": {
@@ -2037,6 +2044,7 @@ def tracked_exercise_ids():
         "exercise4_oxygen_bottle",
         "exercise5_seawater_mixture",
         "exercise6_water_alcohol_volume",
+        "exercise7_solid_mixtures_alloys",
         "exercise_states_matter",
     ]
 
@@ -3980,6 +3988,16 @@ def page_exercise_topics():
             "color": "card-purple",
             "page": "exercise6_water_alcohol_volume",
             "key": "start_ex6_water_alcohol_volume",
+        })
+
+    if resource_is_available_for_current_user("exercise7_solid_mixtures_alloys"):
+        exercises.append({
+            "icon": "🔑",
+            "title": "Exercice 7 — Les mélanges solides : les alliages",
+            "description": "Découvre le laiton et l’acier puis distingue alliage d’insertion et alliage de substitution.",
+            "color": "card-green",
+            "page": "exercise7_solid_mixtures_alloys",
+            "key": "start_ex7_solid_mixtures_alloys",
         })
 
     if states_matter_available_for_current_user():
@@ -8605,6 +8623,1026 @@ def page_exercise6_water_alcohol_volume():
             st.session_state["ex6_result_saved"]=True
 
 
+
+# ============================================================
+# EXERCICE 7 — LES MÉLANGES SOLIDES : LES ALLIAGES
+# ============================================================
+
+EXERCISE7_BRASS_IMAGE = "assets/chapitre_1/exercice 7/clé laiton.png"
+
+
+def _ex7_normalize(value):
+    value = str(value or "").strip().lower()
+    replacements = {
+        "é": "e", "è": "e", "ê": "e", "ë": "e",
+        "à": "a", "â": "a", "ä": "a",
+        "î": "i", "ï": "i",
+        "ô": "o", "ö": "o",
+        "ù": "u", "û": "u", "ü": "u",
+        "ç": "c", "’": "'", "œ": "oe",
+    }
+    for old, new in replacements.items():
+        value = value.replace(old, new)
+    value = re.sub(r"[^a-z0-9' ]+", " ", value)
+    return " ".join(value.split())
+
+
+def _ex7_clear_feedback(question):
+    st.session_state.pop(f"ex7_q{question}_feedback", None)
+
+
+def _ex7_q1_ok(value):
+    v = _ex7_normalize(value)
+    has_solid = "solide" in v
+    has_mix = "melange" in v or "plusieurs" in v
+    has_metal = "metal" in v or "metaux" in v or "element" in v
+    return has_solid and has_mix and has_metal
+
+
+def _ex7_q2_ok(answer, justification):
+    a = _ex7_normalize(answer)
+    j = _ex7_normalize(justification)
+    mixture = "melange" in a
+    mentions_metals = sum(
+        term in j for term in ["cuivre", "zinc", "nickel"]
+    ) >= 2
+    several = any(x in j for x in [
+        "plusieurs metaux", "trois metaux", "plusieurs elements",
+        "plusieurs constituants", "differents metaux",
+    ])
+    return mixture and (mentions_metals or several)
+
+
+def _ex7_q3_ok(value):
+    v = _ex7_normalize(value)
+    insertion = any(x in v for x in [
+        "insertion", "s insere", "s inserent", "dans les espaces",
+        "dans les interstices", "entre les atomes", "entre les gros atomes",
+    ])
+    substitution = any(x in v for x in [
+        "substitution", "remplace", "remplacent", "prend la place",
+        "prennent la place", "a la place",
+    ])
+    return insertion and substitution
+
+
+def _ex7_q4_ok(brass, steel):
+    b = _ex7_normalize(brass)
+    s = _ex7_normalize(steel)
+    brass_ok = "substitution" in b
+    steel_ok = "insertion" in s
+    return brass_ok and steel_ok
+
+
+def _ex7_validate_q1():
+    generation = int(st.session_state.get("ex7_generation", 0))
+    value = st.session_state.get(f"ex7_q1_{generation}", "")
+    if not str(value).strip():
+        st.session_state["ex7_q1_feedback"] = "empty"
+        return
+    if _ex7_q1_ok(value):
+        st.session_state["ex7_q1_correct"] = True
+        st.session_state["ex7_q1_feedback"] = "correct"
+    else:
+        st.session_state["ex7_q1_correct"] = False
+        st.session_state["ex7_q1_errors"] = int(st.session_state.get("ex7_q1_errors", 0)) + 1
+        st.session_state["ex7_q1_feedback"] = "wrong"
+
+
+def _ex7_validate_q2():
+    generation = int(st.session_state.get("ex7_generation", 0))
+    answer = st.session_state.get(f"ex7_q2_answer_{generation}", "")
+    justification = st.session_state.get(f"ex7_q2_justification_{generation}", "")
+    if not str(answer).strip() or not str(justification).strip():
+        st.session_state["ex7_q2_feedback"] = "empty"
+        return
+    if _ex7_q2_ok(answer, justification):
+        st.session_state["ex7_q2_correct"] = True
+        st.session_state["ex7_q2_feedback"] = "correct"
+    else:
+        st.session_state["ex7_q2_correct"] = False
+        st.session_state["ex7_q2_errors"] = int(st.session_state.get("ex7_q2_errors", 0)) + 1
+        st.session_state["ex7_q2_feedback"] = "wrong"
+
+
+def _ex7_validate_q3():
+    generation = int(st.session_state.get("ex7_generation", 0))
+    value = st.session_state.get(f"ex7_q3_{generation}", "")
+    if not str(value).strip():
+        st.session_state["ex7_q3_feedback"] = "empty"
+        return
+    if _ex7_q3_ok(value):
+        st.session_state["ex7_q3_correct"] = True
+        st.session_state["ex7_q3_feedback"] = "correct"
+    else:
+        st.session_state["ex7_q3_correct"] = False
+        st.session_state["ex7_q3_errors"] = int(st.session_state.get("ex7_q3_errors", 0)) + 1
+        st.session_state["ex7_q3_feedback"] = "wrong"
+
+
+def _ex7_validate_q4():
+    generation = int(st.session_state.get("ex7_generation", 0))
+    brass = st.session_state.get(f"ex7_q4_brass_{generation}", "")
+    steel = st.session_state.get(f"ex7_q4_steel_{generation}", "")
+    if not str(brass).strip() or not str(steel).strip():
+        st.session_state["ex7_q4_feedback"] = "empty"
+        return
+    if _ex7_q4_ok(brass, steel):
+        st.session_state["ex7_q4_correct"] = True
+        st.session_state["ex7_q4_feedback"] = "correct"
+    else:
+        st.session_state["ex7_q4_correct"] = False
+        st.session_state["ex7_q4_errors"] = int(st.session_state.get("ex7_q4_errors", 0)) + 1
+        st.session_state["ex7_q4_feedback"] = "wrong"
+
+
+def _ex7_feedback(question):
+    feedback = st.session_state.get(f"ex7_q{question}_feedback")
+    errors = int(st.session_state.get(f"ex7_q{question}_errors", 0))
+    correct = bool(st.session_state.get(f"ex7_q{question}_correct", False))
+
+    if correct:
+        messages = {
+            1: "✅ Bonne réponse ! Tu as identifié les éléments essentiels de la définition d’un alliage.",
+            2: "✅ Bonne réponse ! Le laiton est bien un mélange solide de plusieurs métaux.",
+            3: "✅ Bonne réponse ! Tu distingues correctement insertion et substitution.",
+            4: "✅ Bonne réponse ! Le laiton est un alliage de substitution et l’acier un alliage d’insertion.",
+        }
+        st.markdown(
+            f'<div class="ex7-feedback ex7-ok">{messages[question]}</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    if feedback == "empty":
+        st.markdown(
+            '<div class="ex7-feedback ex7-hint">✏️ Complète ta réponse avant de valider.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    if feedback != "wrong":
+        return
+
+    if question == 1:
+        if errors == 1:
+            msg = "💡 Relis le document : repère l’état physique du matériau et le nombre de constituants."
+        elif errors == 2:
+            msg = "📘 Un alliage n’est pas un métal pur : il contient plusieurs éléments et reste solide."
+        else:
+            msg = "🔎 Un alliage est un mélange homogène solide contenant plusieurs métaux, ou au moins un métal associé à un autre élément."
+
+    elif question == 2:
+        if errors == 1:
+            msg = "💡 Observe la composition indiquée pour le laiton. Combien de métaux différents sont cités ?"
+        elif errors == 2:
+            msg = "📘 Un corps pur ne contient qu’une seule espèce chimique ; ici plusieurs métaux sont présents."
+        else:
+            msg = "🔎 Le laiton contient du cuivre, du zinc et du nickel : c’est donc un mélange."
+
+    elif question == 3:
+        if errors == 1:
+            msg = "💡 Compare la position du nouvel atome dans les deux modèles : est-il entre les atomes ou à la place de l’un d’eux ?"
+        elif errors == 2:
+            msg = "📘 Dans un cas, de petits atomes occupent des espaces du réseau ; dans l’autre, certains atomes du réseau sont remplacés."
+        else:
+            msg = "🔎 Insertion : de petits atomes s’insèrent dans les espaces du cristal. Substitution : des atomes remplacent certains atomes du métal principal."
+
+    else:
+        if errors == 1:
+            msg = "💡 Pour l’acier, pense aux petits atomes de carbone. Pour le laiton, compare la taille des différents atomes."
+        elif errors == 2:
+            msg = "📘 Acier : de petits atomes de carbone se placent dans les espaces. Laiton : des atomes métalliques de taille voisine prennent la place d’autres atomes."
+        else:
+            msg = "🔎 L’acier est un alliage d’insertion ; le laiton est un alliage de substitution."
+
+    css = "ex7-hint" if errors < 3 else "ex7-correction"
+    st.markdown(
+        f'<div class="ex7-feedback {css}">{msg}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ------------------------------------------------------------
+# Schémas statiques : insertion / substitution
+# ------------------------------------------------------------
+
+EX7_STATIC_MODELS_HTML = r"""
+<div class="alloy-models">
+  <div class="alloy-card">
+    <div class="alloy-title">Modèle A</div>
+    <div class="lattice insertion">
+      <span class="big b1"></span><span class="big b2"></span><span class="big b3"></span>
+      <span class="big b4"></span><span class="big b5"></span><span class="big b6"></span>
+      <span class="big b7"></span><span class="big b8"></span><span class="big b9"></span>
+      <span class="small s1"></span><span class="small s2"></span><span class="small s3"></span>
+    </div>
+  </div>
+
+  <div class="alloy-card">
+    <div class="alloy-title">Modèle B</div>
+    <div class="lattice substitution">
+      <span class="big b1"></span><span class="big alt b2"></span><span class="big b3"></span>
+      <span class="big b4"></span><span class="big b5"></span><span class="big alt2 b6"></span>
+      <span class="big b7"></span><span class="big alt b8"></span><span class="big b9"></span>
+    </div>
+  </div>
+</div>
+"""
+
+
+# ------------------------------------------------------------
+# Module interactif : construire acier + laiton
+# ------------------------------------------------------------
+
+EX7_INTERACTIVE_HTML = r"""
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#17345f;background:#fff}
+.wrap{max-width:1120px;margin:auto;padding:8px 10px 14px}
+.intro{background:#f5f9ff;border:1px solid #cfe0fb;border-radius:14px;padding:11px 14px;margin-bottom:13px;line-height:1.45}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.panel{background:#f8fafc;border:1px solid #dce5f0;border-radius:16px;padding:14px}
+.panel h3{text-align:center;margin:0 0 5px;color:#17345f}
+.panel p{text-align:center;color:#64758a;font-size:12px;margin:0 0 10px}
+.model{position:relative;width:320px;height:300px;margin:0 auto 12px;border:1px solid #d7e1ec;border-radius:16px;background:#fff}
+.atom{position:absolute;border-radius:50%;box-shadow:0 2px 5px #0002}
+.iron,.copper{width:48px;height:48px;border:3px solid}
+.iron{background:#a6b5c4;border-color:#607385}
+.copper{background:#e98b4a;border-color:#9c4f1f}
+.zinc{width:48px;height:48px;background:#73c96e;border:3px solid #2b7c37}
+.nickel{width:48px;height:48px;background:#8d79d8;border:3px solid #55419d}
+.carbon{width:22px;height:22px;background:#2d3742;border:3px solid #111820}
+.fixed{pointer-events:none}
+.slot{position:absolute;width:52px;height:52px;border:2px dashed #b9c6d4;border-radius:50%;background:#f8fbff}
+.interstice{position:absolute;width:28px;height:28px;border:2px dashed #b9c6d4;border-radius:50%;background:#f8fbff}
+.tray{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;min-height:62px;padding:8px;border:1px solid #dbe4ee;border-radius:12px;background:#fff}
+.source{position:relative!important;left:auto!important;top:auto!important;cursor:grab;touch-action:none;user-select:none;flex:0 0 auto}
+.placed{display:none;z-index:30;cursor:grab;touch-action:none;user-select:none}
+.ghost{position:fixed!important;z-index:99999!important;pointer-events:none!important;transform:scale(1.06)}
+.controls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0 8px}
+button{border:1px solid #bfcde0;border-radius:11px;padding:9px 14px;font-weight:750;background:#fff;color:#17345f;cursor:pointer}
+button.primary{background:#1f6fd6;border-color:#1b61b9;color:#fff}
+.feedback{border-radius:12px;padding:10px 12px;font-weight:700;margin-top:8px;line-height:1.45}
+.neutral{background:#f7f9fc;border:1px solid #dfe6ef;color:#6e7c90}
+.good{background:#eaf8ef;border:1px solid #b8e2c4;color:#24623a}
+.hint{background:#fff8e8;border:1px solid #efd89c;color:#73541c}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.model{width:300px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="intro">
+  <strong>Construis les deux alliages.</strong>
+  Pour l’acier, place les petits atomes de carbone dans les espaces du réseau de fer.
+  Pour le laiton, place les atomes de zinc et de nickel sur les emplacements laissés libres dans le réseau de cuivre.
+</div>
+
+<div class="grid">
+
+  <div class="panel">
+    <h3>Acier — alliage d’insertion</h3>
+    <p>Réseau de fer + petits atomes de carbone</p>
+    <div class="model" id="steelModel">
+      <div class="interstice" style="left:90px;top:80px"></div>
+      <div class="interstice" style="left:190px;top:80px"></div>
+      <div class="interstice" style="left:140px;top:160px"></div>
+      <div class="interstice" style="left:240px;top:160px"></div>
+    </div>
+    <div class="tray" id="carbonTray"></div>
+  </div>
+
+  <div class="panel">
+    <h3>Laiton — alliage de substitution</h3>
+    <p>Réseau de cuivre + atomes de zinc et de nickel</p>
+    <div class="model" id="brassModel">
+      <div class="slot" style="left:80px;top:66px"></div>
+      <div class="slot" style="left:180px;top:66px"></div>
+      <div class="slot" style="left:130px;top:154px"></div>
+      <div class="slot" style="left:230px;top:154px"></div>
+    </div>
+    <div class="tray" id="brassTray"></div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button id="resetSteel">↻ Refaire l’acier</button>
+  <button id="resetBrass">↻ Refaire le laiton</button>
+  <button id="resetAll">↻ Tout recommencer</button>
+  <button class="primary" id="check">Vérifier mes modèles</button>
+</div>
+
+<div id="feedback" class="feedback neutral">
+  Construis les deux modèles puis vérifie.
+</div>
+
+</div>
+
+<script>
+(function(){
+  const NC=4, NB=4;
+  let generation=0,storageId="prototype",initialized=false,drag=null;
+
+  const steelFixed=[
+    [30,30],[110,30],[190,30],[270,30],
+    [30,110],[110,110],[190,110],[270,110],
+    [30,190],[110,190],[190,190],[270,190]
+  ];
+
+  const brassFixed=[
+    [30,30],[130,30],[230,30],
+    [30,118],[230,118],
+    [30,206],[130,206],[230,206]
+  ];
+
+  const steelTargets=[[90,80],[190,80],[140,160],[240,160]];
+  const brassTargets=[[80,66],[180,66],[130,154],[230,154]];
+
+  function fresh(){
+    return{
+      carbon:Array(NC).fill(null),
+      brass:Array(NB).fill(null),
+      errors:0,
+      success:false
+    };
+  }
+
+  let state=fresh();
+
+  function storageKey(){return "ludo_ex7_alloys_v1_"+storageId+"_"+String(generation)}
+  function save(){try{sessionStorage.setItem(storageKey(),JSON.stringify(state))}catch(e){}}
+  function load(){
+    try{
+      const raw=sessionStorage.getItem(storageKey());
+      if(!raw)return fresh();
+      const p=JSON.parse(raw);
+      return{
+        carbon:Array.from({length:NC},(_,i)=>p.carbon?.[i]??null),
+        brass:Array.from({length:NB},(_,i)=>p.brass?.[i]??null),
+        errors:Number(p.errors||0),
+        success:Boolean(p.success)
+      };
+    }catch(e){return fresh()}
+  }
+
+  function ready(){
+    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:componentReady",apiVersion:1},"*");
+  }
+  function height(){
+    window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setFrameHeight",height:document.documentElement.scrollHeight+8},"*");
+  }
+  function send(){
+    window.parent.postMessage({
+      isStreamlitMessage:true,
+      type:"streamlit:setComponentValue",
+      value:{
+        success:state.success,
+        errors:state.errors,
+        carbon_positions:state.carbon.filter(Boolean),
+        brass_positions:state.brass.filter(Boolean)
+      }
+    },"*");
+  }
+
+  function fixedAtom(cls,x,y){
+    const e=document.createElement("div");
+    e.className="atom "+cls+" fixed";
+    e.style.left=x+"px";e.style.top=y+"px";
+    return e;
+  }
+
+  function draggable(type,index,placed){
+    const e=document.createElement("div");
+    let cls="atom ";
+    if(type==="carbon")cls+="carbon ";
+    else cls+=(index<2?"zinc ":"nickel ");
+    cls+=(placed?"placed":"source");
+    e.className=cls;
+    e.dataset.type=type;
+    e.dataset.index=String(index);
+    e.id=(placed?"placed-":"source-")+type+"-"+index;
+    e.addEventListener("pointerdown",startDrag);
+    return e;
+  }
+
+  function source(type,i){return document.getElementById("source-"+type+"-"+i)}
+  function placed(type,i){return document.getElementById("placed-"+type+"-"+i)}
+
+  function build(){
+    const steel=document.getElementById("steelModel");
+    const brass=document.getElementById("brassModel");
+    const carbonTray=document.getElementById("carbonTray");
+    const brassTray=document.getElementById("brassTray");
+
+    steel.querySelectorAll(".atom").forEach(e=>e.remove());
+    brass.querySelectorAll(".atom").forEach(e=>e.remove());
+    carbonTray.innerHTML="";
+    brassTray.innerHTML="";
+
+    steelFixed.forEach(p=>steel.appendChild(fixedAtom("iron",p[0],p[1])));
+    brassFixed.forEach(p=>brass.appendChild(fixedAtom("copper",p[0],p[1])));
+
+    for(let i=0;i<NC;i++){
+      carbonTray.appendChild(draggable("carbon",i,false));
+      steel.appendChild(draggable("carbon",i,true));
+    }
+    for(let i=0;i<NB;i++){
+      brassTray.appendChild(draggable("brass",i,false));
+      brass.appendChild(draggable("brass",i,true));
+    }
+
+    renderAll();
+    renderFeedback();
+    setTimeout(height,40);
+  }
+
+  function renderOne(type,i){
+    const pos=state[type][i];
+    const s=source(type,i),p=placed(type,i);
+    if(pos){
+      s.style.visibility="hidden";
+      p.style.display="block";
+      p.style.left=pos.x+"px";p.style.top=pos.y+"px";
+    }else{
+      s.style.visibility="visible";
+      p.style.display="none";
+    }
+  }
+
+  function renderAll(){
+    for(let i=0;i<NC;i++)renderOne("carbon",i);
+    for(let i=0;i<NB;i++)renderOne("brass",i);
+  }
+
+  function startDrag(e){
+    e.preventDefault();
+    const el=e.currentTarget,rect=el.getBoundingClientRect();
+    const ghost=el.cloneNode(true);
+    ghost.removeAttribute("id");
+    ghost.classList.add("ghost");
+    ghost.style.left=rect.left+"px";
+    ghost.style.top=rect.top+"px";
+    document.body.appendChild(ghost);
+
+    drag={
+      type:el.dataset.type,
+      index:Number(el.dataset.index),
+      ghost,
+      pointerId:e.pointerId,
+      offsetX:e.clientX-rect.left,
+      offsetY:e.clientY-rect.top
+    };
+
+    document.addEventListener("pointermove",move,{passive:false});
+    document.addEventListener("pointerup",drop,{passive:false});
+    document.addEventListener("pointercancel",cancel,{passive:false});
+  }
+
+  function move(e){
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    e.preventDefault();
+    drag.ghost.style.left=(e.clientX-drag.offsetX)+"px";
+    drag.ghost.style.top=(e.clientY-drag.offsetY)+"px";
+  }
+
+  function cleanup(){
+    if(drag?.ghost?.parentNode)drag.ghost.remove();
+    document.removeEventListener("pointermove",move);
+    document.removeEventListener("pointerup",drop);
+    document.removeEventListener("pointercancel",cancel);
+  }
+
+  function cancel(){cleanup();drag=null}
+
+  function drop(e){
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    e.preventDefault();
+
+    const model=document.getElementById(drag.type==="carbon"?"steelModel":"brassModel");
+    const br=model.getBoundingClientRect();
+
+    const inside=e.clientX>=br.left&&e.clientX<=br.right&&e.clientY>=br.top&&e.clientY<=br.bottom;
+
+    if(inside){
+      const gr=drag.ghost.getBoundingClientRect();
+      const size=drag.type==="carbon"?22:48;
+      let x=gr.left-br.left,y=gr.top-br.top;
+
+      x=Math.max(2,Math.min(model.clientWidth-size-2,x));
+      y=Math.max(2,Math.min(model.clientHeight-size-2,y));
+
+      state[drag.type][drag.index]={x:Math.round(x),y:Math.round(y)};
+      state.success=false;
+      renderOne(drag.type,drag.index);
+      save();
+    }
+
+    cleanup();
+    drag=null;
+  }
+
+  function center(pos,type){
+    const s=type==="carbon"?22:48;
+    return{x:pos.x+s/2,y:pos.y+s/2};
+  }
+
+  function targetMatch(positions,type,targets,maxD){
+    if(positions.length!==targets.length)return false;
+    const remaining=targets.map((t,i)=>({x:t[0],y:t[1],i}));
+
+    for(const pos of positions){
+      const c=center(pos,type);
+      let best=-1,bestD=Infinity;
+
+      remaining.forEach((t,idx)=>{
+        const tx=t.x+(type==="carbon"?14:26);
+        const ty=t.y+(type==="carbon"?14:26);
+        const d=Math.hypot(c.x-tx,c.y-ty);
+        if(d<bestD){bestD=d;best=idx}
+      });
+
+      if(best<0||bestD>maxD)return false;
+      remaining.splice(best,1);
+    }
+    return remaining.length===0;
+  }
+
+  function validate(){
+    const c=state.carbon.filter(Boolean);
+    const b=state.brass.filter(Boolean);
+    state.success=false;
+
+    if(c.length<NC||b.length<NB){
+      state.errors++;
+      setFeedback("hint","💡 Place tous les atomes proposés dans les deux modèles.");
+      save();send();return;
+    }
+
+    const steelOk=targetMatch(c,"carbon",steelTargets,34);
+    const brassOk=targetMatch(b,"brass",brassTargets,38);
+
+    if(steelOk&&brassOk){
+      state.success=true;
+      setFeedback("good","✅ Les deux modèles sont cohérents : carbone dans les interstices pour l’acier, zinc/nickel à la place d’atomes du réseau pour le laiton.");
+    }else{
+      state.errors++;
+      if(state.errors===1){
+        setFeedback("hint","💡 Observe bien la différence entre « s’insérer dans un espace » et « prendre la place d’un atome ».");
+      }else if(state.errors===2){
+        setFeedback("hint","💡 Pour l’acier, les petits atomes ne doivent pas remplacer le fer. Pour le laiton, les nouveaux atomes doivent occuper des positions du réseau.");
+      }else{
+        setFeedback("hint","💡 Acier : place les petits carbones dans les quatre interstices. Laiton : place zinc et nickel sur les quatre emplacements laissés libres.");
+      }
+    }
+
+    save();send();
+  }
+
+  function setFeedback(kind,msg){
+    const e=document.getElementById("feedback");
+    e.className="feedback "+kind;e.textContent=msg;
+  }
+
+  function renderFeedback(){
+    if(state.success)setFeedback("good","✅ Modèles validés.");
+    else setFeedback("neutral","Construis les deux modèles puis vérifie.");
+  }
+
+  function resetType(type){
+    state[type]=Array(type==="carbon"?NC:NB).fill(null);
+    state.success=false;
+    renderAll();save();send();
+    setFeedback("neutral",type==="carbon"?"Modèle de l’acier remis à zéro.":"Modèle du laiton remis à zéro.");
+  }
+
+  function resetAll(){
+    state=fresh();
+    renderAll();save();send();
+    setFeedback("neutral","Les deux modèles ont été remis à zéro.");
+  }
+
+  document.getElementById("resetSteel").addEventListener("click",()=>resetType("carbon"));
+  document.getElementById("resetBrass").addEventListener("click",()=>resetType("brass"));
+  document.getElementById("resetAll").addEventListener("click",resetAll);
+  document.getElementById("check").addEventListener("click",validate);
+
+  window.addEventListener("message",event=>{
+    const d=event.data||{};
+    if(d.type==="streamlit:render"){
+      const args=d.args||{};
+      const ng=Number(args.generation||0),ns=String(args.storage_id||"prototype");
+      if(!initialized||ng!==generation||ns!==storageId){
+        generation=ng;storageId=ns;state=load();build();initialized=true;
+      }else height();
+    }
+  });
+
+  ready();
+  setTimeout(()=>{if(!initialized){generation=0;storageId="standalone";state=load();build();initialized=true}},250);
+})();
+</script>
+</body>
+</html>
+"""
+
+
+@st.cache_resource
+def _ex7_component_v1():
+    component_dir = Path(tempfile.gettempdir()) / "ludo_ex7_alloys_component_v1"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "index.html").write_text(EX7_INTERACTIVE_HTML, encoding="utf-8")
+    return components.declare_component(
+        "ex7_alloys_models_v1",
+        path=str(component_dir),
+    )
+
+
+def render_ex7_models(generation):
+    component = _ex7_component_v1()
+    student = st.session_state.get("app_student") or {}
+    storage_id = str(
+        student.get("id")
+        or st.session_state.get("teacher_id")
+        or "prototype"
+    )
+    return component(
+        generation=int(generation),
+        storage_id=storage_id,
+        key=f"ex7_alloys_v1_{generation}",
+        default={
+            "success": False,
+            "errors": 0,
+            "carbon_positions": [],
+            "brass_positions": [],
+        },
+    )
+
+
+def _ex7_record_restart_if_needed():
+    student = st.session_state.get("app_student")
+    if st.session_state.get("app_user_type") != "student" or not student:
+        return
+
+    generation = int(st.session_state.get("ex7_generation", 0))
+    touched = 0
+
+    keys = [
+        f"ex7_q1_{generation}",
+        f"ex7_q2_answer_{generation}",
+        f"ex7_q2_justification_{generation}",
+        f"ex7_q3_{generation}",
+        f"ex7_q4_brass_{generation}",
+        f"ex7_q4_steel_{generation}",
+    ]
+    if any(str(st.session_state.get(k, "")).strip() for k in keys):
+        touched = 1
+
+    model_state = st.session_state.get("ex7_model_state")
+    if isinstance(model_state, dict):
+        if model_state.get("carbon_positions") or model_state.get("brass_positions"):
+            touched = 1
+
+    if not touched:
+        return
+
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return
+
+    total_errors = sum(
+        int(st.session_state.get(f"ex7_q{i}_errors", 0))
+        for i in (1,2,3,4)
+    )
+    if isinstance(model_state, dict):
+        total_errors += int(model_state.get("errors", 0) or 0)
+
+    rows = get_activity_log(teacher_id)
+    previous = [
+        r for r in rows
+        if r.get("student_id") == student.get("id")
+        and r.get("resource_id") == "exercise7_solid_mixtures_alloys"
+        and r.get("activity_kind") == "training"
+    ]
+
+    rows.append({
+        "id": secrets.token_urlsafe(10),
+        "activity_kind": "training",
+        "status": "restarted",
+        "student_id": student.get("id"),
+        "first_name": student.get("first_name"),
+        "last_initial": student.get("last_initial"),
+        "class_name": student.get("class_name"),
+        "resource_id": "exercise7_solid_mixtures_alloys",
+        "resource_label": PILOT_CONTENTS["exercise7_solid_mixtures_alloys"]["label"],
+        "chapter": PILOT_CONTENTS["exercise7_solid_mixtures_alloys"]["chapter"],
+        "score_percent": None,
+        "completed_items": 0,
+        "total_items": 5,
+        "errors": total_errors,
+        "attempt_number": len(previous) + 1,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    })
+    save_activity_log(rows, teacher_id)
+
+
+def reset_exercise7_alloys():
+    for key in list(st.session_state.keys()):
+        if str(key).startswith("ex7_"):
+            st.session_state.pop(key, None)
+
+
+def _ex7_start_new_attempt():
+    _ex7_record_restart_if_needed()
+    generation = int(st.session_state.get("ex7_generation", 0))
+    reset_exercise7_alloys()
+    st.session_state["ex7_generation"] = generation + 1
+
+
+def page_exercise7_solid_mixtures_alloys():
+    hero()
+    back_button("exercise_topics")
+
+    if not resource_is_available_for_current_user("exercise7_solid_mixtures_alloys"):
+        st.warning("Cet exercice n'est pas encore ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .ex7-doc{
+            background:#f5f9ff;border:1px solid #cfe0fb;border-radius:16px;
+            padding:1rem 1.1rem;margin:.6rem 0 1rem;color:#314b69;
+            line-height:1.55;font-size:1.08rem;
+        }
+        .ex7-doc h3{margin:.1rem 0 .55rem;color:#173b70}
+        .ex7-question{
+            background:#f8fafc;border:1px solid #e1e7f0;border-radius:15px;
+            padding:1rem 1.1rem .55rem;margin:1rem 0;
+        }
+        .ex7-question h3{
+            font-size:1.25rem!important;line-height:1.45!important;margin-bottom:.8rem!important;
+        }
+        .ex7-feedback{
+            border-radius:12px;padding:.82rem 1rem;margin:.5rem 0 .9rem;
+            font-weight:700;line-height:1.45;font-size:1rem;
+        }
+        .ex7-ok{background:#eefaf2;border:1px solid #cdebd6;color:#24623a}
+        .ex7-hint{background:#fff7e6;border:1px solid #f4d69b;color:#73541c}
+        .ex7-correction{background:#fff1f1;border:1px solid #f0c8c8;color:#7b2c2c}
+        .alloy-models{
+            display:grid;grid-template-columns:1fr 1fr;gap:24px;
+            max-width:780px;margin:1rem auto;
+        }
+        .alloy-card{
+            border:1px solid #dbe5ef;border-radius:16px;background:#fff;
+            padding:12px;text-align:center;
+        }
+        .alloy-title{font-weight:900;margin-bottom:8px;color:#173b70}
+        .lattice{position:relative;width:240px;height:220px;margin:auto}
+        .lattice span{position:absolute;border-radius:50%}
+        .big{
+            width:54px;height:54px;background:#d58a50;border:3px solid #8c5127;
+        }
+        .big.alt{background:#79c96e;border-color:#2f7c39}
+        .big.alt2{background:#8b79d5;border-color:#54429a}
+        .small{
+            width:22px;height:22px;background:#303943;border:3px solid #111820;
+        }
+        .b1{left:20px;top:20px}.b2{left:92px;top:20px}.b3{left:164px;top:20px}
+        .b4{left:20px;top:92px}.b5{left:92px;top:92px}.b6{left:164px;top:92px}
+        .b7{left:20px;top:164px}.b8{left:92px;top:164px}.b9{left:164px;top:164px}
+        .s1{left:75px;top:76px}.s2{left:147px;top:76px}.s3{left:111px;top:148px}
+        div[data-testid="stTextInput"] input,
+        div[data-testid="stTextArea"] textarea{
+            font-size:1.12rem!important;line-height:1.5!important;
+        }
+        @media(max-width:800px){.alloy-models{grid-template-columns:1fr}}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › '
+        'Chapitre 1 › Les alliages</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">🔑 Exercice 7 — Les mélanges solides : les alliages</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="ex7-doc"><strong>Objectif :</strong> comprendre la structure microscopique '
+        'd’un mélange de solides.<br><br>'
+        'Après avoir étudié des mélanges liquides, on peut se demander si des solides peuvent '
+        'eux aussi former des mélanges. C’est le cas de nombreux métaux utilisés dans la vie quotidienne.</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Document avec photo
+    c_text, c_img = st.columns([1.8, 1], gap="large")
+    with c_text:
+        st.markdown(
+            """
+            <div class="ex7-doc">
+              <h3>Document 1 — Qu’est-ce qu’un alliage ?</h3>
+              Un <strong>alliage</strong> est un matériau solide constitué d’un
+              <strong>mélange homogène de plusieurs éléments</strong>.
+              Il contient au moins un métal.<br><br>
+              On distingue notamment :
+              <strong>les alliages d’insertion</strong> et
+              <strong>les alliages de substitution</strong>.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            """
+            <div class="ex7-doc">
+              <h3>Document 2 — Exemple : le laiton</h3>
+              Le laiton utilisé ici est présenté comme un alliage contenant
+              <strong>du cuivre, du zinc et du nickel</strong>.
+              Ces métaux possèdent des atomes de tailles assez proches :
+              on peut les modéliser comme un <strong>alliage de substitution</strong>.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with c_img:
+        image_path = Path(EXERCISE7_BRASS_IMAGE)
+        if image_path.exists():
+            st.image(str(image_path), caption="Exemple d’objet en laiton", use_container_width=True)
+        else:
+            st.warning(
+                "Image manquante : ajoute « clé laiton.png » dans "
+                "assets/chapitre_1/exercice 7/."
+            )
+
+    generation = int(st.session_state.get("ex7_generation", 0))
+
+    # Q1
+    st.markdown('<div class="ex7-question">', unsafe_allow_html=True)
+    st.markdown("### 1. Donne la définition d’un alliage.")
+    st.text_area(
+        "Ta réponse",
+        key=f"ex7_q1_{generation}",
+        height=100,
+        placeholder="Rédige une définition en une phrase.",
+        disabled=bool(st.session_state.get("ex7_q1_correct", False)),
+        on_change=_ex7_clear_feedback,args=(1,),
+    )
+    st.button(
+        "Valider la question 1",key="ex7_validate_q1",use_container_width=True,
+        on_click=_ex7_validate_q1,disabled=bool(st.session_state.get("ex7_q1_correct", False)),
+    )
+    _ex7_feedback(1)
+    st.markdown('</div>',unsafe_allow_html=True)
+
+    # Q2
+    st.markdown('<div class="ex7-question">', unsafe_allow_html=True)
+    st.markdown("### 2. Le laiton est-il un corps pur ou un mélange ? Justifie à l’aide des documents.")
+    st.text_input(
+        "Ta réponse",
+        key=f"ex7_q2_answer_{generation}",
+        placeholder="Corps pur ou mélange ?",
+        disabled=bool(st.session_state.get("ex7_q2_correct", False)),
+        on_change=_ex7_clear_feedback,args=(2,),
+    )
+    st.text_area(
+        "Ta justification",
+        key=f"ex7_q2_justification_{generation}",
+        height=95,
+        placeholder="Appuie-toi sur la composition du laiton.",
+        disabled=bool(st.session_state.get("ex7_q2_correct", False)),
+        on_change=_ex7_clear_feedback,args=(2,),
+    )
+    st.button(
+        "Valider la question 2",key="ex7_validate_q2",use_container_width=True,
+        on_click=_ex7_validate_q2,disabled=bool(st.session_state.get("ex7_q2_correct", False)),
+    )
+    _ex7_feedback(2)
+    st.markdown('</div>',unsafe_allow_html=True)
+
+    # Modèles statiques
+    st.markdown("### Document 3 — Deux organisations microscopiques possibles")
+    st.markdown(
+        '<div class="ex7-doc">Dans les deux modèles ci-dessous, les grosses pastilles représentent '
+        'les atomes du métal principal. Observe ce qui change lorsqu’un autre élément est ajouté.</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(EX7_STATIC_MODELS_HTML, unsafe_allow_html=True)
+
+    # Q3
+    st.markdown('<div class="ex7-question">', unsafe_allow_html=True)
+    st.markdown("### 3. Explique la différence entre un alliage d’insertion et un alliage de substitution.")
+    st.text_area(
+        "Ta réponse",
+        key=f"ex7_q3_{generation}",
+        height=115,
+        placeholder="Compare la position des nouveaux atomes dans les modèles A et B.",
+        disabled=bool(st.session_state.get("ex7_q3_correct", False)),
+        on_change=_ex7_clear_feedback,args=(3,),
+    )
+    st.button(
+        "Valider la question 3",key="ex7_validate_q3",use_container_width=True,
+        on_click=_ex7_validate_q3,disabled=bool(st.session_state.get("ex7_q3_correct", False)),
+    )
+    _ex7_feedback(3)
+    st.markdown('</div>',unsafe_allow_html=True)
+
+    # Q4
+    st.markdown('<div class="ex7-question">', unsafe_allow_html=True)
+    st.markdown("### 4. À quel type d’alliage appartiennent le laiton et l’acier ?")
+    c1,c2=st.columns(2,gap="large")
+    with c1:
+        st.text_input(
+            "Laiton",
+            key=f"ex7_q4_brass_{generation}",
+            placeholder="Insertion ou substitution ?",
+            disabled=bool(st.session_state.get("ex7_q4_correct", False)),
+            on_change=_ex7_clear_feedback,args=(4,),
+        )
+    with c2:
+        st.text_input(
+            "Acier",
+            key=f"ex7_q4_steel_{generation}",
+            placeholder="Insertion ou substitution ?",
+            disabled=bool(st.session_state.get("ex7_q4_correct", False)),
+            on_change=_ex7_clear_feedback,args=(4,),
+        )
+    st.button(
+        "Valider la question 4",key="ex7_validate_q4",use_container_width=True,
+        on_click=_ex7_validate_q4,disabled=bool(st.session_state.get("ex7_q4_correct", False)),
+    )
+    _ex7_feedback(4)
+    st.markdown('</div>',unsafe_allow_html=True)
+
+    # Construction interactive
+    st.markdown("### 5. Construis les deux modèles pour vérifier ta compréhension")
+    model_state = render_ex7_models(generation)
+    if isinstance(model_state, dict):
+        st.session_state["ex7_model_state"] = model_state
+        q5_ok = bool(model_state.get("success"))
+    else:
+        q5_ok = False
+
+    completed = (
+        int(bool(st.session_state.get("ex7_q1_correct", False)))
+        + int(bool(st.session_state.get("ex7_q2_correct", False)))
+        + int(bool(st.session_state.get("ex7_q3_correct", False)))
+        + int(bool(st.session_state.get("ex7_q4_correct", False)))
+        + int(q5_ok)
+    )
+
+    st.markdown("### Ton avancement")
+    st.progress(completed/5)
+    st.write(f"**{completed} / 5 parties réussies**")
+
+    c_reset,_=st.columns([1.4,4.6])
+    with c_reset:
+        if st.button("↻ Recommencer",key="restart_ex7",use_container_width=True):
+            _ex7_start_new_attempt()
+            st.rerun()
+
+    if completed==5:
+        st.success(
+            "🎉 Bravo ! Tu sais maintenant reconnaître un alliage et distinguer insertion et substitution."
+        )
+
+        student=st.session_state.get("app_student")
+        if (
+            st.session_state.get("app_user_type")=="student"
+            and student
+            and not st.session_state.get("ex7_result_saved",False)
+        ):
+            model_errors = int(model_state.get("errors",0) or 0) if isinstance(model_state,dict) else 0
+            total_errors = sum(
+                int(st.session_state.get(f"ex7_q{i}_errors",0))
+                for i in (1,2,3,4)
+            ) + model_errors
+
+            score = round(100*5/max(5,5+total_errors))
+            record_training_result(
+                student,
+                "exercise7_solid_mixtures_alloys",
+                score,
+                5,
+                5,
+                errors=total_errors,
+            )
+            st.session_state["ex7_result_saved"]=True
+
+
 def reset_states_matter_training():
     for key in list(st.session_state.keys()):
         if (
@@ -10888,6 +11926,8 @@ elif page == "exercise5_seawater_mixture":
     page_exercise5_seawater_mixture()
 elif page == "exercise6_water_alcohol_volume":
     page_exercise6_water_alcohol_volume()
+elif page == "exercise7_solid_mixtures_alloys":
+    page_exercise7_solid_mixtures_alloys()
 elif page == "exercise_states_matter":
     page_states_matter_training()
 elif page == "free_theme":
