@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V74_LEFT_PANEL_ON_TRAINING_AND_CHALLENGE
+# VERSION_UI_2026_08_27_V75_TEACHER_HERO_ILLUSTRATION_COMPACT_FOOTER
 import re
 import base64
 import json
@@ -989,31 +989,58 @@ st.markdown(
        Le bandeau gauche reste inchangé.
        ============================================================ */
 
-    .teacher-dashboard-hero {
+    .st-key-teacher_dashboard_hero_shell {
         position: relative;
         overflow: hidden;
         min-height: 132px;
         margin: .15rem 0 1.05rem 0;
-        padding: 1.25rem 1.45rem;
+        padding: .35rem .55rem .35rem 1.15rem;
         border: 1px solid #e1e9f4;
         border-radius: 22px;
         background:
-            radial-gradient(circle at 88% 30%, rgba(66, 126, 255, .09), transparent 28%),
+            radial-gradient(circle at 88% 30%, rgba(66, 126, 255, .07), transparent 30%),
             linear-gradient(135deg, #ffffff 0%, #f8fbff 72%, #f2f7ff 100%);
         box-shadow: 0 10px 28px rgba(30, 62, 110, .07);
     }
 
-    .teacher-dashboard-hero::after {
-        content: "⚗️  🧪";
-        position: absolute;
-        right: 2.2rem;
-        bottom: .4rem;
-        font-size: 4.4rem;
-        line-height: 1;
-        opacity: .14;
-        filter: saturate(.8);
-        transform: rotate(-4deg);
-        pointer-events: none;
+    .teacher-dashboard-hero-copy {
+        padding: .7rem .2rem .7rem .15rem;
+    }
+
+    .st-key-teacher_dashboard_hero_image {
+        overflow: hidden;
+        border-radius: 18px;
+        min-height: 116px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .st-key-teacher_dashboard_hero_image div[data-testid="stImage"] {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .st-key-teacher_dashboard_hero_image div[data-testid="stImage"] img {
+        width: 100% !important;
+        height: 126px !important;
+        object-fit: cover !important;
+        object-position: center 52% !important;
+        display: block !important;
+        border-radius: 16px !important;
+        opacity: .92;
+        -webkit-mask-image: linear-gradient(to right, transparent 0%, black 22%, black 100%);
+        mask-image: linear-gradient(to right, transparent 0%, black 22%, black 100%);
+    }
+
+    .teacher-dashboard-illustration-fallback {
+        min-height: 110px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:1rem;
+        font-size:3.6rem;
+        opacity:.16;
     }
 
     .teacher-dashboard-eyebrow {
@@ -1201,14 +1228,18 @@ st.markdown(
     }
 
     .teacher-dashboard-sync {
-        margin-top: .9rem;
-        padding: .72rem .9rem;
-        border-radius: 13px;
+        margin-top: .75rem;
+        padding: .52rem .85rem;
+        border-radius: 11px;
         border: 1px solid #d8e7f8;
         background: #f3f8ff;
         color: #54708e;
         text-align: center;
-        font-size: .78rem;
+        font-size: .74rem;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     @media (max-width: 1050px) {
@@ -15300,23 +15331,61 @@ def teacher_left_panel(section):
 
 
 
+def teacher_dashboard_illustration():
+    """
+    Illustration décorative de l'espace professeur.
+    Déposer le fichier dans :
+        assets/illustration_professeur.png
+
+    Si l'image n'est pas encore présente, l'en-tête reste fonctionnel.
+    """
+    image_path = Path("assets/illustration_professeur.png")
+    if image_path.exists():
+        st.image(
+            str(image_path),
+            use_container_width=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="teacher-dashboard-illustration-fallback">
+                <span>⚗️</span>
+                <span>🧪</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def teacher_dashboard():
     teacher_name = current_teacher_name()
 
-    # En-tête moderne : même contenu fonctionnel, présentation plus légère.
-    st.markdown(
-        f"""
-        <div class="teacher-dashboard-hero">
-            <div class="teacher-dashboard-eyebrow">Espace de pilotage</div>
-            <div class="teacher-dashboard-title">Espace professeur — {html.escape(teacher_name)}</div>
-            <div class="teacher-dashboard-subtitle">
-                Bienvenue dans votre espace de pilotage. Gérez vos classes,
-                vos contenus et suivez les progrès de vos élèves.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # En-tête moderne avec illustration scientifique.
+    with st.container(key="teacher_dashboard_hero_shell"):
+        hero_text_col, hero_image_col = st.columns(
+            [1.65, 1.0],
+            gap="small",
+            vertical_alignment="center",
+        )
+
+        with hero_text_col:
+            st.markdown(
+                f"""
+                <div class="teacher-dashboard-hero-copy">
+                    <div class="teacher-dashboard-eyebrow">Espace de pilotage</div>
+                    <div class="teacher-dashboard-title">Espace professeur — {html.escape(teacher_name)}</div>
+                    <div class="teacher-dashboard-subtitle">
+                        Bienvenue dans votre espace de pilotage. Gérez vos classes,
+                        vos contenus et suivez les progrès de vos élèves.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with hero_image_col:
+            with st.container(key="teacher_dashboard_hero_image"):
+                teacher_dashboard_illustration()
 
     # Les données restent strictement celles du professeur connecté.
     classes = get_classes()
@@ -15440,7 +15509,11 @@ def teacher_dashboard():
                     )
     
     st.markdown(
-        '<div class="teacher-dashboard-sync">ⓘ Toutes les données sont synchronisées avec Upstash.</div>',
+        """
+        <div class="teacher-dashboard-sync">
+            ⓘ Données synchronisées avec Upstash · Ludothèque Physique-Chimie — Plateforme pédagogique de jeux et d’activités interactives
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
