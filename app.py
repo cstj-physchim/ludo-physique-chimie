@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V65_LEFT_PANEL_STEP5_FAST_COMPACT
+# VERSION_UI_2026_08_27_V66_VIRGINIE_TEACHER_SPACE
 import re
 import base64
 import json
@@ -121,14 +121,38 @@ def current_teacher_name():
 
 
 def content_pilot_enabled_for_teacher(teacher_id=None, teacher_name=None):
-    """Limite le prototype de pilotage des contenus au compte de Christophe."""
-    teacher_id = str(teacher_id or st.session_state.get("teacher_id", "")).strip().lower()
-    teacher_name = str(teacher_name or st.session_state.get("teacher_name", "")).strip().lower()
+    """
+    Active l'espace professeur complet pour Christophe et Virginie.
+
+    Les données restent séparées dans Upstash grâce aux clés :
+        ludo:teacher:<teacher_id>:...
+
+    Important :
+    - Christophe et Virginie disposent de la même interface ;
+    - chacun ne lit et n'écrit que ses propres classes, élèves, contenus,
+      préparations, défis, résultats et journaux d'activité ;
+    - Thierry n'est pas encore activé ici, conformément au déploiement progressif.
+    """
+    resolved_id = str(
+        teacher_id or st.session_state.get("teacher_id", "")
+    ).strip()
+
+    resolved_name = str(
+        teacher_name or st.session_state.get("teacher_name", "")
+    ).strip()
+
+    # Lorsqu'un élève est connecté, on connaît surtout le teacher_id.
+    # On retrouve donc le nom du professeur dans les comptes configurés.
+    if resolved_id and not resolved_name:
+        account = get_teacher_accounts().get(resolved_id, {})
+        resolved_name = str(account.get("name", ""))
+
+    identity = f"{resolved_id} {resolved_name}".strip().lower()
+
     return (
-        "christophe" in teacher_name
-        or "declerck" in teacher_name
-        or "christophe" in teacher_id
-        or "declerck" in teacher_id
+        "christophe" in identity
+        or "declerck" in identity
+        or "virginie" in identity
     )
 
 
@@ -14798,7 +14822,7 @@ def teacher_dashboard():
         f"""
         <div class="teacher-band">
             <div class="teacher-band-title">👨‍🏫 Espace professeur — {current_teacher_name()}</div>
-            <div>Gérez vos classes et élèves, vos défis et vos résultats.</div>
+            <div>Gérez vos classes et élèves, vos contenus, vos préparations, vos défis et vos résultats.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -15381,7 +15405,7 @@ def teacher_contents():
     teacher_header("Contenus")
 
     if not content_pilot_enabled_for_teacher():
-        st.info("Le pilotage des contenus est actuellement en phase de test sur un seul compte professeur.")
+        st.info("Le pilotage des contenus n’est pas encore activé pour ce compte professeur.")
         return
 
     classes = get_classes()
@@ -15735,7 +15759,7 @@ def teacher_tracking():
     teacher_header("Suivi des élèves")
 
     if not content_pilot_enabled_for_teacher():
-        st.info("Le suivi pédagogique est actuellement en phase de test sur un seul compte professeur.")
+        st.info("Le suivi pédagogique n’est pas encore activé pour ce compte professeur.")
         return
 
     st.markdown(
