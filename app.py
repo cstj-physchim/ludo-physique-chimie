@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V73_EXERCISE_BANK_MURLAB_START
+# VERSION_UI_2026_08_27_V74_LEFT_PANEL_ON_TRAINING_AND_CHALLENGE
 import re
 import base64
 import json
@@ -1215,6 +1215,19 @@ st.markdown(
         .teacher-dashboard-title { font-size: 1.6rem; max-width: 100%; }
         .teacher-dashboard-subtitle { max-width: 100%; }
         .teacher-dashboard-hero::after { opacity: .08; }
+    }
+
+    /* Pages générales ouvertes par un professeur : même implantation que l'espace prof. */
+    .st-key-teacher_context_shell_training,
+    .st-key-teacher_context_shell_challenge {
+        margin-top: -3.4rem !important;
+        padding-top: 0 !important;
+    }
+
+    .st-key-teacher_context_shell_training > div,
+    .st-key-teacher_context_shell_challenge > div {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
     }
 
     /* Remonte tout l'espace professeur pour récupérer le blanc inutile en haut. */
@@ -4380,7 +4393,7 @@ def states_matter_available_for_current_user():
     )
 
 
-def page_free_activity():
+def _page_free_activity_body():
     hero()
     back_button("home")
 
@@ -4433,6 +4446,18 @@ def page_free_activity():
                     use_container_width=True,
                     disabled=True,
                 )
+
+
+def page_free_activity():
+    if st.session_state.get("app_user_type") == "teacher":
+        render_teacher_page_with_left_panel(
+            "__training__",
+            _page_free_activity_body,
+        )
+        return
+
+    _page_free_activity_body()
+
 
 
 STATES_MATTER_QUESTIONS = [
@@ -14897,7 +14922,7 @@ def page_free_game():
 # DÉFI ÉLÈVE
 # ============================================================
 
-def page_challenge():
+def _page_challenge_body():
     hero()
     back_button("home")
 
@@ -15041,6 +15066,18 @@ def page_challenge():
     )
 
 
+def page_challenge():
+    if st.session_state.get("app_user_type") == "teacher":
+        render_teacher_page_with_left_panel(
+            "__challenge__",
+            _page_challenge_body,
+        )
+        return
+
+    _page_challenge_body()
+
+
+
 # ============================================================
 # CONNEXION PROFESSEUR
 # ============================================================
@@ -15088,6 +15125,44 @@ def teacher_logout_fast():
     clear_app_session()
 
 
+def render_teacher_page_with_left_panel(nav_section, content_renderer):
+    """
+    Affiche une page générale (Entraînement / Défi) avec le même bandeau gauche
+    que l'Espace professeur, uniquement quand un professeur est connecté.
+    L'affichage élève reste inchangé.
+    """
+    st.markdown(
+        """
+        <style>
+        .stMainBlockContainer,
+        [data-testid="stMainBlockContainer"],
+        .block-container {
+            max-width: none !important;
+            width: 100% !important;
+            padding-top: 0.2rem !important;
+            padding-left: 0.7rem !important;
+            padding-right: 0.9rem !important;
+            margin-top: 0 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.container(key=f"teacher_context_shell_{nav_section.strip('_')}"):
+        left_col, main_col = st.columns(
+            [1.18, 7.82],
+            gap="medium",
+            vertical_alignment="top",
+        )
+
+        with left_col:
+            teacher_left_panel(nav_section)
+
+        with main_col:
+            content_renderer()
+
+
 def teacher_left_panel(section):
     """
     Navigation principale commune à tous les professeurs activés.
@@ -15130,23 +15205,35 @@ def teacher_left_panel(section):
         # --------------------------------------------------------
         # Trois espaces principaux : même importance visuelle
         # --------------------------------------------------------
-        with st.container(key="teacher_primary_training"):
-            st.button(
-                "Entraînement",
-                key="teacher_left_training",
-                use_container_width=True,
-                on_click=set_teacher_page_fast,
-                args=("free_activity",),
+        if section == "__training__":
+            st.markdown(
+                '<div class="teacher-left-primary-active">Entraînement</div>',
+                unsafe_allow_html=True,
             )
+        else:
+            with st.container(key="teacher_primary_training"):
+                st.button(
+                    "Entraînement",
+                    key="teacher_left_training",
+                    use_container_width=True,
+                    on_click=set_teacher_page_fast,
+                    args=("free_activity",),
+                )
 
-        with st.container(key="teacher_primary_challenge"):
-            st.button(
-                "Défi",
-                key="teacher_left_challenge",
-                use_container_width=True,
-                on_click=set_teacher_page_fast,
-                args=("challenge",),
+        if section == "__challenge__":
+            st.markdown(
+                '<div class="teacher-left-primary-active">Défi</div>',
+                unsafe_allow_html=True,
             )
+        else:
+            with st.container(key="teacher_primary_challenge"):
+                st.button(
+                    "Défi",
+                    key="teacher_left_challenge",
+                    use_container_width=True,
+                    on_click=set_teacher_page_fast,
+                    args=("challenge",),
+                )
 
         if section == "dashboard":
             st.markdown(
