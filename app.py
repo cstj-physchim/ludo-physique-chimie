@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_SIDEBAR_REOPEN_FIX_V67
+# VERSION_UI_2026_08_27_STREAMLIT_EXPAND_SIDEBAR_FIX_V68
 import re
 import html
 import base64
@@ -66,6 +66,8 @@ st.markdown(
 
     [data-testid="stHeader"] > div {
         background: transparent !important;
+        overflow: visible !important;
+        visibility: visible !important;
     }
 
     [data-testid="stToolbar"] {
@@ -74,44 +76,82 @@ st.markdown(
 
     /*
        Bouton de réouverture de la barre latérale.
-       Les deux sélecteurs couvrent plusieurs versions de Streamlit.
+       Sur les versions récentes de Streamlit, le contrôle fermé utilise
+       data-testid="stExpandSidebarButton".
+       On garde aussi l'ancien collapsedControl en secours.
     */
-    [data-testid="collapsedControl"],
-    [data-testid="stSidebarCollapsedControl"] {
+    [data-testid="stExpandSidebarButton"],
+    [data-testid="collapsedControl"] {
         display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         position: fixed !important;
-        top: 0.7rem !important;
-        left: 0.7rem !important;
-        z-index: 1000000 !important;
-        width: 2.6rem !important;
-        height: 2.6rem !important;
+        top: 0.75rem !important;
+        left: 0.75rem !important;
+        z-index: 2147483000 !important;
+        width: 2.75rem !important;
+        height: 2.75rem !important;
+        min-width: 2.75rem !important;
+        min-height: 2.75rem !important;
         align-items: center !important;
         justify-content: center !important;
         border-radius: 12px !important;
         background: #ffffff !important;
         border: 1px solid #d8e1ef !important;
-        box-shadow: 0 6px 18px rgba(31, 55, 90, 0.16) !important;
+        box-shadow: 0 7px 20px rgba(31, 55, 90, 0.18) !important;
         pointer-events: auto !important;
     }
 
+    [data-testid="stExpandSidebarButton"] button,
+    [data-testid="stExpandSidebarButton"] [data-testid="stBaseButton-headerNoPadding"],
     [data-testid="collapsedControl"] button,
-    [data-testid="stSidebarCollapsedControl"] button {
+    [data-testid="collapsedControl"] [data-testid="stBaseButton-headerNoPadding"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         color: #123765 !important;
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         width: 100% !important;
         height: 100% !important;
+        min-height: 0 !important;
         padding: 0 !important;
+        align-items: center !important;
+        justify-content: center !important;
+        pointer-events: auto !important;
+    }
+
+    [data-testid="stExpandSidebarButton"] svg,
+    [data-testid="collapsedControl"] svg {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        color: #123765 !important;
+        fill: #123765 !important;
+        width: 1.45rem !important;
+        height: 1.45rem !important;
     }
 
     /*
-       Bouton interne de réduction de la sidebar :
-       on le garde bien visible dans le bandeau bleu.
+       Bouton interne de réduction de la sidebar.
+       Streamlit utilise stSidebarCollapseButton quand la barre est ouverte.
     */
     [data-testid="stSidebarCollapseButton"] {
         display: flex !important;
-        z-index: 1000000 !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        z-index: 2147483000 !important;
+        pointer-events: auto !important;
+    }
+
+    [data-testid="stSidebarCollapseButton"] button,
+    [data-testid="stSidebarCollapseButton"] [data-testid="stBaseButton-headerNoPadding"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
     }
 
     [data-testid="stDecoration"] {
