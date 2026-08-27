@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V77_ADAPTIVE_LEFT_PANEL_VERIFIED
+# VERSION_UI_2026_08_27_V78_TEACHER_CHALLENGE_SANDBOX
 import re
 import base64
 import json
@@ -1553,11 +1553,25 @@ def collab_teams_key(teacher_id, challenge_code):
     return f"ludo:teacher:{teacher_id}:challenge:{challenge_code}:teams"
 
 
+def _teacher_test_collab_key(teacher_id, challenge_code):
+    return f"_teacher_test_collab:{teacher_id}:{challenge_code}"
+
+
 def get_collab_teams(teacher_id, challenge_code):
+    if teacher_challenge_test_mode():
+        return st.session_state.setdefault(
+            _teacher_test_collab_key(teacher_id, challenge_code),
+            {},
+        )
     return redis_read_json(collab_teams_key(teacher_id, challenge_code), {})
 
 
 def save_collab_teams(teacher_id, challenge_code, teams):
+    if teacher_challenge_test_mode():
+        st.session_state[
+            _teacher_test_collab_key(teacher_id, challenge_code)
+        ] = teams
+        return
     redis_write_json(collab_teams_key(teacher_id, challenge_code), teams)
 
 
@@ -2785,11 +2799,30 @@ def format_short_datetime(value):
 # RÉSULTATS
 # ============================================================
 
+def teacher_challenge_test_mode():
+    """
+    Vrai uniquement lorsqu'un compte professeur teste un défi.
+    Dans ce mode, aucune participation élève, tentative ou résultat
+    ne doit être enregistré dans Upstash.
+    """
+    return st.session_state.get("app_user_type") == "teacher"
+
+
 def get_results():
     return redis_read_json(teacher_key("results"), [])
 
 
 def save_result(student, challenge, errors, elapsed):
+    # Sécurité centrale : un professeur peut jouer avec l'identité d'un élève
+    # pour tester le défi, mais rien n'est écrit dans ses résultats.
+    if teacher_challenge_test_mode():
+        return True, {
+            "test_mode": True,
+            "attempt": 0,
+            "errors": int(errors),
+            "time_seconds": int(elapsed),
+        }
+
     teacher_id = challenge.get("_teacher_id") or student.get("_teacher_id")
     results = redis_read_json(teacher_key("results", teacher_id), [])
 
@@ -2829,6 +2862,11 @@ def save_result(student, challenge, errors, elapsed):
 
 
 def attempts_used(student, challenge):
+    # Le professeur n'utilise jamais les tentatives réelles de l'élève
+    # lorsqu'il teste un défi.
+    if teacher_challenge_test_mode():
+        return 0
+
     teacher_id = challenge.get("_teacher_id") or student.get("_teacher_id")
     results = redis_read_json(teacher_key("results", teacher_id), [])
     return len([
@@ -2841,6 +2879,11 @@ def attempts_used(student, challenge):
 def save_collab_result(team, challenge):
     if team.get("result_saved"):
         return False
+
+    if teacher_challenge_test_mode():
+        team["result_saved"] = True
+        save_collab_team(team)
+        return True
 
     teacher_id = team["teacher_id"]
     results = redis_read_json(teacher_key("results", teacher_id), [])
@@ -3605,34 +3648,49 @@ def domino_game(level, suffix="free", challenge=None, student=None):
             game["saved"] = True
 
             if ok:
-                st.success(
-                    f"✅ Résultat enregistré — tentative "
-                    f"{result['attempt']} / {challenge['max_attempts']}."
-                )
+                if teacher_challenge_test_mode():
+                    st.success(
+                        "🧪 Test terminé : aucun résultat ni aucune tentative "
+                        "n'ont été enregistrés au nom de l'élève."
+                    )
+                else:
+                    st.success(
+                        f"✅ Résultat enregistré — tentative "
+                        f"{result['attempt']} / {challenge['max_attempts']}."
+                    )
             else:
                 st.warning(result)
 
         if challenge and student:
-            used = attempts_used(student, challenge)
-            remaining_attempts = max(
-                0,
-                int(challenge["max_attempts"]) - used,
-            )
-
-            if remaining_attempts > 0:
+            if teacher_challenge_test_mode():
                 if st.button(
-                    f"🔄 Rejouer le défi "
-                    f"({remaining_attempts} tentative(s) restante(s))",
+                    "🔄 Rejouer le test",
                     key=f"retry_challenge_{challenge['code']}",
                     use_container_width=True,
                 ):
                     init_game(level, suffix)
                     st.rerun()
             else:
-                st.info(
-                    "🏁 Toutes les tentatives autorisées "
-                    "pour ce défi ont été utilisées."
+                used = attempts_used(student, challenge)
+                remaining_attempts = max(
+                    0,
+                    int(challenge["max_attempts"]) - used,
                 )
+
+                if remaining_attempts > 0:
+                    if st.button(
+                        f"🔄 Rejouer le défi "
+                        f"({remaining_attempts} tentative(s) restante(s))",
+                        key=f"retry_challenge_{challenge['code']}",
+                        use_container_width=True,
+                    ):
+                        init_game(level, suffix)
+                        st.rerun()
+                else:
+                    st.info(
+                        "🏁 Toutes les tentatives autorisées "
+                        "pour ce défi ont été utilisées."
+                    )
 
             if st.button(
                 "🚪 Quitter le défi",
@@ -3842,7 +3900,13 @@ def collaborative_domino_fragment(student, challenge, team_code):
                     f"{departure['last_initial']}."
                 )
 
-        st.info("Le résultat de l'équipe a été envoyé à l'espace professeur.")
+        if teacher_challenge_test_mode():
+            st.info(
+                "🧪 Mode test professeur : cette équipe est temporaire et "
+                "aucun résultat n'a été enregistré dans Upstash."
+            )
+        else:
+            st.info("Le résultat de l'équipe a été envoyé à l'espace professeur.")
         return
 
     active_index = int(game["turn_index"]) % len(members)
@@ -15037,8 +15101,9 @@ def _page_challenge_body():
     if not student:
         if user_type == "teacher":
             st.info(
-                "Mode professeur : pour tester un défi comme un élève, "
-                "saisissez ponctuellement le code personnel d'un élève."
+                "🧪 Mode test professeur : saisissez ponctuellement le code personnel "
+                "d'un élève pour vérifier le défi. Aucune tentative, aucun résultat "
+                "et aucune participation ne seront enregistrés au nom de cet élève."
             )
 
             student_code = st.text_input(
@@ -15112,6 +15177,11 @@ def _page_challenge_body():
             ):
                 st.session_state.pop("challenge_student", None)
                 st.session_state.pop("active_challenge", None)
+                for sandbox_key in [
+                    key for key in list(st.session_state.keys())
+                    if str(key).startswith("_teacher_test_collab:")
+                ]:
+                    st.session_state.pop(sandbox_key, None)
                 st.rerun()
 
         return
