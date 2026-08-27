@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_PREP_CREATED_AT_FILTER_V64
+# VERSION_UI_2026_08_27_PREP_EXPORT_DELETE_V65
 import re
 import base64
 import json
@@ -15963,6 +15963,91 @@ def teacher_tracking():
                 use_container_width=True,
                 hide_index=True,
             )
+
+            # ------------------------------------------------------------
+            # Export CSV de la préparation sélectionnée
+            # ------------------------------------------------------------
+            export_rows = []
+            for row in prep_table:
+                export_rows.append({
+                    "Préparation": prep.get("name", ""),
+                    "Classe": prep.get("class_name", ""),
+                    "Chapitre": prep.get("chapter", ""),
+                    "Seuil bonus (%)": threshold,
+                    "Date de création": format_short_datetime(prep.get("created_at")),
+                    "Élève": row.get("Élève", ""),
+                    "État de la préparation": row.get("Préparation", ""),
+                    "Exercices faits": row.get("Exercices faits", ""),
+                    "Résultat": row.get("Résultat", ""),
+                    "Bonus": row.get("Bonus", ""),
+                })
+
+            export_df = pd.DataFrame(export_rows)
+            csv_bytes = export_df.to_csv(
+                index=False,
+                sep=";",
+            ).encode("utf-8-sig")
+
+            safe_prep_name = re.sub(
+                r"[^A-Za-z0-9_-]+",
+                "_",
+                str(prep.get("name", "preparation")).strip(),
+            ).strip("_") or "preparation"
+
+            safe_class_name = re.sub(
+                r"[^A-Za-z0-9_-]+",
+                "_",
+                str(prep.get("class_name", "classe")).strip(),
+            ).strip("_") or "classe"
+
+            action_export, action_delete = st.columns(2, gap="large")
+
+            with action_export:
+                st.download_button(
+                    "📥 Exporter le tableau",
+                    data=csv_bytes,
+                    file_name=f"{safe_prep_name}_{safe_class_name}_resultats.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key=f"download_prep_{prep.get('id', 'current')}",
+                )
+
+            # ------------------------------------------------------------
+            # Suppression protégée de la préparation
+            # ------------------------------------------------------------
+            prep_id = prep.get("id")
+            confirm_key = f"confirm_delete_prep_{prep_id}"
+
+            with action_delete:
+                with st.expander("🗑️ Supprimer la préparation"):
+                    st.warning(
+                        "Cette action supprime uniquement cette préparation. "
+                        "Les résultats et l'historique d'entraînement des élèves "
+                        "sont conservés."
+                    )
+                    confirmed = st.checkbox(
+                        "Je confirme la suppression de cette préparation.",
+                        key=confirm_key,
+                    )
+
+                    if st.button(
+                        "Supprimer définitivement",
+                        key=f"delete_prep_{prep_id}",
+                        use_container_width=True,
+                        disabled=not confirmed,
+                    ):
+                        updated_preparations = [
+                            item for item in preparations
+                            if item.get("id") != prep_id
+                        ]
+                        save_evaluation_preparations(updated_preparations)
+
+                        # Nettoyer la sélection devenue invalide avant rerun.
+                        st.session_state.pop("prep_tracking_select", None)
+                        st.session_state.pop(confirm_key, None)
+
+                        st.success("Préparation supprimée.")
+                        st.rerun()
 
 
 def teacher_results():
