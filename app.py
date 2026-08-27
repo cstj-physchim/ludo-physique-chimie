@@ -1,5 +1,6 @@
-# VERSION_UI_2026_08_27_PREP_EXPORT_DELETE_V65
+# VERSION_UI_2026_08_27_TEACHER_MODERN_DASHBOARD_V66
 import re
+import html
 import base64
 import json
 import math
@@ -744,6 +745,431 @@ st.markdown(
         text-align: center;
         margin-top: 0.15rem;
     }
+
+    /* ============================================================
+       ESPACE PROFESSEUR — INTERFACE MODERNE
+       ============================================================ */
+
+    /* Barre latérale sombre, proche de la maquette */
+    section[data-testid="stSidebar"] {
+        background:
+            radial-gradient(circle at 50% 92%, rgba(49, 103, 255, .22), transparent 34%),
+            linear-gradient(180deg, #06356f 0%, #042a5e 52%, #03244f 100%) !important;
+        border-right: 1px solid rgba(255,255,255,.08);
+    }
+
+    section[data-testid="stSidebar"] > div {
+        background: transparent !important;
+    }
+
+    section[data-testid="stSidebar"] * {
+        color: #f7fbff;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+        min-height: 2.8rem;
+        justify-content: flex-start;
+        text-align: left;
+        color: #edf5ff !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        box-shadow: none !important;
+        border-radius: 12px !important;
+        padding-left: .85rem !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
+        background: rgba(79, 118, 255, .24) !important;
+        border-color: rgba(180, 205, 255, .18) !important;
+        transform: none !important;
+    }
+
+    .teacher-side-logo {
+        padding: .7rem .55rem 1.15rem .55rem;
+        margin-bottom: .55rem;
+        border-bottom: 1px solid rgba(255,255,255,.11);
+    }
+
+    .teacher-side-logo-title {
+        font-size: 1.05rem;
+        line-height: 1.15;
+        font-weight: 900;
+        letter-spacing: -.02em;
+        color: #ffffff;
+    }
+
+    .teacher-side-logo-sub {
+        margin-top: .25rem;
+        color: #c9dcff;
+        font-size: .79rem;
+        font-weight: 650;
+    }
+
+    .teacher-side-current {
+        display: flex;
+        gap: .65rem;
+        align-items: center;
+        padding: .76rem .82rem;
+        margin: .18rem 0;
+        border-radius: 12px;
+        color: white;
+        font-weight: 800;
+        background: linear-gradient(135deg, #315cff 0%, #436eff 100%);
+        box-shadow: 0 8px 18px rgba(22, 74, 220, .28);
+    }
+
+    .teacher-side-account {
+        margin-top: 1rem;
+        padding: .8rem .75rem;
+        border-top: 1px solid rgba(255,255,255,.10);
+        color: #c9dcff;
+        font-size: .82rem;
+        line-height: 1.45;
+    }
+
+    /* En-tête léger plutôt que l'ancien bandeau sombre */
+    .teacher-modern-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .15rem 0 .8rem 0;
+        margin-bottom: .1rem;
+        border-bottom: 1px solid #e5ebf4;
+    }
+
+    .teacher-modern-breadcrumb {
+        color: #667993;
+        font-size: .9rem;
+        font-weight: 650;
+    }
+
+    .teacher-modern-account {
+        color: #18335f;
+        font-size: .86rem;
+        font-weight: 800;
+        background: #f3f6fc;
+        border: 1px solid #e0e7f2;
+        border-radius: 999px;
+        padding: .45rem .8rem;
+    }
+
+    /* Onglets façon boutons de navigation */
+    div[data-baseweb="tab-list"] {
+        gap: .65rem !important;
+        background: transparent !important;
+        border-bottom: 1px solid #e1e7f0;
+        padding-bottom: .45rem;
+    }
+
+    button[data-baseweb="tab"] {
+        height: 3rem !important;
+        border: 1px solid #d8e1ef !important;
+        border-radius: 12px !important;
+        padding: 0 1.1rem !important;
+        background: #ffffff !important;
+        font-weight: 800 !important;
+        color: #25415f !important;
+    }
+
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #315cff !important;
+        border-color: #315cff !important;
+        background: #f5f7ff !important;
+        box-shadow: 0 5px 14px rgba(49, 92, 255, .10);
+    }
+
+    div[data-baseweb="tab-highlight"] {
+        display: none !important;
+    }
+
+    .prep-page-intro {
+        margin: .65rem 0 1rem 0;
+    }
+
+    .prep-page-intro h2 {
+        margin: 0;
+        color: #102a56;
+        font-size: 2rem;
+        font-weight: 900;
+        letter-spacing: -.035em;
+    }
+
+    .prep-page-intro p {
+        color: #718096;
+        margin: .35rem 0 0 0;
+        font-size: .98rem;
+        line-height: 1.45;
+    }
+
+    /* Cartes de contrôle */
+    .prep-control-card,
+    .prep-select-card {
+        background: rgba(255,255,255,.96);
+        border: 1px solid #dfe6f1;
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(28, 56, 105, .07);
+        padding: 1rem 1.1rem;
+        margin-bottom: .6rem;
+    }
+
+    .prep-card-title {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        color: #142f5a;
+        font-size: 1.05rem;
+        font-weight: 900;
+        margin-bottom: .25rem;
+    }
+
+    .prep-card-sub {
+        color: #77879c;
+        font-size: .86rem;
+        margin-bottom: .55rem;
+    }
+
+    .prep-active-strip {
+        margin-top: .55rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: .65rem .8rem;
+        border-radius: 11px;
+        background: #edf9f2;
+        color: #16814b;
+        font-weight: 750;
+        font-size: .84rem;
+    }
+
+    .prep-active-date {
+        color: #708095;
+        font-weight: 600;
+    }
+
+    /* Cartes statistiques */
+    .prep-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .9rem;
+        margin: .9rem 0 1rem 0;
+    }
+
+    .prep-stat {
+        background: #ffffff;
+        border: 1px solid #e1e7f0;
+        border-radius: 18px;
+        padding: 1rem;
+        box-shadow: 0 7px 21px rgba(31, 55, 90, .06);
+        min-height: 106px;
+        display: flex;
+        align-items: center;
+        gap: .9rem;
+    }
+
+    .prep-stat-icon {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+        font-weight: 900;
+    }
+
+    .prep-stat-blue { background:#edf3ff; color:#2f67ed; }
+    .prep-stat-purple { background:#f2edff; color:#7556ec; }
+    .prep-stat-green { background:#eaf9f1; color:#00a05c; }
+    .prep-stat-gold { background:#fff5df; color:#e49a22; }
+
+    .prep-stat-value {
+        color: #102a56;
+        font-size: 1.55rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .prep-stat-label {
+        color: #27415f;
+        font-weight: 800;
+        font-size: .88rem;
+        margin-top: .2rem;
+    }
+
+    .prep-stat-sub {
+        color: #8592a5;
+        font-size: .76rem;
+        margin-top: .12rem;
+    }
+
+    /* Tableau personnalisé */
+    .prep-table-wrap {
+        overflow-x: auto;
+        margin-top: .45rem;
+        border: 1px solid #e0e6ef;
+        border-radius: 17px;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(31, 55, 90, .06);
+    }
+
+    .prep-modern-table {
+        width: 100%;
+        min-width: 860px;
+        border-collapse: collapse;
+        color: #243955;
+        font-size: .88rem;
+    }
+
+    .prep-modern-table th {
+        text-align: left;
+        padding: .78rem .85rem;
+        color: #53647c;
+        background: #f8fafd;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 850;
+        font-size: .79rem;
+    }
+
+    .prep-modern-table td {
+        padding: .67rem .85rem;
+        border-bottom: 1px solid #edf1f5;
+        vertical-align: middle;
+    }
+
+    .prep-modern-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .prep-student {
+        display: flex;
+        align-items: center;
+        gap: .62rem;
+        font-weight: 800;
+        color: #233958;
+    }
+
+    .prep-avatar {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #e9efff;
+        color: #3260dc;
+        font-size: .72rem;
+        font-weight: 900;
+    }
+
+    .prep-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .28rem;
+        padding: .28rem .55rem;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: .75rem;
+        white-space: nowrap;
+    }
+
+    .prep-badge-not { background:#fff0f2; color:#e4475f; }
+    .prep-badge-partial { background:#fff5e7; color:#df8618; }
+    .prep-badge-done { background:#eaf8ef; color:#229552; }
+
+    .prep-progress-cell {
+        display: grid;
+        grid-template-columns: 52px minmax(120px, 1fr);
+        align-items: center;
+        gap: .65rem;
+    }
+
+    .prep-progress-track {
+        height: 7px;
+        background: #e8ebf0;
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .prep-progress-fill {
+        height: 100%;
+        border-radius: 999px;
+    }
+
+    .prep-fill-zero { background:#d5dae2; }
+    .prep-fill-partial { background:#f6a623; }
+    .prep-fill-done { background:#18a85b; }
+
+    .prep-score {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 48px;
+        padding: .25rem .48rem;
+        border-radius: 999px;
+        font-weight: 900;
+        font-size: .75rem;
+    }
+
+    .prep-score-low { background:#fff0f2; color:#e33f58; }
+    .prep-score-mid { background:#fff5e5; color:#df8518; }
+    .prep-score-high { background:#eaf8ef; color:#229552; }
+
+    .prep-bonus {
+        color: #179a57;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .prep-muted {
+        color: #8794a6;
+    }
+
+    .prep-action-title {
+        margin: 1rem 0 .4rem 0;
+        color: #30445f;
+        font-weight: 800;
+        font-size: .83rem;
+    }
+
+    /* Expander de création plus proche d'une carte */
+    div[data-testid="stExpander"] {
+        border: 1px solid #dfe6f1 !important;
+        border-radius: 16px !important;
+        background: #ffffff !important;
+        box-shadow: 0 6px 18px rgba(31, 55, 90, .045);
+    }
+
+    /* Selectbox plus ample */
+    div[data-baseweb="select"] > div {
+        min-height: 3rem;
+        border-radius: 11px !important;
+        border-color: #d8e1ee !important;
+        background: #f9fbfe !important;
+    }
+
+    @media (max-width: 1100px) {
+        .prep-stat-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 720px) {
+        .prep-stat-grid {
+            grid-template-columns: 1fr;
+        }
+        .teacher-modern-topbar {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+        .prep-page-intro h2 {
+            font-size: 1.55rem;
+        }
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -14560,43 +14986,85 @@ def teacher_login():
 # ESPACE PROFESSEUR
 # ============================================================
 
+def teacher_sidebar_nav(section):
+    """Navigation persistante de l'espace professeur, inspirée de la maquette."""
+    section = section or "dashboard"
+
+    labels = [
+        ("dashboard", "⌂  Tableau de bord"),
+        ("classes_students", "👥  Classes et élèves"),
+        ("contents", "📚  Contenus"),
+        ("tracking", "📈  Suivi pédagogique"),
+        ("challenges", "🏆  Défis"),
+        ("results", "📊  Résultats"),
+    ]
+
+    with st.sidebar:
+        st.markdown(
+            """
+            <div class="teacher-side-logo">
+                <div class="teacher-side-logo-title">🧪 Ludothèque<br>Physique-Chimie</div>
+                <div class="teacher-side-logo-sub">Espace professeur</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        for target, label in labels:
+            if target == section:
+                st.markdown(
+                    f'<div class="teacher-side-current">{html.escape(label)}</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.button(
+                    label,
+                    key=f"teacher_side_{target}",
+                    use_container_width=True,
+                    on_click=set_teacher_section,
+                    args=(target,),
+                )
+
+        st.markdown(
+            f"""
+            <div class="teacher-side-account">
+                <strong>{html.escape(current_teacher_name())}</strong><br>
+                Compte professeur
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.button(
+            "🏠  Accueil de la Ludothèque",
+            key="teacher_side_home",
+            use_container_width=True,
+            on_click=set_page,
+            args=("home",),
+        )
+        st.button(
+            "↪  Déconnexion",
+            key="teacher_side_logout",
+            use_container_width=True,
+            on_click=logout_app,
+        )
+
+
 def teacher_header(title):
     st.markdown(
         f"""
-        <div class="teacher-band">
-            <div class="teacher-band-title">👨‍🏫 {current_teacher_name()} — {title}</div>
+        <div class="teacher-modern-topbar">
+            <div class="teacher-modern-breadcrumb">
+                ⌂ &nbsp;›&nbsp; Espace professeur &nbsp;›&nbsp; {html.escape(str(title))}
+            </div>
+            <div class="teacher-modern-account">
+                👨‍🏫 {html.escape(current_teacher_name())}
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns([1.4, 1.1, 4.5])
-
-    with c1:
-        st.button(
-            "← Tableau de bord",
-            use_container_width=True,
-            on_click=set_teacher_section,
-            args=("dashboard",),
-            key=f"teacher_back_dashboard_{title}",
-        )
-
-    with c2:
-        st.button(
-            "🏠 Accueil",
-            use_container_width=True,
-            on_click=set_page,
-            args=("home",),
-            key=f"teacher_home_{title}",
-        )
-
-    with c3:
-        st.button(
-            "Déconnexion",
-            use_container_width=False,
-            key=f"teacher_logout_{title}",
-            on_click=logout_app,
-        )
 
 
 def teacher_dashboard():
@@ -15622,12 +16090,13 @@ def teacher_tracking():
         return
 
     st.markdown(
-        '<div class="section-title">👀 Suivi des élèves</div>',
+        """
+        <div class="prep-page-intro">
+            <h2>Suivi pédagogique</h2>
+            <p>Suivez l'entraînement libre des élèves et leurs préparations volontaires aux évaluations.</p>
+        </div>
+        """,
         unsafe_allow_html=True,
-    )
-    st.caption(
-        "Ce tableau sert au suivi pédagogique de la Ludothèque. "
-        "Il distingue l'entraînement libre de la préparation volontaire d'une évaluation."
     )
 
     training_tab, evaluation_tab = st.tabs([
@@ -15781,106 +16250,172 @@ def teacher_tracking():
             st.info("Aucun élève ne correspond à ces filtres.")
 
     with evaluation_tab:
-        st.markdown("### Préparation des évaluations")
-        st.caption(
-            "Le professeur choisit les exercices qui constituent la préparation. "
-            "La Ludothèque indique ensuite l'avancement et une éventuelle éligibilité au bonus ; "
-            "le professeur reste seul décisionnaire."
+        st.markdown(
+            """
+            <div class="prep-page-intro">
+                <h2>Préparation des évaluations</h2>
+                <p>
+                    Choisissez les exercices qui constituent une préparation.
+                    La Ludothèque suit ensuite l'avancement, le résultat moyen
+                    et l'éligibilité éventuelle au bonus.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-        with st.expander("➕ Créer une préparation d'évaluation"):
-            prep_class = st.selectbox(
-                "Classe",
-                get_classes(),
-                key="prep_class",
+        # ========================================================
+        # ZONE HAUTE : création + préparation à consulter
+        # ========================================================
+        create_col, select_col = st.columns([1.05, 1], gap="large")
+
+        with create_col:
+            st.markdown(
+                """
+                <div class="prep-control-card">
+                    <div class="prep-card-title">🧾 Créer une préparation d'évaluation</div>
+                    <div class="prep-card-sub">
+                        Sélectionnez une classe, un chapitre, des exercices et un seuil indicatif.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-            prep_chapter = st.selectbox(
-                "Chapitre",
-                [
-                    chapter for chapter in PROGRESSION_CHAPTERS
-                    if chapter != "Autres contenus déjà prêts"
-                ],
-                key="prep_chapter",
-            )
+            with st.expander("＋ Paramétrer une nouvelle préparation"):
+                prep_class = st.selectbox(
+                    "Classe",
+                    get_classes(),
+                    key="prep_class",
+                )
 
-            eligible = {
-                info["label"]: cid
-                for cid, info in PILOT_CONTENTS.items()
-                if cid in tracked_exercise_ids()
-                and info.get("chapter") == prep_chapter
-            }
+                prep_chapter = st.selectbox(
+                    "Chapitre",
+                    [
+                        chapter for chapter in PROGRESSION_CHAPTERS
+                        if chapter != "Autres contenus déjà prêts"
+                    ],
+                    key="prep_chapter",
+                )
 
-            prep_name = st.text_input(
-                "Nom de la préparation",
-                placeholder="Ex. Évaluation — Chapitre 1",
-                key="prep_name",
-            )
+                eligible = {
+                    info["label"]: cid
+                    for cid, info in PILOT_CONTENTS.items()
+                    if cid in tracked_exercise_ids()
+                    and info.get("chapter") == prep_chapter
+                }
 
-            selected_labels = st.multiselect(
-                "Exercices à refaire",
-                list(eligible.keys()),
-                key="prep_exercises",
-            )
+                prep_name = st.text_input(
+                    "Nom de la préparation",
+                    placeholder="Ex. Interrogation 2",
+                    key="prep_name",
+                )
 
-            threshold = st.slider(
-                "Seuil indicatif pour « +1 possible »",
-                min_value=50,
-                max_value=100,
-                value=80,
-                step=5,
-                key="prep_threshold",
-            )
+                selected_labels = st.multiselect(
+                    "Exercices à refaire",
+                    list(eligible.keys()),
+                    key="prep_exercises",
+                )
 
-            if st.button(
-                "Créer la préparation",
-                type="primary",
-                use_container_width=True,
-                disabled=not prep_name.strip() or not selected_labels,
-            ):
-                preparations = get_evaluation_preparations()
-                preparations.append({
-                    "id": secrets.token_urlsafe(10),
-                    "name": prep_name.strip(),
-                    "class_name": prep_class,
-                    "chapter": prep_chapter,
-                    "resource_ids": [eligible[label] for label in selected_labels],
-                    "threshold": int(threshold),
-                    "active": True,
-                    "created_at": datetime.now().isoformat(timespec="seconds"),
-                })
-                save_evaluation_preparations(preparations)
-                st.success("Préparation créée.")
-                st.rerun()
+                threshold = st.slider(
+                    "Seuil indicatif pour « +1 possible »",
+                    min_value=50,
+                    max_value=100,
+                    value=80,
+                    step=5,
+                    key="prep_threshold",
+                )
+
+                if st.button(
+                    "＋ Créer la préparation",
+                    type="primary",
+                    use_container_width=True,
+                    disabled=not prep_name.strip() or not selected_labels,
+                ):
+                    preparations = get_evaluation_preparations()
+                    preparations.append({
+                        "id": secrets.token_urlsafe(10),
+                        "name": prep_name.strip(),
+                        "class_name": prep_class,
+                        "chapter": prep_chapter,
+                        "resource_ids": [eligible[label] for label in selected_labels],
+                        "threshold": int(threshold),
+                        "active": True,
+                        "created_at": datetime.now().isoformat(timespec="seconds"),
+                    })
+                    save_evaluation_preparations(preparations)
+                    st.success("Préparation créée.")
+                    st.rerun()
 
         preparations = get_evaluation_preparations()
-        if not preparations:
-            st.info("Aucune préparation d'évaluation n'est encore créée.")
-        else:
-            prep_labels = {
-                f"{p['name']} — {p['class_name']}": p["id"]
-                for p in preparations
-            }
-            selected_prep_label = st.selectbox(
-                "Préparation à consulter",
-                list(prep_labels.keys()),
-                key="prep_tracking_select",
-            )
-            prep = next(
-                p for p in preparations
-                if p["id"] == prep_labels[selected_prep_label]
+
+        with select_col:
+            st.markdown(
+                """
+                <div class="prep-select-card">
+                    <div class="prep-card-title">👁️ Préparation à consulter</div>
+                    <div class="prep-card-sub">
+                        Sélectionnez la préparation dont vous souhaitez suivre l'avancement.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
+            if not preparations:
+                st.info("Aucune préparation d'évaluation n'est encore créée.")
+                selected_prep_label = None
+                prep = None
+            else:
+                prep_labels = {
+                    f"{p['name']} — {p['class_name']}": p["id"]
+                    for p in preparations
+                }
+
+                selected_prep_label = st.selectbox(
+                    "Préparation à consulter",
+                    list(prep_labels.keys()),
+                    key="prep_tracking_select",
+                    label_visibility="collapsed",
+                )
+
+                prep = next(
+                    p for p in preparations
+                    if p["id"] == prep_labels[selected_prep_label]
+                )
+
+                created_text = format_short_datetime(prep.get("created_at"))
+                st.markdown(
+                    f"""
+                    <div class="prep-active-strip">
+                        <span>● Préparation active</span>
+                        <span class="prep-active-date">Créée le {html.escape(created_text)}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        if not preparations or prep is None:
+            st.markdown(
+                """
+                <div style="
+                    margin-top:1rem;padding:1.25rem;border-radius:16px;
+                    border:1px dashed #cbd6e5;background:#f8fbff;
+                    color:#687b95;text-align:center;">
+                    Créez une première préparation pour afficher le tableau de suivi.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            # ====================================================
+            # DONNÉES DE LA PRÉPARATION
+            # ====================================================
             target_students = [
                 s for s in students
                 if s.get("class_name") == prep.get("class_name")
             ]
-            # Pour une préparation d'évaluation, seuls les exercices réellement
-            # terminés doivent compter. Une ligne "restarted" peut avoir
-            # score_percent = None : elle ne doit donc ni être considérée comme
-            # un exercice fait, ni entrer dans le calcul de la moyenne.
-            # Une préparation d'évaluation constitue un nouveau point de départ :
-            # seules les tentatives terminées APRÈS sa création doivent compter.
+
             prep_created_at = str(prep.get("created_at", "") or "")
 
             completed_training_rows = [
@@ -15899,6 +16434,8 @@ def teacher_tracking():
             threshold = int(prep.get("threshold", 80))
 
             prep_table = []
+            prep_view_rows = []
+
             for student in sorted(
                 target_students,
                 key=lambda s: s.get("first_name", "").lower(),
@@ -15908,65 +16445,267 @@ def teacher_tracking():
                     for rid in required
                     if (student.get("id"), rid) in latest_all
                 ]
+
                 done = len(done_rows)
                 total = len(required)
 
+                numeric_scores = []
+                for row in done_rows:
+                    try:
+                        numeric_scores.append(float(row.get("score_percent")))
+                    except (TypeError, ValueError):
+                        pass
+
+                average = (
+                    round(sum(numeric_scores) / len(numeric_scores))
+                    if numeric_scores
+                    else None
+                )
+
                 if done == 0:
                     status = "❌ Non commencée"
+                    status_key = "not"
                     result = "—"
                     bonus = "—"
+                elif done == total and total > 0:
+                    status = "✅ Terminée"
+                    status_key = "done"
+                    result = f"{average} %" if average is not None else "—"
+                    bonus = (
+                        "+1 possible"
+                        if average is not None and average >= threshold
+                        else "—"
+                    )
                 else:
-                    numeric_scores = []
-                    for row in done_rows:
-                        try:
-                            numeric_scores.append(float(row.get("score_percent")))
-                        except (TypeError, ValueError):
-                            pass
+                    status = "🟠 En cours"
+                    status_key = "partial"
+                    result = f"{average} %" if average is not None else "—"
+                    bonus = "—"
 
-                    if numeric_scores:
-                        average = round(sum(numeric_scores) / len(numeric_scores))
-                        result = f"{average} %"
-                    else:
-                        average = None
-                        result = "—"
-                    if done == total:
-                        status = "✅ Terminée"
-                        bonus = (
-                            "+1 possible"
-                            if average is not None and average >= threshold
-                            else "—"
-                        )
-                    else:
-                        status = "🟠 Partielle"
-                        bonus = "—"
+                student_name = (
+                    f"{student.get('first_name', '')} "
+                    f"{student.get('last_initial', '')}."
+                ).strip()
 
                 prep_table.append({
-                    "Élève": f"{student.get('first_name', '')} {student.get('last_initial', '')}.",
+                    "Élève": student_name,
                     "Préparation": status,
                     "Exercices faits": f"{done}/{total}",
                     "Résultat": result,
                     "Bonus": bonus,
                 })
 
+                prep_view_rows.append({
+                    "student_name": student_name,
+                    "first_name": student.get("first_name", ""),
+                    "last_initial": student.get("last_initial", ""),
+                    "done": done,
+                    "total": total,
+                    "average": average,
+                    "status_key": status_key,
+                    "bonus": bonus,
+                })
+
+            # ====================================================
+            # EN-TÊTE DE LA PRÉPARATION
+            # ====================================================
             st.markdown(
-                f"**{prep['name']}** · {prep['chapter']} · "
-                f"seuil indicatif : **{threshold} %**"
+                f"""
+                <div class="prep-control-card" style="margin-top:.9rem;">
+                    <div class="prep-card-title">
+                        🎯 {html.escape(str(prep.get("name", "")))}
+                    </div>
+                    <div class="prep-card-sub">
+                        {html.escape(str(prep.get("chapter", "")))} ·
+                        classe <strong>{html.escape(str(prep.get("class_name", "")))}</strong> ·
+                        seuil indicatif <strong>{threshold} %</strong>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-            if prep_created_at:
-                st.caption(
-                    "Seules les tentatives réalisées depuis la création de cette "
-                    "préparation sont prises en compte."
+            # ====================================================
+            # CARTES STATISTIQUES
+            # ====================================================
+            student_count = len(prep_view_rows)
+            preparation_count = len(preparations)
+
+            if prep_view_rows and required:
+                progress_mean = round(
+                    sum(
+                        (row["done"] / row["total"]) * 100
+                        if row["total"] else 0
+                        for row in prep_view_rows
+                    ) / len(prep_view_rows)
                 )
-            st.dataframe(
-                prep_table,
-                use_container_width=True,
-                hide_index=True,
+            else:
+                progress_mean = 0
+
+            bonus_count = sum(
+                1 for row in prep_view_rows
+                if row["done"] == row["total"]
+                and row["total"] > 0
+                and row["average"] is not None
+                and row["average"] >= threshold
             )
 
-            # ------------------------------------------------------------
-            # Export CSV de la préparation sélectionnée
-            # ------------------------------------------------------------
+            completed_count = sum(
+                1 for row in prep_view_rows
+                if row["done"] == row["total"] and row["total"] > 0
+            )
+
+            st.markdown(
+                f"""
+                <div class="prep-stat-grid">
+                    <div class="prep-stat">
+                        <div class="prep-stat-icon prep-stat-blue">👥</div>
+                        <div>
+                            <div class="prep-stat-value">{student_count}</div>
+                            <div class="prep-stat-label">Élèves concernés</div>
+                            <div class="prep-stat-sub">Classe {html.escape(str(prep.get("class_name", "")))}</div>
+                        </div>
+                    </div>
+
+                    <div class="prep-stat">
+                        <div class="prep-stat-icon prep-stat-purple">📋</div>
+                        <div>
+                            <div class="prep-stat-value">{completed_count}</div>
+                            <div class="prep-stat-label">Préparations terminées</div>
+                            <div class="prep-stat-sub">{preparation_count} préparation(s) enregistrée(s)</div>
+                        </div>
+                    </div>
+
+                    <div class="prep-stat">
+                        <div class="prep-stat-icon prep-stat-green">📈</div>
+                        <div>
+                            <div class="prep-stat-value">{progress_mean} %</div>
+                            <div class="prep-stat-label">Progression moyenne</div>
+                            <div class="prep-stat-sub">Exercices réalisés</div>
+                        </div>
+                    </div>
+
+                    <div class="prep-stat">
+                        <div class="prep-stat-icon prep-stat-gold">★</div>
+                        <div>
+                            <div class="prep-stat-value">{bonus_count}</div>
+                            <div class="prep-stat-label">Bonus possibles</div>
+                            <div class="prep-stat-sub">Seuil : {threshold} %</div>
+                        </div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # ====================================================
+            # TABLEAU HTML MODERNE
+            # ====================================================
+            table_rows_html = []
+
+            for row in prep_view_rows:
+                total = row["total"]
+                done = row["done"]
+                pct = round((done / total) * 100) if total else 0
+
+                initials = (
+                    (str(row["first_name"])[:1] + str(row["last_initial"])[:1])
+                    .upper()
+                    .strip()
+                ) or "EL"
+
+                if row["status_key"] == "done":
+                    status_html = (
+                        '<span class="prep-badge prep-badge-done">✓ Terminée</span>'
+                    )
+                    fill_class = "prep-fill-done"
+                elif row["status_key"] == "partial":
+                    status_html = (
+                        '<span class="prep-badge prep-badge-partial">◷ En cours</span>'
+                    )
+                    fill_class = "prep-fill-partial"
+                else:
+                    status_html = (
+                        '<span class="prep-badge prep-badge-not">✕ Non commencée</span>'
+                    )
+                    fill_class = "prep-fill-zero"
+
+                if row["average"] is None:
+                    score_html = '<span class="prep-muted">—</span>'
+                else:
+                    avg = int(row["average"])
+                    if avg >= threshold:
+                        score_class = "prep-score-high"
+                    elif avg >= 50:
+                        score_class = "prep-score-mid"
+                    else:
+                        score_class = "prep-score-low"
+
+                    score_html = (
+                        f'<span class="prep-score {score_class}">{avg} %</span>'
+                    )
+
+                bonus_html = (
+                    '<span class="prep-bonus">★ Éligible</span>'
+                    if row["bonus"] == "+1 possible"
+                    else '<span class="prep-muted">—</span>'
+                )
+
+                table_rows_html.append(
+                    f"""
+                    <tr>
+                        <td>
+                            <div class="prep-student">
+                                <span class="prep-avatar">{html.escape(initials)}</span>
+                                <span>{html.escape(str(row["student_name"]))}</span>
+                            </div>
+                        </td>
+                        <td>{status_html}</td>
+                        <td>
+                            <div class="prep-progress-cell">
+                                <span>{done} / {total}</span>
+                                <div class="prep-progress-track">
+                                    <div class="prep-progress-fill {fill_class}"
+                                         style="width:{pct}%;"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{score_html}</td>
+                        <td>{bonus_html}</td>
+                    </tr>
+                    """
+                )
+
+            st.markdown(
+                f"""
+                <div class="prep-table-wrap">
+                    <table class="prep-modern-table">
+                        <thead>
+                            <tr>
+                                <th>Élève</th>
+                                <th>Préparation</th>
+                                <th>Exercices faits</th>
+                                <th>Résultat</th>
+                                <th>Bonus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {''.join(table_rows_html)}
+                        </tbody>
+                    </table>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.caption(
+                "Seules les tentatives réalisées depuis la création de cette "
+                "préparation sont prises en compte."
+            )
+
+            # ====================================================
+            # EXPORT CSV
+            # ====================================================
             export_rows = []
             for row in prep_table:
                 export_rows.append({
@@ -16000,6 +16739,11 @@ def teacher_tracking():
                 str(prep.get("class_name", "classe")).strip(),
             ).strip("_") or "classe"
 
+            st.markdown(
+                '<div class="prep-action-title">Actions sur cette préparation</div>',
+                unsafe_allow_html=True,
+            )
+
             action_export, action_delete = st.columns(2, gap="large")
 
             with action_export:
@@ -16012,9 +16756,9 @@ def teacher_tracking():
                     key=f"download_prep_{prep.get('id', 'current')}",
                 )
 
-            # ------------------------------------------------------------
-            # Suppression protégée de la préparation
-            # ------------------------------------------------------------
+            # ====================================================
+            # SUPPRESSION AVEC CONFIRMATION
+            # ====================================================
             prep_id = prep.get("id")
             confirm_key = f"confirm_delete_prep_{prep_id}"
 
@@ -16025,6 +16769,7 @@ def teacher_tracking():
                         "Les résultats et l'historique d'entraînement des élèves "
                         "sont conservés."
                     )
+
                     confirmed = st.checkbox(
                         "Je confirme la suppression de cette préparation.",
                         key=confirm_key,
@@ -16042,7 +16787,6 @@ def teacher_tracking():
                         ]
                         save_evaluation_preparations(updated_preparations)
 
-                        # Nettoyer la sélection devenue invalide avant rerun.
                         st.session_state.pop("prep_tracking_select", None)
                         st.session_state.pop(confirm_key, None)
 
@@ -16164,6 +16908,8 @@ def page_teacher():
         "teacher_section",
         "dashboard",
     )
+
+    teacher_sidebar_nav(section)
 
     if section == "dashboard":
         teacher_dashboard()
