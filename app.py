@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V65_SIDEBAR_STEP1
+# VERSION_UI_2026_08_27_V65_SIDEBAR_STEP2_VISIBLE
 import re
 import base64
 import json
@@ -51,14 +51,35 @@ st.markdown(
         height: 0 !important;
         min-height: 0 !important;
         background: transparent !important;
+        overflow: visible !important;
     }
 
+    /* Ne plus masquer tous les enfants du header :
+       le bouton natif de réouverture de la sidebar y est rendu. */
     [data-testid="stHeader"] > div {
-        display: none !important;
+        background: transparent !important;
+        overflow: visible !important;
     }
 
     [data-testid="stToolbar"] {
         display: none !important;
+    }
+
+    /* Bouton natif de réouverture : on le garde bien visible si la sidebar
+       a été repliée lors d'une visite précédente. */
+    [data-testid="stExpandSidebarButton"],
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        top: .65rem !important;
+        left: .65rem !important;
+        z-index: 2147483000 !important;
+        background: rgba(255,255,255,.96) !important;
+        border: 1px solid #d8e2ef !important;
+        border-radius: 11px !important;
+        box-shadow: 0 5px 16px rgba(31,55,90,.14) !important;
     }
 
     [data-testid="stDecoration"] {
@@ -399,7 +420,7 @@ st.markdown(
 
     div[data-testid="stButton"] > button[kind="primary"] {
         background: #22a447;
-        color: white;
+        color: #123765;
         border-color: #22a447;
     }
 
@@ -753,10 +774,11 @@ st.markdown(
        ============================================================ */
 
     section[data-testid="stSidebar"] {
-        background:
-            radial-gradient(circle at 50% 92%, rgba(49, 103, 255, .20), transparent 34%),
-            linear-gradient(180deg, #073b78 0%, #052f66 55%, #042553 100%) !important;
-        border-right: 1px solid rgba(255,255,255,.10);
+        background: rgba(255,255,255,.72) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-right: 1px solid #dfe6f1 !important;
+        box-shadow: 8px 0 24px rgba(31,55,90,.035);
     }
 
     section[data-testid="stSidebar"] > div {
@@ -764,13 +786,13 @@ st.markdown(
     }
 
     section[data-testid="stSidebar"] * {
-        color: #f6f9ff;
+        color: #17345f;
     }
 
     .teacher-side-logo {
         padding: .85rem .6rem 1rem .6rem;
         margin-bottom: .55rem;
-        border-bottom: 1px solid rgba(255,255,255,.12);
+        border-bottom: 1px solid #dfe6f1;
     }
 
     .teacher-side-logo-title {
@@ -782,14 +804,14 @@ st.markdown(
     }
 
     .teacher-side-logo-sub {
-        color: #bcd2f2;
+        color: #6d819d;
         font-size: .76rem;
         margin-top: .28rem;
         font-weight: 650;
     }
 
     .teacher-side-section-label {
-        color: #91b3df !important;
+        color: #7890ad !important;
         font-size: .66rem;
         font-weight: 900;
         text-transform: uppercase;
@@ -814,7 +836,7 @@ st.markdown(
         min-height: 2.55rem !important;
         justify-content: flex-start !important;
         text-align: left !important;
-        color: #edf5ff !important;
+        color: #294765 !important;
         background: transparent !important;
         border: 1px solid transparent !important;
         border-radius: 11px !important;
@@ -824,16 +846,16 @@ st.markdown(
     }
 
     section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
-        background: rgba(82, 119, 255, .22) !important;
-        border-color: rgba(181, 205, 255, .16) !important;
+        background: rgba(49, 92, 255, .08) !important;
+        border-color: rgba(49, 92, 255, .14) !important;
         transform: none !important;
     }
 
     .teacher-side-footer {
         margin-top: 1rem;
         padding: .8rem .7rem .2rem .7rem;
-        border-top: 1px solid rgba(255,255,255,.10);
-        color: #bcd2f2 !important;
+        border-top: 1px solid #dfe6f1;
+        color: #6d819d !important;
         font-size: .74rem;
         line-height: 1.4;
     }
@@ -14717,7 +14739,7 @@ def teacher_sidebar_nav(section):
             """
             <div class="teacher-side-logo">
                 <div class="teacher-side-logo-title">🧪 Ludothèque<br>Physique-Chimie</div>
-                <div class="teacher-side-logo-sub">Espace professeur</div>
+                <div class="teacher-side-logo-sub">Espace professeur · Navigation</div>
             </div>
             """,
             unsafe_allow_html=True,
