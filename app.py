@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_TEACHER_TRACKING_NONE_SCORE_FIX_V63
+# VERSION_UI_2026_08_27_PREP_CREATED_AT_FILTER_V64
 import re
 import base64
 import json
@@ -15879,11 +15879,19 @@ def teacher_tracking():
             # terminés doivent compter. Une ligne "restarted" peut avoir
             # score_percent = None : elle ne doit donc ni être considérée comme
             # un exercice fait, ni entrer dans le calcul de la moyenne.
+            # Une préparation d'évaluation constitue un nouveau point de départ :
+            # seules les tentatives terminées APRÈS sa création doivent compter.
+            prep_created_at = str(prep.get("created_at", "") or "")
+
             completed_training_rows = [
                 row for row in rows
                 if row.get("activity_kind") == "training"
                 and row.get("status", "completed") == "completed"
                 and row.get("score_percent") is not None
+                and (
+                    not prep_created_at
+                    or str(row.get("finished_at", "") or "") >= prep_created_at
+                )
             ]
             latest_all = latest_training_by_student_resource(completed_training_rows)
 
@@ -15944,6 +15952,12 @@ def teacher_tracking():
                 f"**{prep['name']}** · {prep['chapter']} · "
                 f"seuil indicatif : **{threshold} %**"
             )
+
+            if prep_created_at:
+                st.caption(
+                    "Seules les tentatives réalisées depuis la création de cette "
+                    "préparation sont prises en compte."
+                )
             st.dataframe(
                 prep_table,
                 use_container_width=True,
