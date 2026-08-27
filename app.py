@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V70_CLEAR_LEFT_NAV_HIERARCHY
+# VERSION_UI_2026_08_27_V71_MODERN_TEACHER_DASHBOARD
 import re
 import base64
 import json
@@ -975,6 +975,223 @@ st.markdown(
         width: 2px;
         border-radius: 999px;
         background: rgba(183,207,241,.30);
+    }
+
+    /* ============================================================
+       TABLEAU DE BORD PROFESSEUR — RENDU MODERNE
+       Le bandeau gauche reste inchangé.
+       ============================================================ */
+
+    .teacher-dashboard-hero {
+        position: relative;
+        overflow: hidden;
+        min-height: 132px;
+        margin: .15rem 0 1.05rem 0;
+        padding: 1.25rem 1.45rem;
+        border: 1px solid #e1e9f4;
+        border-radius: 22px;
+        background:
+            radial-gradient(circle at 88% 30%, rgba(66, 126, 255, .09), transparent 28%),
+            linear-gradient(135deg, #ffffff 0%, #f8fbff 72%, #f2f7ff 100%);
+        box-shadow: 0 10px 28px rgba(30, 62, 110, .07);
+    }
+
+    .teacher-dashboard-hero::after {
+        content: "⚗️  🧪";
+        position: absolute;
+        right: 2.2rem;
+        bottom: .4rem;
+        font-size: 4.4rem;
+        line-height: 1;
+        opacity: .14;
+        filter: saturate(.8);
+        transform: rotate(-4deg);
+        pointer-events: none;
+    }
+
+    .teacher-dashboard-eyebrow {
+        color: #58708f;
+        font-size: .77rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        margin-bottom: .42rem;
+    }
+
+    .teacher-dashboard-title {
+        color: #102a56;
+        font-size: 2rem;
+        line-height: 1.08;
+        font-weight: 900;
+        letter-spacing: -.035em;
+        margin: 0;
+        max-width: 78%;
+    }
+
+    .teacher-dashboard-subtitle {
+        color: #6b7e98;
+        font-size: .94rem;
+        line-height: 1.5;
+        margin-top: .48rem;
+        max-width: 72%;
+    }
+
+    .teacher-dashboard-section-title {
+        color: #17335d;
+        font-size: 1.08rem;
+        font-weight: 850;
+        margin: .2rem 0 .65rem 0;
+    }
+
+    /* Cartes modernes : le conteneur entier forme un seul composant. */
+    .st-key-teacher_card_classes_students,
+    .st-key-teacher_card_contents,
+    .st-key-teacher_card_tracking,
+    .st-key-teacher_card_challenges,
+    .st-key-teacher_card_results {
+        min-height: 305px;
+        padding: 1.05rem 1rem .95rem 1rem;
+        border-radius: 18px;
+        border: 1px solid #e3e9f2;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+        box-shadow: 0 9px 24px rgba(31, 55, 90, .065);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .st-key-teacher_card_classes_students { border-top: 4px solid #3f72f2; }
+    .st-key-teacher_card_contents         { border-top: 4px solid #35b56b; }
+    .st-key-teacher_card_tracking         { border-top: 4px solid #7659ef; }
+    .st-key-teacher_card_challenges       { border-top: 4px solid #f49a2b; }
+    .st-key-teacher_card_results          { border-top: 4px solid #ed5aa7; }
+
+    .teacher-modern-card-icon-wrap {
+        width: 76px;
+        height: 66px;
+        margin: 0 auto .58rem auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 20px;
+        position: relative;
+        font-size: 2.75rem;
+        line-height: 1;
+    }
+
+    .teacher-modern-card-icon-wrap::before,
+    .teacher-modern-card-icon-wrap::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .teacher-modern-card-icon-wrap::before {
+        width: 68px;
+        height: 42px;
+        background: currentColor;
+        opacity: .07;
+        filter: blur(1px);
+    }
+
+    .teacher-modern-card-icon-wrap::after {
+        width: 7px;
+        height: 7px;
+        top: 5px;
+        right: 7px;
+        background: currentColor;
+        opacity: .18;
+        box-shadow: -48px 38px 0 currentColor, -7px 46px 0 currentColor;
+    }
+
+    .teacher-card-blue   { color:#3f72f2; }
+    .teacher-card-green  { color:#35b56b; }
+    .teacher-card-purple { color:#7659ef; }
+    .teacher-card-orange { color:#f49a2b; }
+    .teacher-card-pink   { color:#ed5aa7; }
+
+    .teacher-modern-card-title {
+        color: #112c55;
+        font-size: 1rem;
+        font-weight: 900;
+        text-align: center;
+        margin: .25rem 0 .42rem 0;
+        letter-spacing: -.015em;
+    }
+
+    .teacher-modern-card-text {
+        color: #6a7d97;
+        font-size: .81rem;
+        line-height: 1.45;
+        text-align: center;
+        min-height: 58px;
+        margin: 0 auto .55rem auto;
+    }
+
+    .teacher-modern-card-stat {
+        color: #3f5879;
+        font-size: .78rem;
+        line-height: 1.35;
+        font-weight: 800;
+        text-align: center;
+        min-height: 34px;
+        margin: .15rem 0 .7rem 0;
+    }
+
+    /* Boutons intégrés visuellement dans les cartes */
+    .st-key-teacher_card_classes_students div[data-testid="stButton"] > button,
+    .st-key-teacher_card_contents div[data-testid="stButton"] > button,
+    .st-key-teacher_card_tracking div[data-testid="stButton"] > button,
+    .st-key-teacher_card_challenges div[data-testid="stButton"] > button,
+    .st-key-teacher_card_results div[data-testid="stButton"] > button {
+        min-height: 2.45rem !important;
+        border-radius: 11px !important;
+        background: #ffffff !important;
+        font-weight: 800 !important;
+        box-shadow: none !important;
+        margin-top: .15rem !important;
+    }
+
+    .st-key-teacher_card_classes_students div[data-testid="stButton"] > button {
+        color:#3267e7 !important; border:1px solid #8eb0ff !important;
+    }
+    .st-key-teacher_card_contents div[data-testid="stButton"] > button {
+        color:#269655 !important; border:1px solid #7ed4a2 !important;
+    }
+    .st-key-teacher_card_tracking div[data-testid="stButton"] > button {
+        color:#684be1 !important; border:1px solid #ad9af7 !important;
+    }
+    .st-key-teacher_card_challenges div[data-testid="stButton"] > button {
+        color:#df8117 !important; border:1px solid #ffc16e !important;
+    }
+    .st-key-teacher_card_results div[data-testid="stButton"] > button {
+        color:#d84591 !important; border:1px solid #f39ac8 !important;
+    }
+
+    .st-key-teacher_card_classes_students div[data-testid="stButton"] > button:hover,
+    .st-key-teacher_card_contents div[data-testid="stButton"] > button:hover,
+    .st-key-teacher_card_tracking div[data-testid="stButton"] > button:hover,
+    .st-key-teacher_card_challenges div[data-testid="stButton"] > button:hover,
+    .st-key-teacher_card_results div[data-testid="stButton"] > button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 14px rgba(31,55,90,.08) !important;
+    }
+
+    .teacher-dashboard-sync {
+        margin-top: .9rem;
+        padding: .72rem .9rem;
+        border-radius: 13px;
+        border: 1px solid #d8e7f8;
+        background: #f3f8ff;
+        color: #54708e;
+        text-align: center;
+        font-size: .78rem;
+    }
+
+    @media (max-width: 1050px) {
+        .teacher-dashboard-title { font-size: 1.6rem; max-width: 100%; }
+        .teacher-dashboard-subtitle { max-width: 100%; }
+        .teacher-dashboard-hero::after { opacity: .08; }
     }
 
     /* Remonte tout l'espace professeur pour récupérer le blanc inutile en haut. */
@@ -14972,79 +15189,124 @@ def teacher_left_panel(section):
 
 
 def teacher_dashboard():
-    # Titre unique de l'espace professeur.
-    teacher_header()
+    teacher_name = current_teacher_name()
 
+    # En-tête moderne : même contenu fonctionnel, présentation plus légère.
+    st.markdown(
+        f"""
+        <div class="teacher-dashboard-hero">
+            <div class="teacher-dashboard-eyebrow">Espace de pilotage</div>
+            <div class="teacher-dashboard-title">Espace professeur — {html.escape(teacher_name)}</div>
+            <div class="teacher-dashboard-subtitle">
+                Bienvenue dans votre espace de pilotage. Gérez vos classes,
+                vos contenus et suivez les progrès de vos élèves.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Les données restent strictement celles du professeur connecté.
     classes = get_classes()
     students = get_students()
     challenges = get_challenges()
     results = get_results()
     activity_rows = get_activity_log()
 
-    open_challenges = sum(1 for c in challenges if c.get("status") == "open")
+    open_challenges = sum(
+        1 for challenge in challenges
+        if challenge.get("status") == "open"
+    )
     pilot_contents = content_pilot_enabled_for_teacher()
 
-    cols = st.columns(5 if pilot_contents else 3)
+    st.markdown(
+        '<div class="teacher-dashboard-section-title">Votre espace professeur</div>',
+        unsafe_allow_html=True,
+    )
 
     cards = [
-        (
-            "🏫👥",
-            "Classes et élèves",
-            "Créez vos classes, importez les élèves et gérez leurs accès.",
-            f"{len(classes)} classe(s) · {len(students)} élève(s)",
-            "card-blue",
-            "classes_students",
-        ),
-        (
-            "🏆",
-            "Défis",
-            "Créez, ouvrez et gérez vos défis.",
-            f"{open_challenges} défi(s) ouvert(s)",
-            "card-orange",
-            "challenges",
-        ),
-        (
-            "📊",
-            "Résultats",
-            "Consultez les classements et les performances.",
-            f"{len(results)} résultat(s)",
-            "card-pink",
-            "results",
-        ),
+        {
+            "section": "classes_students",
+            "icon": "🏫👥",
+            "icon_class": "teacher-card-blue",
+            "title": "Classes et élèves",
+            "text": "Créez vos classes, importez les élèves et gérez leurs accès.",
+            "stat": f"{len(classes)} classe(s) · {len(students)} élève(s)",
+            "button": "Gérer mes classes  ›",
+        },
+        {
+            "section": "contents",
+            "icon": "📚",
+            "icon_class": "teacher-card-green",
+            "title": "Contenus",
+            "text": "Choisissez les ressources visibles pour chacune de vos classes.",
+            "stat": "Pilotage par classe",
+            "button": "Gérer mes contenus  ›",
+        },
+        {
+            "section": "tracking",
+            "icon": "👀",
+            "icon_class": "teacher-card-purple",
+            "title": "Suivi des élèves",
+            "text": "Distinguez l'entraînement courant de la préparation aux évaluations.",
+            "stat": f"{len(activity_rows)} activité(s) enregistrée(s)",
+            "button": "Suivre mes élèves  ›",
+        },
+        {
+            "section": "challenges",
+            "icon": "🏆",
+            "icon_class": "teacher-card-orange",
+            "title": "Défis",
+            "text": "Créez, ouvrez et gérez vos défis.",
+            "stat": f"{open_challenges} défi(s) ouvert(s)",
+            "button": "Gérer mes défis  ›",
+        },
+        {
+            "section": "results",
+            "icon": "📊",
+            "icon_class": "teacher-card-pink",
+            "title": "Résultats",
+            "text": "Consultez les classements et les performances.",
+            "stat": f"{len(results)} résultat(s)",
+            "button": "Voir les résultats  ›",
+        },
     ]
 
-    if pilot_contents:
-        cards.insert(1, (
-            "📚",
-            "Contenus",
-            "Choisissez les ressources visibles pour chacune de vos classes.",
-            "Pilotage par classe",
-            "card-green",
-            "contents",
-        ))
-        cards.insert(2, (
-            "👀",
-            "Suivi des élèves",
-            "Distinguez l'entraînement courant de la préparation aux évaluations.",
-            f"{len(activity_rows)} activité(s) enregistrée(s)",
-            "card-cyan",
-            "tracking",
-        ))
+    # Si le pilotage des contenus n'est pas encore activé pour un professeur,
+    # on conserve le comportement historique et on masque les cartes associées.
+    if not pilot_contents:
+        cards = [
+            card for card in cards
+            if card["section"] not in ("contents", "tracking")
+        ]
 
-    for i, (icon, title, text_card, count, color, section) in enumerate(cards):
-        with cols[i]:
-            nav_card(icon, title, f"{text_card}<br><br><strong>{count}</strong>", color)
+    cols = st.columns(len(cards), gap="medium")
 
-            st.button(
-                f"Gérer {title.lower()}  ›",
-                key=f"teacher_{section}",
-                use_container_width=True,
-                on_click=set_teacher_section,
-                args=(section,),
-            )
+    for col, card in zip(cols, cards):
+        with col:
+            with st.container(key=f"teacher_card_{card['section']}"):
+                st.markdown(
+                    f"""
+                    <div class="teacher-modern-card-icon-wrap {card['icon_class']}">
+                        <span>{card['icon']}</span>
+                    </div>
+                    <div class="teacher-modern-card-title">{card['title']}</div>
+                    <div class="teacher-modern-card-text">{card['text']}</div>
+                    <div class="teacher-modern-card-stat">{card['stat']}</div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                st.button(
+                    card["button"],
+                    key=f"teacher_dashboard_{card['section']}",
+                    use_container_width=True,
+                    on_click=set_teacher_section_fast,
+                    args=(card["section"],),
+                )
 
     st.markdown(
-        '<div class="footer-note">ⓘ Toutes les données sont synchronisées avec Upstash.</div>',
+        '<div class="teacher-dashboard-sync">ⓘ Toutes les données sont synchronisées avec Upstash.</div>',
         unsafe_allow_html=True,
     )
 
