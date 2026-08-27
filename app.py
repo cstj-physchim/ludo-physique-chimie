@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_TEACHER_MODERN_DASHBOARD_V66
+# VERSION_UI_2026_08_27_SIDEBAR_REOPEN_FIX_V67
 import re
 import html
 import base64
@@ -51,14 +51,67 @@ st.markdown(
         height: 0 !important;
         min-height: 0 !important;
         background: transparent !important;
+        overflow: visible !important;
+    }
+
+    /*
+       Ne pas masquer tout le contenu du header :
+       Streamlit y place le bouton permettant de rouvrir la barre latérale
+       lorsqu'elle est repliée. On garde le header visuellement invisible,
+       mais on laisse ce contrôle disponible.
+    */
+    [data-testid="stHeader"] {
+        overflow: visible !important;
     }
 
     [data-testid="stHeader"] > div {
-        display: none !important;
+        background: transparent !important;
     }
 
     [data-testid="stToolbar"] {
         display: none !important;
+    }
+
+    /*
+       Bouton de réouverture de la barre latérale.
+       Les deux sélecteurs couvrent plusieurs versions de Streamlit.
+    */
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapsedControl"] {
+        display: flex !important;
+        position: fixed !important;
+        top: 0.7rem !important;
+        left: 0.7rem !important;
+        z-index: 1000000 !important;
+        width: 2.6rem !important;
+        height: 2.6rem !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 12px !important;
+        background: #ffffff !important;
+        border: 1px solid #d8e1ef !important;
+        box-shadow: 0 6px 18px rgba(31, 55, 90, 0.16) !important;
+        pointer-events: auto !important;
+    }
+
+    [data-testid="collapsedControl"] button,
+    [data-testid="stSidebarCollapsedControl"] button {
+        color: #123765 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+    }
+
+    /*
+       Bouton interne de réduction de la sidebar :
+       on le garde bien visible dans le bandeau bleu.
+    */
+    [data-testid="stSidebarCollapseButton"] {
+        display: flex !important;
+        z-index: 1000000 !important;
     }
 
     [data-testid="stDecoration"] {
@@ -760,6 +813,12 @@ st.markdown(
 
     section[data-testid="stSidebar"] > div {
         background: transparent !important;
+    }
+
+    /* Lorsque la sidebar est repliée, le bouton natif reste accessible.
+       On réserve une petite zone en haut à gauche pour éviter tout chevauchement. */
+    [data-testid="stAppViewContainer"] {
+        position: relative;
     }
 
     section[data-testid="stSidebar"] * {
