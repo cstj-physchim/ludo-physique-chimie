@@ -844,6 +844,7 @@ st.markdown(
         justify-content: flex-start !important;
         text-align: left !important;
         padding-left: .7rem !important;
+        padding-right: .55rem !important;
         border-radius: 11px !important;
         border: 1px solid transparent !important;
         background: transparent !important;
@@ -851,6 +852,24 @@ st.markdown(
         box-shadow: none !important;
         font-size: .80rem !important;
         font-weight: 720 !important;
+    }
+
+    /* Streamlit centre parfois le contenu interne du bouton :
+       on force aussi son wrapper et son texte à gauche. */
+    .st-key-teacher_nav_panel div[data-testid="stButton"] > button > div,
+    .st-key-teacher_nav_panel div[data-testid="stButton"] > button p,
+    .st-key-teacher_nav_panel div[data-testid="stButton"] > button span {
+        width: 100% !important;
+        text-align: left !important;
+        justify-content: flex-start !important;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+    }
+
+    .teacher-left-primary-active,
+    .teacher-left-subactive {
+        justify-content: flex-start !important;
+        text-align: left !important;
     }
 
     .st-key-teacher_nav_panel div[data-testid="stButton"] > button:hover {
@@ -866,6 +885,9 @@ st.markdown(
     .st-key-teacher_primary_prof div[data-testid="stButton"] > button {
         min-height: 2.75rem !important;
         padding-left: .78rem !important;
+        padding-right: .55rem !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
         font-size: .96rem !important;
         font-weight: 800 !important;
         letter-spacing: -.01em !important;
@@ -886,6 +908,9 @@ st.markdown(
     .st-key-teacher_sub_results div[data-testid="stButton"] > button {
         min-height: 2.15rem !important;
         padding-left: .58rem !important;
+        padding-right: .45rem !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
         font-size: .79rem !important;
         font-weight: 650 !important;
         color: #eaf2ff !important;
