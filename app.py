@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_26_MOLECULE_COMPACT_CANVAS_V62
+# VERSION_UI_2026_08_27_TEACHER_TRACKING_NONE_SCORE_FIX_V63
 import re
 import base64
 import json
@@ -15727,11 +15727,12 @@ def teacher_tracking():
             }
 
             if latest_rows or completed_rows:
-                valid_scores = [
-                    int(r.get("score_percent", 0))
-                    for r in completed_rows
-                    if r.get("score_percent") is not None
-                ]
+                valid_scores = []
+                for row in completed_rows:
+                    try:
+                        valid_scores.append(float(row.get("score_percent")))
+                    except (TypeError, ValueError):
+                        pass
                 best = max(valid_scores) if valid_scores else None
                 done = len(done_resources)
                 last_activity = max(
@@ -15874,7 +15875,18 @@ def teacher_tracking():
                 s for s in students
                 if s.get("class_name") == prep.get("class_name")
             ]
-            latest_all = latest_training_by_student_resource(rows)
+            # Pour une préparation d'évaluation, seuls les exercices réellement
+            # terminés doivent compter. Une ligne "restarted" peut avoir
+            # score_percent = None : elle ne doit donc ni être considérée comme
+            # un exercice fait, ni entrer dans le calcul de la moyenne.
+            completed_training_rows = [
+                row for row in rows
+                if row.get("activity_kind") == "training"
+                and row.get("status", "completed") == "completed"
+                and row.get("score_percent") is not None
+            ]
+            latest_all = latest_training_by_student_resource(completed_training_rows)
+
             required = prep.get("resource_ids", [])
             threshold = int(prep.get("threshold", 80))
 
@@ -15896,15 +15908,26 @@ def teacher_tracking():
                     result = "—"
                     bonus = "—"
                 else:
-                    average = round(
-                        sum(int(r.get("score_percent", 0)) for r in done_rows)
-                        / len(done_rows)
-                    )
-                    result = f"{average} %"
+                    numeric_scores = []
+                    for row in done_rows:
+                        try:
+                            numeric_scores.append(float(row.get("score_percent")))
+                        except (TypeError, ValueError):
+                            pass
 
+                    if numeric_scores:
+                        average = round(sum(numeric_scores) / len(numeric_scores))
+                        result = f"{average} %"
+                    else:
+                        average = None
+                        result = "—"
                     if done == total:
                         status = "✅ Terminée"
-                        bonus = "+1 possible" if average >= threshold else "—"
+                        bonus = (
+                            "+1 possible"
+                            if average is not None and average >= threshold
+                            else "—"
+                        )
                     else:
                         status = "🟠 Partielle"
                         bonus = "—"
