@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_FIXED_TREE_SIDEBAR_V69
+# VERSION_UI_2026_08_27_TEACHER_FINAL_POLISH_V70
 import re
 import html
 import base64
@@ -52,39 +52,15 @@ st.markdown(
         height: 0 !important;
         min-height: 0 !important;
         background: transparent !important;
-        overflow: visible !important;
-    }
-
-    /*
-       Ne pas masquer tout le contenu du header :
-       Streamlit y place le bouton permettant de rouvrir la barre latérale
-       lorsqu'elle est repliée. On garde le header visuellement invisible,
-       mais on laisse ce contrôle disponible.
-    */
-    [data-testid="stHeader"] {
-        overflow: visible !important;
     }
 
     [data-testid="stHeader"] > div {
-        background: transparent !important;
-        overflow: visible !important;
-        visibility: visible !important;
+        display: none !important;
     }
 
     [data-testid="stToolbar"] {
         display: none !important;
     }
-
-    /*
-       Dans l'espace professeur, la barre latérale devient une navigation
-       permanente : on ne la replie plus. Cela évite de perdre l'arborescence.
-    */
-    [data-testid="stSidebarCollapseButton"],
-    [data-testid="stExpandSidebarButton"],
-    [data-testid="collapsedControl"] {
-        display: none !important;
-    }
-
 
     [data-testid="stDecoration"] {
         display: none !important;
@@ -787,12 +763,6 @@ st.markdown(
         background: transparent !important;
     }
 
-    /* Lorsque la sidebar est repliée, le bouton natif reste accessible.
-       On réserve une petite zone en haut à gauche pour éviter tout chevauchement. */
-    [data-testid="stAppViewContainer"] {
-        position: relative;
-    }
-
     section[data-testid="stSidebar"] * {
         color: #f7fbff;
     }
@@ -848,67 +818,6 @@ st.markdown(
         background: linear-gradient(135deg, #315cff 0%, #436eff 100%);
         box-shadow: 0 8px 18px rgba(22, 74, 220, .28);
     }
-    .teacher-side-group {
-        margin: .85rem .25rem .3rem .25rem;
-        color: #9ebbe5 !important;
-        font-size: .68rem;
-        font-weight: 900;
-        letter-spacing: .12em;
-        text-transform: uppercase;
-    }
-
-    .teacher-side-parent {
-        display: flex;
-        gap: .62rem;
-        align-items: center;
-        padding: .72rem .82rem;
-        margin: .18rem 0 .12rem 0;
-        border-radius: 12px;
-        color: #f7fbff;
-        font-weight: 850;
-        background: rgba(255,255,255,.08);
-        border: 1px solid rgba(255,255,255,.08);
-    }
-
-    .teacher-tree {
-        margin: .15rem 0 .45rem 1.05rem;
-        padding-left: .75rem;
-        border-left: 2px solid rgba(133,173,235,.32);
-    }
-
-    .teacher-tree-selected {
-        position: relative;
-        margin: .18rem 0;
-        padding: .58rem .68rem;
-        border-radius: 10px;
-        background: rgba(76,112,255,.30);
-        color: #ffffff;
-        font-size: .84rem;
-        font-weight: 850;
-    }
-
-    .teacher-tree-selected::before {
-        content: "";
-        position: absolute;
-        left: -.84rem;
-        top: 50%;
-        width: .72rem;
-        height: 2px;
-        background: rgba(151,187,244,.55);
-    }
-
-    .teacher-tree-hint {
-        color: #a9c2e8;
-        font-size: .72rem;
-        padding: .2rem .68rem .38rem .68rem;
-        line-height: 1.35;
-    }
-
-    /* Boutons secondaires plus compacts dans la branche de navigation */
-    section[data-testid="stSidebar"] .teacher-tree + div[data-testid="stButton"] > button,
-    section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
-        font-size: .84rem;
-    }
 
     .teacher-side-account {
         margin-top: 1rem;
@@ -917,6 +826,139 @@ st.markdown(
         color: #c9dcff;
         font-size: .82rem;
         line-height: 1.45;
+    }
+
+    section[data-testid="stSidebar"] {
+        min-width: 245px !important;
+        max-width: 245px !important;
+        width: 245px !important;
+    }
+    section[data-testid="stSidebar"] > div:first-child {
+        width: 245px !important;
+    }
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="stExpandSidebarButton"],
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    .teacher-side-group {
+        color: #91b3df !important;
+        font-size: .67rem;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+        font-weight: 900;
+        margin: .95rem .72rem .35rem .72rem;
+    }
+    .teacher-side-parent {
+        display:flex;align-items:center;gap:.62rem;
+        min-height:2.8rem;padding:.68rem .82rem;border-radius:12px;
+        color:#f5f9ff !important;font-weight:850;
+        background:rgba(255,255,255,.08);
+        border:1px solid rgba(255,255,255,.08);
+    }
+    .teacher-tree {
+        margin:.28rem 0 .55rem 1rem;
+        padding-left:.68rem;
+        border-left:2px solid rgba(147,181,232,.30);
+    }
+    .teacher-tree-selected {
+        position:relative;padding:.52rem .65rem;margin:.16rem 0;
+        border-radius:9px;color:#fff !important;font-size:.80rem;
+        font-weight:850;background:rgba(66,103,255,.30);
+    }
+    .teacher-tree-selected::before {
+        content:"";position:absolute;left:-.76rem;top:50%;
+        width:.66rem;height:2px;background:rgba(154,187,236,.48);
+    }
+    .stMainBlockContainer,
+    [data-testid="stMainBlockContainer"],
+    .block-container {
+        max-width:1420px !important;
+        padding-left:2rem !important;
+        padding-right:2rem !important;
+    }
+    .tracking-nav-note {
+        color:#73839a;font-size:.82rem;margin:-.15rem 0 .6rem 0;
+    }
+    .training-filter-title {
+        color:#102a56;font-size:1.14rem;font-weight:900;margin-bottom:.15rem;
+    }
+    .training-filter-sub {
+        color:#7b899d;font-size:.83rem;margin-bottom:.55rem;
+    }
+    .training-stat-grid {
+        display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:.85rem;margin:.8rem 0 1rem 0;
+    }
+    .training-stat {
+        display:flex;align-items:center;gap:.78rem;min-height:94px;
+        padding:.9rem .95rem;background:#fff;border:1px solid #e1e7f0;
+        border-radius:17px;box-shadow:0 6px 18px rgba(31,55,90,.055);
+    }
+    .training-stat-icon {
+        width:42px;height:42px;min-width:42px;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;font-size:1.15rem;
+    }
+    .training-stat-value {color:#102a56;font-size:1.35rem;line-height:1;font-weight:900;}
+    .training-stat-label {color:#314863;font-size:.80rem;font-weight:800;margin-top:.22rem;}
+    .training-stat-sub {color:#8a97a8;font-size:.70rem;margin-top:.1rem;}
+    .training-blue {background:#edf3ff;color:#3166e5;}
+    .training-green {background:#eaf8ef;color:#159654;}
+    .training-orange {background:#fff4e3;color:#e28a18;}
+    .training-purple {background:#f1edff;color:#7559df;}
+    .training-table-wrap {
+        overflow-x:auto;border:1px solid #e0e6ef;border-radius:16px;
+        background:#fff;box-shadow:0 7px 22px rgba(31,55,90,.055);margin-top:.35rem;
+    }
+    .training-modern-table {
+        width:100%;min-width:1080px;border-collapse:collapse;
+        color:#263b56;font-size:.82rem;
+    }
+    .training-modern-table th {
+        text-align:left;padding:.72rem .72rem;background:#f8fafd;color:#5a687c;
+        font-size:.73rem;font-weight:850;border-bottom:1px solid #e2e7ef;white-space:nowrap;
+    }
+    .training-modern-table td {
+        padding:.58rem .72rem;border-bottom:1px solid #edf1f5;vertical-align:middle;
+    }
+    .training-modern-table tr:last-child td {border-bottom:none;}
+    .training-student {display:flex;align-items:center;gap:.52rem;font-weight:800;white-space:nowrap;}
+    .training-avatar {
+        width:27px;height:27px;min-width:27px;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;
+        background:#eaf0ff;color:#315ed0;font-size:.66rem;font-weight:900;
+    }
+    .training-badge {
+        display:inline-flex;align-items:center;padding:.24rem .5rem;border-radius:999px;
+        font-weight:800;font-size:.70rem;white-space:nowrap;
+    }
+    .training-badge-idle {background:#f1f3f6;color:#7a8798;}
+    .training-badge-work {background:#fff4e5;color:#dc8317;}
+    .training-badge-done {background:#eaf8ef;color:#209252;}
+    .training-progress {
+        display:grid;grid-template-columns:44px minmax(85px,1fr);
+        gap:.5rem;align-items:center;white-space:nowrap;
+    }
+    .training-progress-track {height:6px;border-radius:999px;overflow:hidden;background:#e8ebf0;}
+    .training-progress-fill {height:100%;border-radius:999px;background:#f4a11f;}
+    .training-progress-fill.done {background:#18a75b;}
+    .training-score {
+        display:inline-flex;justify-content:center;min-width:48px;padding:.23rem .45rem;
+        border-radius:999px;font-size:.70rem;font-weight:900;background:#edf8ef;color:#23904f;
+    }
+    .training-chip {
+        display:inline-flex;min-width:30px;justify-content:center;padding:.20rem .42rem;
+        border-radius:8px;background:#f3f6fa;color:#53647a;font-weight:800;
+    }
+    .training-date {color:#6f7e92;white-space:nowrap;font-size:.75rem;}
+    @media (max-width:1050px) {
+        .training-stat-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+    @media (max-width:720px) {
+        .training-stat-grid {grid-template-columns:1fr;}
+        .stMainBlockContainer,[data-testid="stMainBlockContainer"],.block-container {
+            padding-left:.8rem !important;padding-right:.8rem !important;
+        }
     }
 
     /* En-tête léger plutôt que l'ancien bandeau sombre */
@@ -15079,13 +15121,14 @@ def teacher_login():
 # ============================================================
 
 def set_teacher_tracking_view(view):
-    """Ouvre directement une branche du suivi pédagogique."""
+    """Sélectionne l'onglet secondaire du suivi pédagogique."""
     st.session_state["teacher_section"] = "tracking"
     st.session_state["teacher_tracking_view"] = view
+    request_page_transition()
 
 
 def teacher_sidebar_nav(section):
-    """Navigation professeur permanente sous forme d'arborescence."""
+    """Navigation professeur permanente, organisée comme un arbre."""
     section = section or "dashboard"
     tracking_view = st.session_state.get("teacher_tracking_view", "training")
 
@@ -15100,136 +15143,60 @@ def teacher_sidebar_nav(section):
             unsafe_allow_html=True,
         )
 
-        # ACCUEIL
         st.markdown('<div class="teacher-side-group">Accueil</div>', unsafe_allow_html=True)
         if section == "dashboard":
-            st.markdown(
-                '<div class="teacher-side-current">⌂ &nbsp;Tableau de bord</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown('<div class="teacher-side-current">⌂ &nbsp;Tableau de bord</div>', unsafe_allow_html=True)
         else:
-            st.button(
-                "⌂  Tableau de bord",
-                key="teacher_side_dashboard",
-                use_container_width=True,
-                on_click=set_teacher_section,
-                args=("dashboard",),
-            )
+            st.button("⌂  Tableau de bord", key="teacher_side_dashboard",
+                      use_container_width=True, on_click=set_teacher_section, args=("dashboard",))
 
-        # GESTION
-        st.markdown('<div class="teacher-side-group">Gestion</div>', unsafe_allow_html=True)
-
-        if section == "classes_students":
-            st.markdown(
-                '<div class="teacher-side-current">👥 &nbsp;Classes et élèves</div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.button(
-                "👥  Classes et élèves",
-                key="teacher_side_classes_students",
-                use_container_width=True,
-                on_click=set_teacher_section,
-                args=("classes_students",),
-            )
+        st.markdown('<div class="teacher-side-group">Pédagogie</div>', unsafe_allow_html=True)
 
         if section == "contents":
-            st.markdown(
-                '<div class="teacher-side-current">📚 &nbsp;Contenus</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown('<div class="teacher-side-current">📚 &nbsp;Contenus</div>', unsafe_allow_html=True)
         else:
-            st.button(
-                "📚  Contenus",
-                key="teacher_side_contents",
-                use_container_width=True,
-                on_click=set_teacher_section,
-                args=("contents",),
-            )
-
-        # SUIVI PÉDAGOGIQUE : véritable branche avec sous-onglets.
-        st.markdown('<div class="teacher-side-group">Suivi</div>', unsafe_allow_html=True)
+            st.button("📚  Contenus", key="teacher_side_contents",
+                      use_container_width=True, on_click=set_teacher_section, args=("contents",))
 
         if section == "tracking":
-            st.markdown(
-                '<div class="teacher-side-parent">📈 &nbsp;Suivi pédagogique</div>',
-                unsafe_allow_html=True,
-            )
-
+            st.markdown('<div class="teacher-side-parent">📈 &nbsp;Suivi pédagogique</div>', unsafe_allow_html=True)
             st.markdown('<div class="teacher-tree">', unsafe_allow_html=True)
 
             if tracking_view == "training":
-                st.markdown(
-                    '<div class="teacher-tree-selected">📚 Entraînement</div>',
-                    unsafe_allow_html=True,
-                )
+                st.markdown('<div class="teacher-tree-selected">📚 Entraînement</div>', unsafe_allow_html=True)
             else:
-                st.button(
-                    "↳  📚 Entraînement",
-                    key="teacher_tree_training",
-                    use_container_width=True,
-                    on_click=set_teacher_tracking_view,
-                    args=("training",),
-                )
+                st.button("↳  Entraînement", key="teacher_tree_training",
+                          use_container_width=True, on_click=set_teacher_tracking_view, args=("training",))
 
             if tracking_view == "evaluation":
-                st.markdown(
-                    '<div class="teacher-tree-selected">🎯 Préparation des évaluations</div>',
-                    unsafe_allow_html=True,
-                )
+                st.markdown('<div class="teacher-tree-selected">🎯 Préparation des évaluations</div>', unsafe_allow_html=True)
             else:
-                st.button(
-                    "↳  🎯 Préparation des évaluations",
-                    key="teacher_tree_evaluation",
-                    use_container_width=True,
-                    on_click=set_teacher_tracking_view,
-                    args=("evaluation",),
-                )
+                st.button("↳  Préparation évaluations", key="teacher_tree_evaluation",
+                          use_container_width=True, on_click=set_teacher_tracking_view, args=("evaluation",))
 
             st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.button(
-                "📈  Suivi pédagogique",
-                key="teacher_side_tracking",
-                use_container_width=True,
-                on_click=set_teacher_section,
-                args=("tracking",),
-            )
-            st.markdown(
-                '<div class="teacher-tree-hint">Entraînement · Préparation des évaluations</div>',
-                unsafe_allow_html=True,
-            )
-
-        # ACTIVITÉS
-        st.markdown('<div class="teacher-side-group">Activités</div>', unsafe_allow_html=True)
+            st.button("📈  Suivi pédagogique", key="teacher_side_tracking",
+                      use_container_width=True, on_click=set_teacher_section, args=("tracking",))
 
         if section == "challenges":
-            st.markdown(
-                '<div class="teacher-side-current">🏆 &nbsp;Défis</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown('<div class="teacher-side-current">🏆 &nbsp;Défis</div>', unsafe_allow_html=True)
         else:
-            st.button(
-                "🏆  Défis",
-                key="teacher_side_challenges",
-                use_container_width=True,
-                on_click=set_teacher_section,
-                args=("challenges",),
-            )
+            st.button("🏆  Défis", key="teacher_side_challenges",
+                      use_container_width=True, on_click=set_teacher_section, args=("challenges",))
 
         if section == "results":
-            st.markdown(
-                '<div class="teacher-side-current">📊 &nbsp;Résultats</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown('<div class="teacher-side-current">📊 &nbsp;Résultats</div>', unsafe_allow_html=True)
         else:
-            st.button(
-                "📊  Résultats",
-                key="teacher_side_results",
-                use_container_width=True,
-                on_click=set_teacher_section,
-                args=("results",),
-            )
+            st.button("📊  Résultats", key="teacher_side_results",
+                      use_container_width=True, on_click=set_teacher_section, args=("results",))
+
+        st.markdown('<div class="teacher-side-group">Gestion</div>', unsafe_allow_html=True)
+        if section == "classes_students":
+            st.markdown('<div class="teacher-side-current">👥 &nbsp;Classes et élèves</div>', unsafe_allow_html=True)
+        else:
+            st.button("👥  Classes et élèves", key="teacher_side_classes_students",
+                      use_container_width=True, on_click=set_teacher_section, args=("classes_students",))
 
         st.markdown(
             f"""
@@ -15241,19 +15208,10 @@ def teacher_sidebar_nav(section):
             unsafe_allow_html=True,
         )
 
-        st.button(
-            "🏠  Accueil de la Ludothèque",
-            key="teacher_side_home",
-            use_container_width=True,
-            on_click=set_page,
-            args=("home",),
-        )
-        st.button(
-            "↪  Déconnexion",
-            key="teacher_side_logout",
-            use_container_width=True,
-            on_click=logout_app,
-        )
+        st.button("🏠  Accueil Ludothèque", key="teacher_side_home",
+                  use_container_width=True, on_click=set_page, args=("home",))
+        st.button("↪  Déconnexion", key="teacher_side_logout",
+                  use_container_width=True, on_click=logout_app)
 
 
 
@@ -16290,7 +16248,7 @@ def teacher_challenges():
 
 
 def teacher_tracking():
-    teacher_header("Suivi des élèves")
+    teacher_header("Suivi pédagogique")
 
     if not content_pilot_enabled_for_teacher():
         st.info("Le suivi pédagogique est actuellement en phase de test sur un seul compte professeur.")
@@ -16308,53 +16266,55 @@ def teacher_tracking():
 
     tracking_view = st.session_state.get("teacher_tracking_view", "training")
 
-    # Navigation secondaire également visible dans la page.
-    nav_training, nav_evaluation, _ = st.columns([1.15, 1.8, 4.2])
-    with nav_training:
-        if st.button(
+    nav1, nav2, nav_spacer = st.columns([1.25, 2.0, 4.5], gap="small")
+    with nav1:
+        st.button(
             "📚 Entraînement",
-            key="tracking_top_training",
+            key="tracking_nav_training",
             use_container_width=True,
             type="primary" if tracking_view == "training" else "secondary",
             on_click=set_teacher_tracking_view,
             args=("training",),
-        ):
-            pass
-    with nav_evaluation:
-        if st.button(
+        )
+    with nav2:
+        st.button(
             "🎯 Préparation des évaluations",
-            key="tracking_top_evaluation",
+            key="tracking_nav_evaluation",
             use_container_width=True,
             type="primary" if tracking_view == "evaluation" else "secondary",
             on_click=set_teacher_tracking_view,
             args=("evaluation",),
-        ):
-            pass
+        )
+
+    st.markdown(
+        '<div class="tracking-nav-note">La même navigation est disponible dans le bandeau de gauche.</div>',
+        unsafe_allow_html=True,
+    )
 
     students = get_students()
     rows = get_activity_log()
 
     if tracking_view == "training":
-        st.markdown("### Entraînement courant")
+        st.markdown(
+            """
+            <div class="prep-control-card">
+                <div class="training-filter-title">📚 Entraînement courant</div>
+                <div class="training-filter-sub">Filtrez le suivi par classe, chapitre ou exercice.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3 = st.columns(3, gap="medium")
         with c1:
-            class_filter = st.selectbox(
-                "Classe",
-                ["Toutes"] + get_classes(),
-                key="tracking_class_filter",
-            )
+            class_filter = st.selectbox("Classe", ["Toutes"] + get_classes(), key="tracking_class_filter")
 
         chapters = [
             chapter for chapter in PROGRESSION_CHAPTERS
             if chapter != "Autres contenus déjà prêts"
         ]
         with c2:
-            chapter_filter = st.selectbox(
-                "Chapitre",
-                ["Tous"] + chapters,
-                key="tracking_chapter_filter",
-            )
+            chapter_filter = st.selectbox("Chapitre", ["Tous"] + chapters, key="tracking_chapter_filter")
 
         exercise_options = {
             info["label"]: content_id
@@ -16372,10 +16332,7 @@ def teacher_tracking():
             row for row in rows
             if row.get("activity_kind") == "training"
             and (class_filter == "Toutes" or row.get("class_name") == class_filter)
-            and (
-                chapter_filter == "Tous"
-                or row.get("chapter") == chapter_filter
-            )
+            and (chapter_filter == "Tous" or row.get("chapter") == chapter_filter)
             and (
                 exercise_label == "Tous"
                 or row.get("resource_id") == exercise_options.get(exercise_label)
@@ -16386,8 +16343,8 @@ def teacher_tracking():
         attempt_counts, restart_counts = training_attempt_counts(filtered_rows)
 
         selected_students = [
-            s for s in students
-            if class_filter == "Toutes" or s.get("class_name") == class_filter
+            student for student in students
+            if class_filter == "Toutes" or student.get("class_name") == class_filter
         ]
 
         if exercise_label != "Tous":
@@ -16400,7 +16357,8 @@ def teacher_tracking():
         else:
             resource_ids = tracked_exercise_ids()
 
-        table = []
+        view_rows = []
+
         for student in sorted(
             selected_students,
             key=lambda s: (s.get("class_name", ""), s.get("first_name", "").lower()),
@@ -16412,67 +16370,196 @@ def teacher_tracking():
             ]
 
             completed_rows = [
-                r for r in filtered_rows
-                if r.get("student_id") == student.get("id")
-                and r.get("resource_id") in resource_ids
-                and r.get("status", "completed") == "completed"
+                row for row in filtered_rows
+                if row.get("student_id") == student.get("id")
+                and row.get("resource_id") in resource_ids
+                and row.get("status", "completed") == "completed"
             ]
 
-            done_resources = {
-                r.get("resource_id") for r in completed_rows
-            }
+            done_resources = {row.get("resource_id") for row in completed_rows}
+
+            valid_scores = []
+            for row in completed_rows:
+                try:
+                    valid_scores.append(float(row.get("score_percent")))
+                except (TypeError, ValueError):
+                    pass
+
+            best = max(valid_scores) if valid_scores else None
+            done = len(done_resources)
 
             if latest_rows or completed_rows:
-                valid_scores = []
-                for row in completed_rows:
-                    try:
-                        valid_scores.append(float(row.get("score_percent")))
-                    except (TypeError, ValueError):
-                        pass
-                best = max(valid_scores) if valid_scores else None
-                done = len(done_resources)
                 last_activity = max(
-                    [str(r.get("finished_at", "")) for r in latest_rows + completed_rows]
+                    [str(row.get("finished_at", "")) for row in latest_rows + completed_rows]
                 )
-                attempts = sum(
-                    attempt_counts.get((student.get("id"), rid), 0)
-                    for rid in resource_ids
-                )
-                restarts = sum(
-                    restart_counts.get((student.get("id"), rid), 0)
-                    for rid in resource_ids
-                )
-
-                if done == len(resource_ids) and resource_ids:
-                    status = "✅ Actif"
-                elif attempts > 0:
-                    status = "🟠 En cours"
-                else:
-                    status = "⚪ Non commencé"
-
-                result_text = f"{best} %" if best is not None else "—"
             else:
-                done = 0
-                attempts = 0
-                restarts = 0
                 last_activity = ""
-                status = "⚪ Non commencé"
-                result_text = "—"
 
-            table.append({
-                "Élève": f"{student.get('first_name', '')} {student.get('last_initial', '')}.",
-                "Classe": student.get("class_name", ""),
-                "Activité": status,
-                "Exercices faits": f"{done}/{len(resource_ids)}" if resource_ids else "—",
-                "Résultat": result_text,
-                "Tentatives": attempts if attempts else "—",
-                "Recommencées": restarts if restarts else "—",
-                "Dernière activité": format_short_datetime(last_activity),
-                "Dernière connexion": format_short_datetime(student.get("last_login_at")),
+            attempts = sum(
+                attempt_counts.get((student.get("id"), rid), 0)
+                for rid in resource_ids
+            )
+            restarts = sum(
+                restart_counts.get((student.get("id"), rid), 0)
+                for rid in resource_ids
+            )
+
+            if done == len(resource_ids) and resource_ids:
+                status_key = "done"
+            elif attempts > 0:
+                status_key = "work"
+            else:
+                status_key = "idle"
+
+            view_rows.append({
+                "student_name": (
+                    f"{student.get('first_name', '')} "
+                    f"{student.get('last_initial', '')}."
+                ).strip(),
+                "first_name": student.get("first_name", ""),
+                "last_initial": student.get("last_initial", ""),
+                "class_name": student.get("class_name", ""),
+                "status_key": status_key,
+                "done": done,
+                "total": len(resource_ids),
+                "best": best,
+                "attempts": attempts,
+                "restarts": restarts,
+                "last_activity": format_short_datetime(last_activity),
+                "last_login": format_short_datetime(student.get("last_login_at")),
             })
 
-        if table:
-            st.dataframe(table, use_container_width=True, hide_index=True)
+        active_students = sum(1 for row in view_rows if row["status_key"] != "idle")
+        total_done = sum(row["done"] for row in view_rows)
+        total_attempts = sum(row["attempts"] for row in view_rows)
+        total_restarts = sum(row["restarts"] for row in view_rows)
+
+        st.markdown(
+            f"""
+            <div class="training-stat-grid">
+                <div class="training-stat">
+                    <div class="training-stat-icon training-blue">👥</div>
+                    <div>
+                        <div class="training-stat-value">{active_students}</div>
+                        <div class="training-stat-label">Élèves actifs</div>
+                        <div class="training-stat-sub">sur {len(view_rows)} affiché(s)</div>
+                    </div>
+                </div>
+                <div class="training-stat">
+                    <div class="training-stat-icon training-green">✓</div>
+                    <div>
+                        <div class="training-stat-value">{total_done}</div>
+                        <div class="training-stat-label">Exercices terminés</div>
+                        <div class="training-stat-sub">dans le filtre actuel</div>
+                    </div>
+                </div>
+                <div class="training-stat">
+                    <div class="training-stat-icon training-orange">↻</div>
+                    <div>
+                        <div class="training-stat-value">{total_attempts}</div>
+                        <div class="training-stat-label">Tentatives</div>
+                        <div class="training-stat-sub">activité enregistrée</div>
+                    </div>
+                </div>
+                <div class="training-stat">
+                    <div class="training-stat-icon training-purple">⟲</div>
+                    <div>
+                        <div class="training-stat-value">{total_restarts}</div>
+                        <div class="training-stat-label">Recommencées</div>
+                        <div class="training-stat-sub">tentatives relancées</div>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if view_rows:
+            html_rows = []
+            for row in view_rows:
+                initials = (
+                    (str(row["first_name"])[:1] + str(row["last_initial"])[:1])
+                    .upper().strip()
+                ) or "EL"
+                total = row["total"]
+                done = row["done"]
+                pct = round(100 * done / total) if total else 0
+
+                if row["status_key"] == "done":
+                    badge = '<span class="training-badge training-badge-done">✓ Terminé</span>'
+                    fill_class = "training-progress-fill done"
+                elif row["status_key"] == "work":
+                    badge = '<span class="training-badge training-badge-work">◷ En cours</span>'
+                    fill_class = "training-progress-fill"
+                else:
+                    badge = '<span class="training-badge training-badge-idle">○ Non commencé</span>'
+                    fill_class = "training-progress-fill"
+
+                score_html = (
+                    f'<span class="training-score">{row["best"]:g} %</span>'
+                    if row["best"] is not None
+                    else '<span class="prep-muted">—</span>'
+                )
+                attempts_html = (
+                    f'<span class="training-chip">{row["attempts"]}</span>'
+                    if row["attempts"] else '<span class="prep-muted">—</span>'
+                )
+                restarts_html = (
+                    f'<span class="training-chip">{row["restarts"]}</span>'
+                    if row["restarts"] else '<span class="prep-muted">—</span>'
+                )
+
+                html_rows.append(
+                    f"""
+                    <tr>
+                        <td>
+                            <div class="training-student">
+                                <span class="training-avatar">{html.escape(initials)}</span>
+                                <span>{html.escape(row["student_name"])}</span>
+                            </div>
+                        </td>
+                        <td>{html.escape(str(row["class_name"]))}</td>
+                        <td>{badge}</td>
+                        <td>
+                            <div class="training-progress">
+                                <span>{done} / {total}</span>
+                                <div class="training-progress-track">
+                                    <div class="{fill_class}" style="width:{pct}%;"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{score_html}</td>
+                        <td>{attempts_html}</td>
+                        <td>{restarts_html}</td>
+                        <td><span class="training-date">{html.escape(str(row["last_activity"]))}</span></td>
+                        <td><span class="training-date">{html.escape(str(row["last_login"]))}</span></td>
+                    </tr>
+                    """
+                )
+
+            st.markdown(
+                f"""
+                <div class="training-table-wrap">
+                    <table class="training-modern-table">
+                        <thead>
+                            <tr>
+                                <th>Élève</th>
+                                <th>Classe</th>
+                                <th>Activité</th>
+                                <th>Exercices faits</th>
+                                <th>Résultat</th>
+                                <th>Tentatives</th>
+                                <th>Recommencées</th>
+                                <th>Dernière activité</th>
+                                <th>Dernière connexion</th>
+                            </tr>
+                        </thead>
+                        <tbody>{''.join(html_rows)}</tbody>
+                    </table>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         else:
             st.info("Aucun élève ne correspond à ces filtres.")
 
