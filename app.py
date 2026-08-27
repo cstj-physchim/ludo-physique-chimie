@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V76_ADAPTIVE_LEFT_PANEL_CLEAN_FOOTER
+# VERSION_UI_2026_08_27_V77_ADAPTIVE_LEFT_PANEL_VERIFIED
 import re
 import base64
 import json
@@ -1245,11 +1245,6 @@ st.markdown(
         text-overflow: ellipsis;
     }
 
-    .st-key-teacher_page_shell .footer-note,
-    .st-key-teacher_context_shell_training .footer-note,
-    .st-key-teacher_context_shell_challenge .footer-note {
-        display: none !important;
-    }
 
     @media (max-width: 1050px) {
         .teacher-dashboard-title { font-size: 1.6rem; max-width: 100%; }
@@ -1287,11 +1282,32 @@ st.markdown(
         align-items: stretch !important;
     }
 
-    .st-key-teacher_page_shell div[data-testid="column"],
-    .st-key-teacher_context_shell_training div[data-testid="column"],
-    .st-key-teacher_context_shell_challenge div[data-testid="column"] {
+    .st-key-teacher_page_shell div[data-testid="stColumn"],
+    .st-key-teacher_context_shell_training div[data-testid="stColumn"],
+    .st-key-teacher_context_shell_challenge div[data-testid="stColumn"] {
         display: flex !important;
         flex-direction: column !important;
+        align-self: stretch !important;
+    }
+
+    .st-key-teacher_page_shell div[data-testid="stColumn"]:first-child > div,
+    .st-key-teacher_context_shell_training div[data-testid="stColumn"]:first-child > div,
+    .st-key-teacher_context_shell_challenge div[data-testid="stColumn"]:first-child > div {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        height: 100% !important;
+        min-height: 100% !important;
+    }
+
+    .st-key-teacher_page_shell div[data-testid="stColumn"]:first-child [data-testid="stVerticalBlock"],
+    .st-key-teacher_context_shell_training div[data-testid="stColumn"]:first-child [data-testid="stVerticalBlock"],
+    .st-key-teacher_context_shell_challenge div[data-testid="stColumn"]:first-child [data-testid="stVerticalBlock"] {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        height: 100% !important;
+        min-height: 100% !important;
     }
 
     .st-key-teacher_page_shell .st-key-teacher_nav_panel,
@@ -1299,7 +1315,8 @@ st.markdown(
     .st-key-teacher_context_shell_challenge .st-key-teacher_nav_panel {
         flex: 1 1 auto !important;
         min-height: 100% !important;
-        height: auto !important;
+        height: 100% !important;
+        overflow: visible !important;
     }
 
     .teacher-left-account {
@@ -17418,9 +17435,12 @@ else:
     st.rerun()
 
 
-st.markdown(
-    '<div class="footer-note">'
-    'Ludothèque Physique-Chimie · Plateforme pédagogique de jeux et d’activités interactives'
-    '</div>',
-    unsafe_allow_html=True,
-)
+# Le footer générique reste utile côté élève, mais il est volontairement
+# supprimé côté professeur : le tableau de bord possède déjà sa ligne compacte.
+if st.session_state.get("app_user_type") != "teacher":
+    st.markdown(
+        '<div class="footer-note">'
+        'Ludothèque Physique-Chimie · Plateforme pédagogique de jeux et d’activités interactives'
+        '</div>',
+        unsafe_allow_html=True,
+    )
