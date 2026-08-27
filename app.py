@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V65_SIDEBAR_STEP2_VISIBLE
+# VERSION_UI_2026_08_27_V65_VISIBLE_LEFT_PANEL_STEP1
 import re
 import base64
 import json
@@ -36,7 +36,6 @@ st.set_page_config(
     page_title="Ludothèque Physique-Chimie",
     page_icon="🧪",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
 
@@ -51,35 +50,14 @@ st.markdown(
         height: 0 !important;
         min-height: 0 !important;
         background: transparent !important;
-        overflow: visible !important;
     }
 
-    /* Ne plus masquer tous les enfants du header :
-       le bouton natif de réouverture de la sidebar y est rendu. */
     [data-testid="stHeader"] > div {
-        background: transparent !important;
-        overflow: visible !important;
+        display: none !important;
     }
 
     [data-testid="stToolbar"] {
         display: none !important;
-    }
-
-    /* Bouton natif de réouverture : on le garde bien visible si la sidebar
-       a été repliée lors d'une visite précédente. */
-    [data-testid="stExpandSidebarButton"],
-    [data-testid="collapsedControl"] {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        position: fixed !important;
-        top: .65rem !important;
-        left: .65rem !important;
-        z-index: 2147483000 !important;
-        background: rgba(255,255,255,.96) !important;
-        border: 1px solid #d8e2ef !important;
-        border-radius: 11px !important;
-        box-shadow: 0 5px 16px rgba(31,55,90,.14) !important;
     }
 
     [data-testid="stDecoration"] {
@@ -420,7 +398,7 @@ st.markdown(
 
     div[data-testid="stButton"] > button[kind="primary"] {
         background: #22a447;
-        color: #123765;
+        color: white;
         border-color: #22a447;
     }
 
@@ -769,99 +747,111 @@ st.markdown(
 
 
     /* ============================================================
-       ESPACE PROFESSEUR — BANDEAU GAUCHE (ÉTAPE 1)
-       On n'altère pas les boutons de navigation existants des pages.
+       ESPACE PROFESSEUR — BANDEAU GAUCHE VISIBLE
+       Ce panneau fait partie de la mise en page principale.
+       Il ne dépend PAS de la sidebar native Streamlit.
        ============================================================ */
 
-    section[data-testid="stSidebar"] {
-        background: rgba(255,255,255,.72) !important;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-right: 1px solid #dfe6f1 !important;
-        box-shadow: 8px 0 24px rgba(31,55,90,.035);
+    .st-key-teacher_nav_panel {
+        background:
+            radial-gradient(circle at 50% 94%, rgba(62, 106, 255, .22), transparent 35%),
+            linear-gradient(180deg, #083e7e 0%, #06336b 52%, #042858 100%);
+        border-radius: 20px;
+        min-height: calc(100vh - 1.4rem);
+        padding: .8rem .72rem 1rem .72rem;
+        box-shadow: 0 12px 28px rgba(18, 48, 93, .16);
+        border: 1px solid rgba(255,255,255,.08);
+        position: sticky;
+        top: .65rem;
     }
 
-    section[data-testid="stSidebar"] > div {
-        background: transparent !important;
+    .st-key-teacher_nav_panel * {
+        color: #f6f9ff;
     }
 
-    section[data-testid="stSidebar"] * {
-        color: #17345f;
+    .teacher-left-logo {
+        padding: .5rem .45rem 1rem .45rem;
+        margin-bottom: .5rem;
+        border-bottom: 1px solid rgba(255,255,255,.12);
     }
 
-    .teacher-side-logo {
-        padding: .85rem .6rem 1rem .6rem;
-        margin-bottom: .55rem;
-        border-bottom: 1px solid #dfe6f1;
-    }
-
-    .teacher-side-logo-title {
-        color: white;
-        font-weight: 900;
+    .teacher-left-logo-title {
+        color: #ffffff;
         font-size: 1.02rem;
         line-height: 1.18;
+        font-weight: 900;
         letter-spacing: -.02em;
     }
 
-    .teacher-side-logo-sub {
-        color: #6d819d;
-        font-size: .76rem;
-        margin-top: .28rem;
+    .teacher-left-logo-sub {
+        margin-top: .3rem;
+        color: #bdd2ef;
+        font-size: .74rem;
         font-weight: 650;
     }
 
-    .teacher-side-section-label {
-        color: #7890ad !important;
-        font-size: .66rem;
+    .teacher-left-section {
+        margin: .85rem .55rem .32rem .55rem;
+        color: #91b4df !important;
+        font-size: .64rem;
         font-weight: 900;
         text-transform: uppercase;
         letter-spacing: .12em;
-        margin: .9rem .65rem .35rem .65rem;
     }
 
-    .teacher-side-active {
+    .teacher-left-active {
         display: flex;
         align-items: center;
         gap: .55rem;
-        padding: .70rem .78rem;
-        margin: .18rem 0;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #315cff 0%, #476fff 100%);
+        min-height: 2.55rem;
+        padding: .64rem .7rem;
+        margin: .16rem 0;
+        border-radius: 11px;
         color: #ffffff !important;
+        font-size: .82rem;
         font-weight: 850;
-        box-shadow: 0 7px 17px rgba(20, 66, 199, .28);
+        background: linear-gradient(135deg, #315dff 0%, #4b72ff 100%);
+        box-shadow: 0 7px 17px rgba(19, 63, 196, .28);
     }
 
-    section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
-        min-height: 2.55rem !important;
+    .st-key-teacher_nav_panel div[data-testid="stButton"] > button {
+        width: 100%;
+        min-height: 2.45rem !important;
         justify-content: flex-start !important;
         text-align: left !important;
-        color: #294765 !important;
-        background: transparent !important;
-        border: 1px solid transparent !important;
+        padding-left: .7rem !important;
         border-radius: 11px !important;
+        border: 1px solid transparent !important;
+        background: transparent !important;
+        color: #edf5ff !important;
         box-shadow: none !important;
-        padding-left: .72rem !important;
-        font-size: .82rem !important;
+        font-size: .80rem !important;
+        font-weight: 720 !important;
     }
 
-    section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
-        background: rgba(49, 92, 255, .08) !important;
-        border-color: rgba(49, 92, 255, .14) !important;
+    .st-key-teacher_nav_panel div[data-testid="stButton"] > button:hover {
         transform: none !important;
+        background: rgba(86, 123, 255, .22) !important;
+        border-color: rgba(181, 205, 255, .16) !important;
     }
 
-    .teacher-side-footer {
+    .teacher-left-account {
         margin-top: 1rem;
-        padding: .8rem .7rem .2rem .7rem;
-        border-top: 1px solid #dfe6f1;
-        color: #6d819d !important;
-        font-size: .74rem;
+        padding: .72rem .55rem .15rem .55rem;
+        border-top: 1px solid rgba(255,255,255,.11);
+        color: #bcd0ec !important;
+        font-size: .73rem;
         line-height: 1.4;
     }
 
-    /* On garde le bouton natif de repli pour le moment.
-       Nous déciderons plus tard si le bandeau doit être fixe. */
+    /* La colonne de navigation garde une largeur raisonnable. */
+    @media (max-width: 950px) {
+        .st-key-teacher_nav_panel {
+            min-height: auto;
+            position: relative;
+            top: 0;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -14717,11 +14707,11 @@ def teacher_header(title):
         )
 
 
-def teacher_sidebar_nav(section):
+def teacher_left_panel(section):
     """
-    Étape 1 du nouveau bandeau professeur.
-    Il complète la navigation V65 sans remplacer les boutons déjà présents
-    dans les pages (Tableau de bord, Accueil, Déconnexion, etc.).
+    Bandeau gauche visible de l'espace professeur.
+    Étape 1 : navigation principale uniquement.
+    Les boutons propres à chaque page V65 restent tous conservés.
     """
     section = section or "dashboard"
 
@@ -14734,32 +14724,32 @@ def teacher_sidebar_nav(section):
         ("results", "📊  Résultats"),
     ]
 
-    with st.sidebar:
+    with st.container(key="teacher_nav_panel"):
         st.markdown(
             """
-            <div class="teacher-side-logo">
-                <div class="teacher-side-logo-title">🧪 Ludothèque<br>Physique-Chimie</div>
-                <div class="teacher-side-logo-sub">Espace professeur · Navigation</div>
+            <div class="teacher-left-logo">
+                <div class="teacher-left-logo-title">🧪 Ludothèque<br>Physique-Chimie</div>
+                <div class="teacher-left-logo-sub">Espace professeur</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
         st.markdown(
-            '<div class="teacher-side-section-label">Navigation</div>',
+            '<div class="teacher-left-section">Navigation</div>',
             unsafe_allow_html=True,
         )
 
         for target, label in items:
             if target == section:
                 st.markdown(
-                    f'<div class="teacher-side-active">{label}</div>',
+                    f'<div class="teacher-left-active">{label}</div>',
                     unsafe_allow_html=True,
                 )
             else:
                 st.button(
                     label,
-                    key=f"teacher_sidebar_{target}",
+                    key=f"teacher_left_{target}",
                     use_container_width=True,
                     on_click=set_teacher_section,
                     args=(target,),
@@ -14767,7 +14757,7 @@ def teacher_sidebar_nav(section):
 
         st.markdown(
             f"""
-            <div class="teacher-side-footer">
+            <div class="teacher-left-account">
                 <strong>{current_teacher_name()}</strong><br>
                 Compte professeur
             </div>
@@ -16342,21 +16332,31 @@ def page_teacher():
         "dashboard",
     )
 
-    # Le bandeau gauche s'ajoute à la navigation V65 existante.
-    teacher_sidebar_nav(section)
+    # Vrai bandeau gauche dans la mise en page principale :
+    # il ne dépend pas de l'état de la sidebar Streamlit.
+    left_col, main_col = st.columns(
+        [1.35, 6.65],
+        gap="large",
+        vertical_alignment="top",
+    )
 
-    if section == "dashboard":
-        teacher_dashboard()
-    elif section in ("classes_students", "classes", "students"):
-        teacher_classes_students()
-    elif section == "contents":
-        teacher_contents()
-    elif section == "tracking":
-        teacher_tracking()
-    elif section == "challenges":
-        teacher_challenges()
-    elif section == "results":
-        teacher_results()
+    with left_col:
+        teacher_left_panel(section)
+
+    with main_col:
+        # Navigation et pages V65 conservées à l'identique.
+        if section == "dashboard":
+            teacher_dashboard()
+        elif section in ("classes_students", "classes", "students"):
+            teacher_classes_students()
+        elif section == "contents":
+            teacher_contents()
+        elif section == "tracking":
+            teacher_tracking()
+        elif section == "challenges":
+            teacher_challenges()
+        elif section == "results":
+            teacher_results()
 
 
 
