@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V67_PROF_NAV_TREE_AND_ADVANCED
+# VERSION_UI_2026_08_27_V68_SOBER_LEFT_NAV_HIERARCHY
 import re
 import base64
 import json
@@ -823,17 +823,17 @@ st.markdown(
         letter-spacing: .12em;
     }
 
-    .teacher-left-active {
+    .teacher-left-primary-active {
         display: flex;
         align-items: center;
-        gap: .55rem;
-        min-height: 2.55rem;
-        padding: .64rem .7rem;
-        margin: .16rem 0;
+        min-height: 2.75rem;
+        padding: .68rem .78rem;
+        margin: .18rem 0;
         border-radius: 11px;
         color: #ffffff !important;
-        font-size: .82rem;
-        font-weight: 850;
+        font-size: .96rem;
+        font-weight: 800;
+        letter-spacing: -.01em;
         background: linear-gradient(135deg, #315dff 0%, #4b72ff 100%);
         box-shadow: 0 7px 17px rgba(19, 63, 196, .28);
     }
@@ -859,40 +859,56 @@ st.markdown(
         border-color: rgba(181, 205, 255, .16) !important;
     }
 
+    /* Entraînement, Défi et Espace professeur :
+       même niveau d'importance, texte plus grand et plus affirmé. */
+    .st-key-teacher_primary_training div[data-testid="stButton"] > button,
+    .st-key-teacher_primary_challenge div[data-testid="stButton"] > button,
+    .st-key-teacher_primary_prof div[data-testid="stButton"] > button {
+        min-height: 2.75rem !important;
+        padding-left: .78rem !important;
+        font-size: .96rem !important;
+        font-weight: 800 !important;
+        letter-spacing: -.01em !important;
+        color: #ffffff !important;
+    }
+
+    /* Sous-rubriques : retrait visuel uniquement, sans icône ni flèche. */
+    .teacher-left-tree {
+        margin: .22rem 0 .58rem .78rem;
+        padding-left: .72rem;
+        border-left: 1px solid rgba(177,205,242,.20);
+    }
+
+    .st-key-teacher_sub_classes_students div[data-testid="stButton"] > button,
+    .st-key-teacher_sub_contents div[data-testid="stButton"] > button,
+    .st-key-teacher_sub_tracking div[data-testid="stButton"] > button,
+    .st-key-teacher_sub_challenges div[data-testid="stButton"] > button,
+    .st-key-teacher_sub_results div[data-testid="stButton"] > button {
+        min-height: 2.15rem !important;
+        padding-left: .58rem !important;
+        font-size: .79rem !important;
+        font-weight: 650 !important;
+        color: #eaf2ff !important;
+        border-radius: 8px !important;
+    }
+
     .teacher-left-separator {
         height: 1px;
         background: rgba(255,255,255,.18);
         margin: .85rem .35rem .7rem .35rem;
     }
 
-    .teacher-left-tree {
-        margin: .20rem 0 .55rem .75rem;
-        padding-left: .55rem;
-        border-left: 2px solid rgba(177,205,242,.24);
-    }
-
     .teacher-left-subactive {
-        position: relative;
         display: flex;
         align-items: center;
-        min-height: 2.25rem;
-        padding: .50rem .58rem;
-        margin: .12rem 0;
-        border-radius: 9px;
-        background: rgba(72,112,255,.28);
+        min-height: 2.15rem;
+        padding: .48rem .58rem;
+        margin: .10rem 0;
+        border-radius: 8px;
+        background: rgba(72,112,255,.25);
         color: #ffffff !important;
-        font-size: .78rem;
-        font-weight: 850;
-    }
-
-    .teacher-left-subactive::before {
-        content: "";
-        position: absolute;
-        left: -.62rem;
-        top: 50%;
-        width: .52rem;
-        height: 2px;
-        background: rgba(177,205,242,.35);
+        font-size: .79rem;
+        font-weight: 750;
     }
 
     /* Remonte tout l'espace professeur pour récupérer le blanc inutile en haut. */
@@ -14769,8 +14785,18 @@ def teacher_logout_fast():
 def teacher_left_panel(section):
     """
     Navigation principale commune à tous les professeurs activés.
-    L'interface est identique pour Christophe et Virginie ;
-    seules les données changent selon teacher_id.
+
+    Hiérarchie visuelle :
+    - Accueil
+    - Entraînement
+    - Défi
+    - Espace professeur
+        Classes et élèves
+        Contenus
+        Suivi des élèves
+        Création des défis
+        Résultats
+    - Déconnexion
     """
     section = section or "dashboard"
 
@@ -14785,7 +14811,7 @@ def teacher_left_panel(section):
         )
 
         # --------------------------------------------------------
-        # Navigation générale
+        # Accueil
         # --------------------------------------------------------
         st.button(
             "🏠  Accueil",
@@ -14795,55 +14821,61 @@ def teacher_left_panel(section):
             args=("home",),
         )
 
-        st.button(
-            "🎮  Entraînement",
-            key="teacher_left_training",
-            use_container_width=True,
-            on_click=set_teacher_page_fast,
-            args=("free_activity",),
-        )
+        # --------------------------------------------------------
+        # Trois espaces principaux : même importance visuelle
+        # --------------------------------------------------------
+        with st.container(key="teacher_primary_training"):
+            st.button(
+                "Entraînement",
+                key="teacher_left_training",
+                use_container_width=True,
+                on_click=set_teacher_page_fast,
+                args=("free_activity",),
+            )
 
-        st.button(
-            "🏆  Défi",
-            key="teacher_left_challenge",
-            use_container_width=True,
-            on_click=set_teacher_page_fast,
-            args=("challenge",),
-        )
+        with st.container(key="teacher_primary_challenge"):
+            st.button(
+                "Défi",
+                key="teacher_left_challenge",
+                use_container_width=True,
+                on_click=set_teacher_page_fast,
+                args=("challenge",),
+            )
 
         st.markdown(
             '<div class="teacher-left-separator"></div>',
             unsafe_allow_html=True,
         )
 
-        # --------------------------------------------------------
-        # Espace professeur
-        # --------------------------------------------------------
         if section == "dashboard":
             st.markdown(
-                '<div class="teacher-left-active">👨‍🏫 Espace professeur</div>',
+                '<div class="teacher-left-primary-active">Espace professeur</div>',
                 unsafe_allow_html=True,
             )
         else:
-            st.button(
-                "👨‍🏫  Espace professeur",
-                key="teacher_left_dashboard",
-                use_container_width=True,
-                on_click=set_teacher_section_fast,
-                args=("dashboard",),
-            )
+            with st.container(key="teacher_primary_prof"):
+                st.button(
+                    "Espace professeur",
+                    key="teacher_left_dashboard",
+                    use_container_width=True,
+                    on_click=set_teacher_section_fast,
+                    args=("dashboard",),
+                )
 
+        # --------------------------------------------------------
+        # Sous-rubriques : retrait simple, sans icône ni flèche
+        # --------------------------------------------------------
         st.markdown(
             '<div class="teacher-left-tree">',
             unsafe_allow_html=True,
         )
 
         teacher_items = [
-            ("classes_students", "👥  Classes et élèves"),
-            ("contents", "📚  Contenus"),
-            ("tracking", "👀  Suivi des élèves"),
-            ("challenges", "🏆  Création des défis"),
-            ("results", "📊  Résultats"),
+            ("classes_students", "Classes et élèves"),
+            ("contents", "Contenus"),
+            ("tracking", "Suivi des élèves"),
+            ("challenges", "Création des défis"),
+            ("results", "Résultats"),
         ]
 
         for target, label in teacher_items:
@@ -14853,13 +14885,14 @@ def teacher_left_panel(section):
                     unsafe_allow_html=True,
                 )
             else:
-                st.button(
-                    f"↳  {label}",
-                    key=f"teacher_left_{target}",
-                    use_container_width=True,
-                    on_click=set_teacher_section_fast,
-                    args=(target,),
-                )
+                with st.container(key=f"teacher_sub_{target}"):
+                    st.button(
+                        label,
+                        key=f"teacher_left_{target}",
+                        use_container_width=True,
+                        on_click=set_teacher_section_fast,
+                        args=(target,),
+                    )
 
         st.markdown("</div>", unsafe_allow_html=True)
 
