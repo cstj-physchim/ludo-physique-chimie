@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_PREP_EXPORT_DELETE_V65
+# VERSION_UI_2026_08_27_V65_SIDEBAR_STEP1
 import re
 import base64
 import json
@@ -36,6 +36,7 @@ st.set_page_config(
     page_title="Ludothèque Physique-Chimie",
     page_icon="🧪",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
@@ -744,6 +745,101 @@ st.markdown(
         text-align: center;
         margin-top: 0.15rem;
     }
+
+
+    /* ============================================================
+       ESPACE PROFESSEUR — BANDEAU GAUCHE (ÉTAPE 1)
+       On n'altère pas les boutons de navigation existants des pages.
+       ============================================================ */
+
+    section[data-testid="stSidebar"] {
+        background:
+            radial-gradient(circle at 50% 92%, rgba(49, 103, 255, .20), transparent 34%),
+            linear-gradient(180deg, #073b78 0%, #052f66 55%, #042553 100%) !important;
+        border-right: 1px solid rgba(255,255,255,.10);
+    }
+
+    section[data-testid="stSidebar"] > div {
+        background: transparent !important;
+    }
+
+    section[data-testid="stSidebar"] * {
+        color: #f6f9ff;
+    }
+
+    .teacher-side-logo {
+        padding: .85rem .6rem 1rem .6rem;
+        margin-bottom: .55rem;
+        border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .teacher-side-logo-title {
+        color: white;
+        font-weight: 900;
+        font-size: 1.02rem;
+        line-height: 1.18;
+        letter-spacing: -.02em;
+    }
+
+    .teacher-side-logo-sub {
+        color: #bcd2f2;
+        font-size: .76rem;
+        margin-top: .28rem;
+        font-weight: 650;
+    }
+
+    .teacher-side-section-label {
+        color: #91b3df !important;
+        font-size: .66rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+        margin: .9rem .65rem .35rem .65rem;
+    }
+
+    .teacher-side-active {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        padding: .70rem .78rem;
+        margin: .18rem 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #315cff 0%, #476fff 100%);
+        color: #ffffff !important;
+        font-weight: 850;
+        box-shadow: 0 7px 17px rgba(20, 66, 199, .28);
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+        min-height: 2.55rem !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        color: #edf5ff !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        border-radius: 11px !important;
+        box-shadow: none !important;
+        padding-left: .72rem !important;
+        font-size: .82rem !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
+        background: rgba(82, 119, 255, .22) !important;
+        border-color: rgba(181, 205, 255, .16) !important;
+        transform: none !important;
+    }
+
+    .teacher-side-footer {
+        margin-top: 1rem;
+        padding: .8rem .7rem .2rem .7rem;
+        border-top: 1px solid rgba(255,255,255,.10);
+        color: #bcd2f2 !important;
+        font-size: .74rem;
+        line-height: 1.4;
+    }
+
+    /* On garde le bouton natif de repli pour le moment.
+       Nous déciderons plus tard si le bandeau doit être fixe. */
     </style>
     """,
     unsafe_allow_html=True,
@@ -14599,6 +14695,65 @@ def teacher_header(title):
         )
 
 
+def teacher_sidebar_nav(section):
+    """
+    Étape 1 du nouveau bandeau professeur.
+    Il complète la navigation V65 sans remplacer les boutons déjà présents
+    dans les pages (Tableau de bord, Accueil, Déconnexion, etc.).
+    """
+    section = section or "dashboard"
+
+    items = [
+        ("dashboard", "⌂  Tableau de bord"),
+        ("classes_students", "👥  Classes et élèves"),
+        ("contents", "📚  Contenus"),
+        ("tracking", "📈  Suivi pédagogique"),
+        ("challenges", "🏆  Défis"),
+        ("results", "📊  Résultats"),
+    ]
+
+    with st.sidebar:
+        st.markdown(
+            """
+            <div class="teacher-side-logo">
+                <div class="teacher-side-logo-title">🧪 Ludothèque<br>Physique-Chimie</div>
+                <div class="teacher-side-logo-sub">Espace professeur</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            '<div class="teacher-side-section-label">Navigation</div>',
+            unsafe_allow_html=True,
+        )
+
+        for target, label in items:
+            if target == section:
+                st.markdown(
+                    f'<div class="teacher-side-active">{label}</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.button(
+                    label,
+                    key=f"teacher_sidebar_{target}",
+                    use_container_width=True,
+                    on_click=set_teacher_section,
+                    args=(target,),
+                )
+
+        st.markdown(
+            f"""
+            <div class="teacher-side-footer">
+                <strong>{current_teacher_name()}</strong><br>
+                Compte professeur
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def teacher_dashboard():
     # Affiche immédiatement un écran de transition au-dessus de l'ancienne page.
     # Streamlit met à jour le DOM progressivement : sans ce masque, les anciennes
@@ -16164,6 +16319,9 @@ def page_teacher():
         "teacher_section",
         "dashboard",
     )
+
+    # Le bandeau gauche s'ajoute à la navigation V65 existante.
+    teacher_sidebar_nav(section)
 
     if section == "dashboard":
         teacher_dashboard()
