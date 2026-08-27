@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_STREAMLIT_EXPAND_SIDEBAR_FIX_V68
+# VERSION_UI_2026_08_27_FIXED_TREE_SIDEBAR_V69
 import re
 import html
 import base64
@@ -37,6 +37,7 @@ st.set_page_config(
     page_title="Ludothèque Physique-Chimie",
     page_icon="🧪",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
@@ -75,84 +76,15 @@ st.markdown(
     }
 
     /*
-       Bouton de réouverture de la barre latérale.
-       Sur les versions récentes de Streamlit, le contrôle fermé utilise
-       data-testid="stExpandSidebarButton".
-       On garde aussi l'ancien collapsedControl en secours.
+       Dans l'espace professeur, la barre latérale devient une navigation
+       permanente : on ne la replie plus. Cela évite de perdre l'arborescence.
     */
+    [data-testid="stSidebarCollapseButton"],
     [data-testid="stExpandSidebarButton"],
     [data-testid="collapsedControl"] {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        position: fixed !important;
-        top: 0.75rem !important;
-        left: 0.75rem !important;
-        z-index: 2147483000 !important;
-        width: 2.75rem !important;
-        height: 2.75rem !important;
-        min-width: 2.75rem !important;
-        min-height: 2.75rem !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border-radius: 12px !important;
-        background: #ffffff !important;
-        border: 1px solid #d8e1ef !important;
-        box-shadow: 0 7px 20px rgba(31, 55, 90, 0.18) !important;
-        pointer-events: auto !important;
+        display: none !important;
     }
 
-    [data-testid="stExpandSidebarButton"] button,
-    [data-testid="stExpandSidebarButton"] [data-testid="stBaseButton-headerNoPadding"],
-    [data-testid="collapsedControl"] button,
-    [data-testid="collapsedControl"] [data-testid="stBaseButton-headerNoPadding"] {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        color: #123765 !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        width: 100% !important;
-        height: 100% !important;
-        min-height: 0 !important;
-        padding: 0 !important;
-        align-items: center !important;
-        justify-content: center !important;
-        pointer-events: auto !important;
-    }
-
-    [data-testid="stExpandSidebarButton"] svg,
-    [data-testid="collapsedControl"] svg {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        color: #123765 !important;
-        fill: #123765 !important;
-        width: 1.45rem !important;
-        height: 1.45rem !important;
-    }
-
-    /*
-       Bouton interne de réduction de la sidebar.
-       Streamlit utilise stSidebarCollapseButton quand la barre est ouverte.
-    */
-    [data-testid="stSidebarCollapseButton"] {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        position: relative !important;
-        z-index: 2147483000 !important;
-        pointer-events: auto !important;
-    }
-
-    [data-testid="stSidebarCollapseButton"] button,
-    [data-testid="stSidebarCollapseButton"] [data-testid="stBaseButton-headerNoPadding"] {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-    }
 
     [data-testid="stDecoration"] {
         display: none !important;
@@ -915,6 +847,67 @@ st.markdown(
         font-weight: 800;
         background: linear-gradient(135deg, #315cff 0%, #436eff 100%);
         box-shadow: 0 8px 18px rgba(22, 74, 220, .28);
+    }
+    .teacher-side-group {
+        margin: .85rem .25rem .3rem .25rem;
+        color: #9ebbe5 !important;
+        font-size: .68rem;
+        font-weight: 900;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+    }
+
+    .teacher-side-parent {
+        display: flex;
+        gap: .62rem;
+        align-items: center;
+        padding: .72rem .82rem;
+        margin: .18rem 0 .12rem 0;
+        border-radius: 12px;
+        color: #f7fbff;
+        font-weight: 850;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .teacher-tree {
+        margin: .15rem 0 .45rem 1.05rem;
+        padding-left: .75rem;
+        border-left: 2px solid rgba(133,173,235,.32);
+    }
+
+    .teacher-tree-selected {
+        position: relative;
+        margin: .18rem 0;
+        padding: .58rem .68rem;
+        border-radius: 10px;
+        background: rgba(76,112,255,.30);
+        color: #ffffff;
+        font-size: .84rem;
+        font-weight: 850;
+    }
+
+    .teacher-tree-selected::before {
+        content: "";
+        position: absolute;
+        left: -.84rem;
+        top: 50%;
+        width: .72rem;
+        height: 2px;
+        background: rgba(151,187,244,.55);
+    }
+
+    .teacher-tree-hint {
+        color: #a9c2e8;
+        font-size: .72rem;
+        padding: .2rem .68rem .38rem .68rem;
+        line-height: 1.35;
+    }
+
+    /* Boutons secondaires plus compacts dans la branche de navigation */
+    section[data-testid="stSidebar"] .teacher-tree + div[data-testid="stButton"] > button,
+    section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+        font-size: .84rem;
     }
 
     .teacher-side-account {
@@ -15085,18 +15078,16 @@ def teacher_login():
 # ESPACE PROFESSEUR
 # ============================================================
 
-def teacher_sidebar_nav(section):
-    """Navigation persistante de l'espace professeur, inspirée de la maquette."""
-    section = section or "dashboard"
+def set_teacher_tracking_view(view):
+    """Ouvre directement une branche du suivi pédagogique."""
+    st.session_state["teacher_section"] = "tracking"
+    st.session_state["teacher_tracking_view"] = view
 
-    labels = [
-        ("dashboard", "⌂  Tableau de bord"),
-        ("classes_students", "👥  Classes et élèves"),
-        ("contents", "📚  Contenus"),
-        ("tracking", "📈  Suivi pédagogique"),
-        ("challenges", "🏆  Défis"),
-        ("results", "📊  Résultats"),
-    ]
+
+def teacher_sidebar_nav(section):
+    """Navigation professeur permanente sous forme d'arborescence."""
+    section = section or "dashboard"
+    tracking_view = st.session_state.get("teacher_tracking_view", "training")
 
     with st.sidebar:
         st.markdown(
@@ -15109,20 +15100,136 @@ def teacher_sidebar_nav(section):
             unsafe_allow_html=True,
         )
 
-        for target, label in labels:
-            if target == section:
+        # ACCUEIL
+        st.markdown('<div class="teacher-side-group">Accueil</div>', unsafe_allow_html=True)
+        if section == "dashboard":
+            st.markdown(
+                '<div class="teacher-side-current">⌂ &nbsp;Tableau de bord</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.button(
+                "⌂  Tableau de bord",
+                key="teacher_side_dashboard",
+                use_container_width=True,
+                on_click=set_teacher_section,
+                args=("dashboard",),
+            )
+
+        # GESTION
+        st.markdown('<div class="teacher-side-group">Gestion</div>', unsafe_allow_html=True)
+
+        if section == "classes_students":
+            st.markdown(
+                '<div class="teacher-side-current">👥 &nbsp;Classes et élèves</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.button(
+                "👥  Classes et élèves",
+                key="teacher_side_classes_students",
+                use_container_width=True,
+                on_click=set_teacher_section,
+                args=("classes_students",),
+            )
+
+        if section == "contents":
+            st.markdown(
+                '<div class="teacher-side-current">📚 &nbsp;Contenus</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.button(
+                "📚  Contenus",
+                key="teacher_side_contents",
+                use_container_width=True,
+                on_click=set_teacher_section,
+                args=("contents",),
+            )
+
+        # SUIVI PÉDAGOGIQUE : véritable branche avec sous-onglets.
+        st.markdown('<div class="teacher-side-group">Suivi</div>', unsafe_allow_html=True)
+
+        if section == "tracking":
+            st.markdown(
+                '<div class="teacher-side-parent">📈 &nbsp;Suivi pédagogique</div>',
+                unsafe_allow_html=True,
+            )
+
+            st.markdown('<div class="teacher-tree">', unsafe_allow_html=True)
+
+            if tracking_view == "training":
                 st.markdown(
-                    f'<div class="teacher-side-current">{html.escape(label)}</div>',
+                    '<div class="teacher-tree-selected">📚 Entraînement</div>',
                     unsafe_allow_html=True,
                 )
             else:
                 st.button(
-                    label,
-                    key=f"teacher_side_{target}",
+                    "↳  📚 Entraînement",
+                    key="teacher_tree_training",
                     use_container_width=True,
-                    on_click=set_teacher_section,
-                    args=(target,),
+                    on_click=set_teacher_tracking_view,
+                    args=("training",),
                 )
+
+            if tracking_view == "evaluation":
+                st.markdown(
+                    '<div class="teacher-tree-selected">🎯 Préparation des évaluations</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.button(
+                    "↳  🎯 Préparation des évaluations",
+                    key="teacher_tree_evaluation",
+                    use_container_width=True,
+                    on_click=set_teacher_tracking_view,
+                    args=("evaluation",),
+                )
+
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.button(
+                "📈  Suivi pédagogique",
+                key="teacher_side_tracking",
+                use_container_width=True,
+                on_click=set_teacher_section,
+                args=("tracking",),
+            )
+            st.markdown(
+                '<div class="teacher-tree-hint">Entraînement · Préparation des évaluations</div>',
+                unsafe_allow_html=True,
+            )
+
+        # ACTIVITÉS
+        st.markdown('<div class="teacher-side-group">Activités</div>', unsafe_allow_html=True)
+
+        if section == "challenges":
+            st.markdown(
+                '<div class="teacher-side-current">🏆 &nbsp;Défis</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.button(
+                "🏆  Défis",
+                key="teacher_side_challenges",
+                use_container_width=True,
+                on_click=set_teacher_section,
+                args=("challenges",),
+            )
+
+        if section == "results":
+            st.markdown(
+                '<div class="teacher-side-current">📊 &nbsp;Résultats</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.button(
+                "📊  Résultats",
+                key="teacher_side_results",
+                use_container_width=True,
+                on_click=set_teacher_section,
+                args=("results",),
+            )
 
         st.markdown(
             f"""
@@ -15147,6 +15254,7 @@ def teacher_sidebar_nav(section):
             use_container_width=True,
             on_click=logout_app,
         )
+
 
 
 def teacher_header(title):
@@ -16198,15 +16306,35 @@ def teacher_tracking():
         unsafe_allow_html=True,
     )
 
-    training_tab, evaluation_tab = st.tabs([
-        "📚 Entraînement",
-        "🎯 Préparation des évaluations",
-    ])
+    tracking_view = st.session_state.get("teacher_tracking_view", "training")
+
+    # Navigation secondaire également visible dans la page.
+    nav_training, nav_evaluation, _ = st.columns([1.15, 1.8, 4.2])
+    with nav_training:
+        if st.button(
+            "📚 Entraînement",
+            key="tracking_top_training",
+            use_container_width=True,
+            type="primary" if tracking_view == "training" else "secondary",
+            on_click=set_teacher_tracking_view,
+            args=("training",),
+        ):
+            pass
+    with nav_evaluation:
+        if st.button(
+            "🎯 Préparation des évaluations",
+            key="tracking_top_evaluation",
+            use_container_width=True,
+            type="primary" if tracking_view == "evaluation" else "secondary",
+            on_click=set_teacher_tracking_view,
+            args=("evaluation",),
+        ):
+            pass
 
     students = get_students()
     rows = get_activity_log()
 
-    with training_tab:
+    if tracking_view == "training":
         st.markdown("### Entraînement courant")
 
         c1, c2, c3 = st.columns(3)
@@ -16348,7 +16476,7 @@ def teacher_tracking():
         else:
             st.info("Aucun élève ne correspond à ces filtres.")
 
-    with evaluation_tab:
+    if tracking_view == "evaluation":
         st.markdown(
             """
             <div class="prep-page-intro">
