@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V75_TEACHER_HERO_ILLUSTRATION_COMPACT_FOOTER
+# VERSION_UI_2026_08_27_V76_ADAPTIVE_LEFT_PANEL_CLEAN_FOOTER
 import re
 import base64
 import json
@@ -782,12 +782,15 @@ st.markdown(
             radial-gradient(circle at 50% 94%, rgba(62, 106, 255, .22), transparent 35%),
             linear-gradient(180deg, #083e7e 0%, #06336b 52%, #042858 100%);
         border-radius: 16px;
-        min-height: calc(100vh - .5rem);
+        min-height: 100%;
+        height: auto;
         padding: .8rem .68rem 1rem .68rem;
         box-shadow: 0 12px 28px rgba(18, 48, 93, .16);
         border: 1px solid rgba(255,255,255,.08);
-        position: sticky;
-        top: .65rem;
+        position: relative;
+        top: 0;
+        overflow: visible;
+        box-sizing: border-box;
     }
 
     .st-key-teacher_nav_panel * {
@@ -1242,6 +1245,12 @@ st.markdown(
         text-overflow: ellipsis;
     }
 
+    .st-key-teacher_page_shell .footer-note,
+    .st-key-teacher_context_shell_training .footer-note,
+    .st-key-teacher_context_shell_challenge .footer-note {
+        display: none !important;
+    }
+
     @media (max-width: 1050px) {
         .teacher-dashboard-title { font-size: 1.6rem; max-width: 100%; }
         .teacher-dashboard-subtitle { max-width: 100%; }
@@ -1272,6 +1281,27 @@ st.markdown(
         margin-top: 0 !important;
     }
 
+    .st-key-teacher_page_shell div[data-testid="stHorizontalBlock"],
+    .st-key-teacher_context_shell_training div[data-testid="stHorizontalBlock"],
+    .st-key-teacher_context_shell_challenge div[data-testid="stHorizontalBlock"] {
+        align-items: stretch !important;
+    }
+
+    .st-key-teacher_page_shell div[data-testid="column"],
+    .st-key-teacher_context_shell_training div[data-testid="column"],
+    .st-key-teacher_context_shell_challenge div[data-testid="column"] {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .st-key-teacher_page_shell .st-key-teacher_nav_panel,
+    .st-key-teacher_context_shell_training .st-key-teacher_nav_panel,
+    .st-key-teacher_context_shell_challenge .st-key-teacher_nav_panel {
+        flex: 1 1 auto !important;
+        min-height: 100% !important;
+        height: auto !important;
+    }
+
     .teacher-left-account {
         margin-top: 1rem;
         padding: .72rem .55rem .15rem .55rem;
@@ -1284,9 +1314,16 @@ st.markdown(
     /* La colonne de navigation garde une largeur raisonnable. */
     @media (max-width: 950px) {
         .st-key-teacher_nav_panel {
-            min-height: auto;
+            min-height: auto !important;
+            height: auto !important;
             position: relative;
             top: 0;
+        }
+
+        .st-key-teacher_page_shell div[data-testid="stHorizontalBlock"],
+        .st-key-teacher_context_shell_training div[data-testid="stHorizontalBlock"],
+        .st-key-teacher_context_shell_challenge div[data-testid="stHorizontalBlock"] {
+            align-items: flex-start !important;
         }
     }
     </style>
