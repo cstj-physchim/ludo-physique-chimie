@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V68_SOBER_LEFT_NAV_HIERARCHY
+# VERSION_UI_2026_08_27_V70_CLEAR_LEFT_NAV_HIERARCHY
 import re
 import base64
 import json
@@ -896,9 +896,37 @@ st.markdown(
 
     /* Sous-rubriques : retrait visuel uniquement, sans icône ni flèche. */
     .teacher-left-tree {
-        margin: .22rem 0 .58rem .78rem;
-        padding-left: .72rem;
-        border-left: 1px solid rgba(177,205,242,.20);
+        margin: .10rem 0 .20rem 0;
+        padding: 0;
+        border: 0;
+        height: 0;
+    }
+
+    /* Les sous-rubriques sont volontairement plus petites et décalées.
+       Le retrait suffit à montrer qu'elles appartiennent à Espace professeur. */
+    .st-key-teacher_sub_classes_students,
+    .st-key-teacher_sub_contents,
+    .st-key-teacher_sub_tracking,
+    .st-key-teacher_sub_challenges,
+    .st-key-teacher_sub_results {
+        margin-left: 1.15rem !important;
+        width: calc(100% - 1.15rem) !important;
+        position: relative;
+    }
+
+    .st-key-teacher_sub_classes_students::before,
+    .st-key-teacher_sub_contents::before,
+    .st-key-teacher_sub_tracking::before,
+    .st-key-teacher_sub_challenges::before,
+    .st-key-teacher_sub_results::before {
+        content: "";
+        position: absolute;
+        left: -.62rem;
+        top: .42rem;
+        bottom: .42rem;
+        width: 2px;
+        border-radius: 999px;
+        background: rgba(183, 207, 241, .22);
     }
 
     .st-key-teacher_sub_classes_students div[data-testid="stButton"] > button,
@@ -906,14 +934,14 @@ st.markdown(
     .st-key-teacher_sub_tracking div[data-testid="stButton"] > button,
     .st-key-teacher_sub_challenges div[data-testid="stButton"] > button,
     .st-key-teacher_sub_results div[data-testid="stButton"] > button {
-        min-height: 2.15rem !important;
-        padding-left: .58rem !important;
-        padding-right: .45rem !important;
+        min-height: 2.08rem !important;
+        padding-left: .42rem !important;
+        padding-right: .35rem !important;
         justify-content: flex-start !important;
         text-align: left !important;
-        font-size: .79rem !important;
-        font-weight: 650 !important;
-        color: #eaf2ff !important;
+        font-size: .76rem !important;
+        font-weight: 600 !important;
+        color: #dce9fb !important;
         border-radius: 8px !important;
     }
 
@@ -926,14 +954,27 @@ st.markdown(
     .teacher-left-subactive {
         display: flex;
         align-items: center;
-        min-height: 2.15rem;
-        padding: .48rem .58rem;
-        margin: .10rem 0;
+        min-height: 2.08rem;
+        padding: .46rem .48rem;
+        margin: .10rem 0 .10rem 1.15rem;
+        width: calc(100% - 1.15rem);
         border-radius: 8px;
         background: rgba(72,112,255,.25);
         color: #ffffff !important;
-        font-size: .79rem;
-        font-weight: 750;
+        font-size: .76rem;
+        font-weight: 720;
+        position: relative;
+    }
+
+    .teacher-left-subactive::before {
+        content: "";
+        position: absolute;
+        left: -.62rem;
+        top: .42rem;
+        bottom: .42rem;
+        width: 2px;
+        border-radius: 999px;
+        background: rgba(183,207,241,.30);
     }
 
     /* Remonte tout l'espace professeur pour récupérer le blanc inutile en haut. */
@@ -14866,11 +14907,6 @@ def teacher_left_panel(section):
                 on_click=set_teacher_page_fast,
                 args=("challenge",),
             )
-
-        st.markdown(
-            '<div class="teacher-left-separator"></div>',
-            unsafe_allow_html=True,
-        )
 
         if section == "dashboard":
             st.markdown(
