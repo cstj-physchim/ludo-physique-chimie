@@ -1,7 +1,8 @@
-# VERSION_UI_2026_08_27_V71_MODERN_TEACHER_DASHBOARD
+# VERSION_UI_2026_08_27_V72_MODERN_TEACHER_DASHBOARD_HTML_FIX
 import re
 import base64
 import json
+import html
 import math
 import tempfile
 import random
