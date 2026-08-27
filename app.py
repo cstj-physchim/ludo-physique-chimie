@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V72_MODERN_TEACHER_DASHBOARD_HTML_FIX
+# VERSION_UI_2026_08_27_V73_EXERCISE_BANK_MURLAB_START
 import re
 import base64
 import json
@@ -907,6 +907,8 @@ st.markdown(
        Le retrait suffit à montrer qu'elles appartiennent à Espace professeur. */
     .st-key-teacher_sub_classes_students,
     .st-key-teacher_sub_contents,
+    .st-key-teacher_sub_exercise_bank,
+    .st-key-teacher_sub_murlab,
     .st-key-teacher_sub_tracking,
     .st-key-teacher_sub_challenges,
     .st-key-teacher_sub_results {
@@ -917,6 +919,8 @@ st.markdown(
 
     .st-key-teacher_sub_classes_students::before,
     .st-key-teacher_sub_contents::before,
+    .st-key-teacher_sub_exercise_bank::before,
+    .st-key-teacher_sub_murlab::before,
     .st-key-teacher_sub_tracking::before,
     .st-key-teacher_sub_challenges::before,
     .st-key-teacher_sub_results::before {
@@ -932,6 +936,8 @@ st.markdown(
 
     .st-key-teacher_sub_classes_students div[data-testid="stButton"] > button,
     .st-key-teacher_sub_contents div[data-testid="stButton"] > button,
+    .st-key-teacher_sub_exercise_bank div[data-testid="stButton"] > button,
+    .st-key-teacher_sub_murlab div[data-testid="stButton"] > button,
     .st-key-teacher_sub_tracking div[data-testid="stButton"] > button,
     .st-key-teacher_sub_challenges div[data-testid="stButton"] > button,
     .st-key-teacher_sub_results div[data-testid="stButton"] > button {
@@ -1047,6 +1053,8 @@ st.markdown(
     /* Cartes modernes : le conteneur entier forme un seul composant. */
     .st-key-teacher_card_classes_students,
     .st-key-teacher_card_contents,
+    .st-key-teacher_card_exercise_bank,
+    .st-key-teacher_card_murlab,
     .st-key-teacher_card_tracking,
     .st-key-teacher_card_challenges,
     .st-key-teacher_card_results {
@@ -1062,6 +1070,8 @@ st.markdown(
 
     .st-key-teacher_card_classes_students { border-top: 4px solid #3f72f2; }
     .st-key-teacher_card_contents         { border-top: 4px solid #35b56b; }
+    .st-key-teacher_card_exercise_bank   { border-top: 4px solid #16a7a0; }
+    .st-key-teacher_card_murlab           { border-top: 4px solid #5870e8; }
     .st-key-teacher_card_tracking         { border-top: 4px solid #7659ef; }
     .st-key-teacher_card_challenges       { border-top: 4px solid #f49a2b; }
     .st-key-teacher_card_results          { border-top: 4px solid #ed5aa7; }
@@ -1107,6 +1117,8 @@ st.markdown(
 
     .teacher-card-blue   { color:#3f72f2; }
     .teacher-card-green  { color:#35b56b; }
+    .teacher-card-teal   { color:#16a7a0; }
+    .teacher-card-indigo { color:#5870e8; }
     .teacher-card-purple { color:#7659ef; }
     .teacher-card-orange { color:#f49a2b; }
     .teacher-card-pink   { color:#ed5aa7; }
@@ -1142,6 +1154,8 @@ st.markdown(
     /* Boutons intégrés visuellement dans les cartes */
     .st-key-teacher_card_classes_students div[data-testid="stButton"] > button,
     .st-key-teacher_card_contents div[data-testid="stButton"] > button,
+    .st-key-teacher_card_exercise_bank div[data-testid="stButton"] > button,
+    .st-key-teacher_card_murlab div[data-testid="stButton"] > button,
     .st-key-teacher_card_tracking div[data-testid="stButton"] > button,
     .st-key-teacher_card_challenges div[data-testid="stButton"] > button,
     .st-key-teacher_card_results div[data-testid="stButton"] > button {
@@ -1159,6 +1173,12 @@ st.markdown(
     .st-key-teacher_card_contents div[data-testid="stButton"] > button {
         color:#269655 !important; border:1px solid #7ed4a2 !important;
     }
+    .st-key-teacher_card_exercise_bank div[data-testid="stButton"] > button {
+        color:#128b86 !important; border:1px solid #75d2cd !important;
+    }
+    .st-key-teacher_card_murlab div[data-testid="stButton"] > button {
+        color:#4f63d8 !important; border:1px solid #aab4f5 !important;
+    }
     .st-key-teacher_card_tracking div[data-testid="stButton"] > button {
         color:#684be1 !important; border:1px solid #ad9af7 !important;
     }
@@ -1171,6 +1191,8 @@ st.markdown(
 
     .st-key-teacher_card_classes_students div[data-testid="stButton"] > button:hover,
     .st-key-teacher_card_contents div[data-testid="stButton"] > button:hover,
+    .st-key-teacher_card_exercise_bank div[data-testid="stButton"] > button:hover,
+    .st-key-teacher_card_murlab div[data-testid="stButton"] > button:hover,
     .st-key-teacher_card_tracking div[data-testid="stButton"] > button:hover,
     .st-key-teacher_card_challenges div[data-testid="stButton"] > button:hover,
     .st-key-teacher_card_results div[data-testid="stButton"] > button:hover {
@@ -15152,6 +15174,8 @@ def teacher_left_panel(section):
         teacher_items = [
             ("classes_students", "Classes et élèves"),
             ("contents", "Contenus"),
+            ("exercise_bank", "Banque d’exercices"),
+            ("murlab", "MurLab"),
             ("tracking", "Suivi des élèves"),
             ("challenges", "Création des défis"),
             ("results", "Résultats"),
@@ -15245,6 +15269,24 @@ def teacher_dashboard():
             "button": "Gérer mes contenus  ›",
         },
         {
+            "section": "exercise_bank",
+            "icon": "📝",
+            "icon_class": "teacher-card-teal",
+            "title": "Banque d’exercices",
+            "text": "Créez, classez et partagez vos propres exercices interactifs.",
+            "stat": "Éditeur d’exercices",
+            "button": "Ouvrir la banque  ›",
+        },
+        {
+            "section": "murlab",
+            "icon": "🧪",
+            "icon_class": "teacher-card-indigo",
+            "title": "MurLab",
+            "text": "Créez des murs de ressources avec textes, images, vidéos, liens et documents.",
+            "stat": "Murs pédagogiques",
+            "button": "Ouvrir MurLab  ›",
+        },
+        {
             "section": "tracking",
             "icon": "👀",
             "icon_class": "teacher-card-purple",
@@ -15281,36 +15323,108 @@ def teacher_dashboard():
             if card["section"] not in ("contents", "tracking")
         ]
 
-    cols = st.columns(len(cards), gap="medium")
+    # Jusqu'à 4 cartes par ligne : lisible avec les deux nouvelles briques.
+    card_columns = 4
+    for row_start in range(0, len(cards), card_columns):
+        row_cards = cards[row_start:row_start + card_columns]
+        cols = st.columns(card_columns, gap="medium")
 
-    for col, card in zip(cols, cards):
-        with col:
-            with st.container(key=f"teacher_card_{card['section']}"):
-                st.markdown(
-                    f"""
-                    <div class="teacher-modern-card-icon-wrap {card['icon_class']}">
-                        <span>{card['icon']}</span>
-                    </div>
-                    <div class="teacher-modern-card-title">{card['title']}</div>
-                    <div class="teacher-modern-card-text">{card['text']}</div>
-                    <div class="teacher-modern-card-stat">{card['stat']}</div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-                st.button(
-                    card["button"],
-                    key=f"teacher_dashboard_{card['section']}",
-                    use_container_width=True,
-                    on_click=set_teacher_section_fast,
-                    args=(card["section"],),
-                )
-
+        for col, card in zip(cols, row_cards):
+            with col:
+                with st.container(key=f"teacher_card_{card['section']}"):
+                    st.markdown(
+                        f"""
+                        <div class="teacher-modern-card-icon-wrap {card['icon_class']}">
+                            <span>{card['icon']}</span>
+                        </div>
+                        <div class="teacher-modern-card-title">{card['title']}</div>
+                        <div class="teacher-modern-card-text">{card['text']}</div>
+                        <div class="teacher-modern-card-stat">{card['stat']}</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+    
+                    st.button(
+                        card["button"],
+                        key=f"teacher_dashboard_{card['section']}",
+                        use_container_width=True,
+                        on_click=set_teacher_section_fast,
+                        args=(card["section"],),
+                    )
+    
     st.markdown(
         '<div class="teacher-dashboard-sync">ⓘ Toutes les données sont synchronisées avec Upstash.</div>',
         unsafe_allow_html=True,
     )
 
+
+
+def teacher_exercise_bank():
+    teacher_header("Banque d’exercices")
+    st.markdown(
+        """
+        <div style="padding:1rem 1.1rem;border:1px solid #dce9f2;border-radius:18px;
+                    background:linear-gradient(135deg,#f8fffe,#f5fbff);margin-bottom:1rem;">
+          <div style="font-size:1.35rem;font-weight:850;color:#14345d;">📝 Banque d’exercices</div>
+          <div style="color:#667b96;margin-top:.3rem;">
+            Votre atelier pour créer, organiser, tester et partager des exercices.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    c1, c2, c3 = st.columns(3, gap="medium")
+    with c1:
+        st.metric("Mes exercices", "0")
+    with c2:
+        st.metric("Partagés avec moi", "0")
+    with c3:
+        st.metric("Banque commune", "0")
+
+    st.info("L’éditeur complet arrive à l’étape suivante. La rubrique et son architecture sont maintenant intégrées.")
+    with st.expander("➕ Créer un exercice", expanded=True):
+        st.selectbox("Type d’exercice", [
+            "QCM", "Réponse courte", "Vrai / Faux", "Texte à trous",
+            "Associer des éléments", "Remettre dans l’ordre",
+            "Question avec image", "Question ouverte"
+        ], key="exercise_bank_type")
+        st.text_input("Titre de l’exercice", key="exercise_bank_title")
+        st.text_area("Consigne", key="exercise_bank_instruction", height=100)
+        st.text_area("Réponse attendue / correction", key="exercise_bank_answer", height=100)
+        st.caption("Cette première version prépare l’éditeur sans encore enregistrer de nouvel exercice dans Upstash.")
+
+
+def teacher_murlab():
+    teacher_header("MurLab")
+    st.markdown(
+        """
+        <div style="padding:1rem 1.1rem;border:1px solid #dfe5fb;border-radius:18px;
+                    background:linear-gradient(135deg,#f8f9ff,#f7fcff);margin-bottom:1rem;">
+          <div style="font-size:1.35rem;font-weight:850;color:#14345d;">🧪 MurLab</div>
+          <div style="color:#667b96;margin-top:.3rem;">
+            Créez des murs pédagogiques pour réunir textes, photos, vidéos, liens et documents.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    c1, c2, c3 = st.columns(3, gap="medium")
+    with c1:
+        st.metric("Mes murs", "0")
+    with c2:
+        st.metric("Partagés aux classes", "0")
+    with c3:
+        st.metric("Ressources", "0")
+
+    st.info("MurLab est maintenant présent dans l’espace professeur. La création et le stockage des murs seront développés à l’étape suivante.")
+    with st.expander("➕ Nouveau mur", expanded=True):
+        st.text_input("Titre du mur", placeholder="Ex. Chapitre 2 — Transformations chimiques", key="murlab_title")
+        st.text_area("Description", key="murlab_description", height=90)
+        st.multiselect("Types de ressources prévues", [
+            "Texte / note", "Photo / image", "Vidéo", "Lien web",
+            "Document PDF", "Fichier", "Exercice de la banque"
+        ], key="murlab_resource_types")
+        st.caption("Aucun mur n’est encore enregistré : on pose d’abord l’interface et la structure proprement.")
 
 
 def teacher_advanced_management(scope):
@@ -16762,6 +16876,10 @@ def page_teacher():
                 teacher_classes_students()
             elif section == "contents":
                 teacher_contents()
+            elif section == "exercise_bank":
+                teacher_exercise_bank()
+            elif section == "murlab":
+                teacher_murlab()
             elif section == "tracking":
                 teacher_tracking()
             elif section == "challenges":
