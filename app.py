@@ -835,6 +835,12 @@ st.markdown(
         border-color: rgba(181, 205, 255, .16) !important;
     }
 
+    .teacher-left-separator {
+        height: 1px;
+        background: rgba(255,255,255,.18);
+        margin: .85rem .35rem .7rem .35rem;
+    }
+
     .teacher-left-account {
         margin-top: 1rem;
         padding: .72rem .55rem .15rem .55rem;
@@ -14754,6 +14760,26 @@ def teacher_left_panel(section):
                     on_click=set_teacher_section,
                     args=(target,),
                 )
+
+        st.markdown(
+            '<div class="teacher-left-separator"></div>',
+            unsafe_allow_html=True,
+        )
+
+        st.button(
+            "🏠  Accueil",
+            key="teacher_left_home",
+            use_container_width=True,
+            on_click=set_page,
+            args=("home",),
+        )
+
+        st.button(
+            "🚪  Déconnexion",
+            key="teacher_left_logout",
+            use_container_width=True,
+            on_click=logout_app,
+        )
 
         st.markdown(
             f"""
