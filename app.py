@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V66_VIRGINIE_TEACHER_SPACE
+# VERSION_UI_2026_08_27_V67_PROF_NAV_TREE_AND_ADVANCED
 import re
 import base64
 import json
@@ -863,6 +863,36 @@ st.markdown(
         height: 1px;
         background: rgba(255,255,255,.18);
         margin: .85rem .35rem .7rem .35rem;
+    }
+
+    .teacher-left-tree {
+        margin: .20rem 0 .55rem .75rem;
+        padding-left: .55rem;
+        border-left: 2px solid rgba(177,205,242,.24);
+    }
+
+    .teacher-left-subactive {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-height: 2.25rem;
+        padding: .50rem .58rem;
+        margin: .12rem 0;
+        border-radius: 9px;
+        background: rgba(72,112,255,.28);
+        color: #ffffff !important;
+        font-size: .78rem;
+        font-weight: 850;
+    }
+
+    .teacher-left-subactive::before {
+        content: "";
+        position: absolute;
+        left: -.62rem;
+        top: 50%;
+        width: .52rem;
+        height: 2px;
+        background: rgba(177,205,242,.35);
     }
 
     /* Remonte tout l'espace professeur pour récupérer le blanc inutile en haut. */
@@ -14709,11 +14739,11 @@ def teacher_login():
 # ESPACE PROFESSEUR
 # ============================================================
 
-def teacher_header(title):
+def teacher_header(title=None):
     st.markdown(
         f"""
         <div class="teacher-band">
-            <div class="teacher-band-title">👨‍🏫 {current_teacher_name()} — {title}</div>
+            <div class="teacher-band-title">👨‍🏫 Espace professeur — {current_teacher_name()}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -14721,13 +14751,14 @@ def teacher_header(title):
 
 
 def set_teacher_section_fast(section):
-    """Navigation professeur immédiate, sans voile de transition."""
+    """Navigation interne immédiate dans l'espace professeur."""
     st.session_state.teacher_section = section
+    st.session_state.page = "teacher"
 
 
-def set_teacher_home_fast():
-    """Retour immédiat à l'accueil depuis le bandeau professeur."""
-    st.session_state.page = "home"
+def set_teacher_page_fast(page):
+    """Navigation immédiate vers une grande rubrique de la Ludothèque."""
+    st.session_state.page = page
 
 
 def teacher_logout_fast():
@@ -14737,51 +14768,100 @@ def teacher_logout_fast():
 
 def teacher_left_panel(section):
     """
-    Bandeau gauche visible de l'espace professeur.
-    Étape 1 : navigation principale uniquement.
-    Les boutons propres à chaque page V65 restent tous conservés.
+    Navigation principale commune à tous les professeurs activés.
+    L'interface est identique pour Christophe et Virginie ;
+    seules les données changent selon teacher_id.
     """
     section = section or "dashboard"
-
-    items = [
-        ("dashboard", "⌂  Tableau de bord"),
-        ("classes_students", "👥  Classes et élèves"),
-        ("contents", "📚  Contenus"),
-        ("tracking", "📈  Suivi pédagogique"),
-        ("challenges", "🏆  Défis"),
-        ("results", "📊  Résultats"),
-    ]
 
     with st.container(key="teacher_nav_panel"):
         st.markdown(
             """
             <div class="teacher-left-logo">
                 <div class="teacher-left-logo-title">🧪 Ludothèque<br>Physique-Chimie</div>
-                <div class="teacher-left-logo-sub">Espace professeur</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+        # --------------------------------------------------------
+        # Navigation générale
+        # --------------------------------------------------------
+        st.button(
+            "🏠  Accueil",
+            key="teacher_left_home",
+            use_container_width=True,
+            on_click=set_teacher_page_fast,
+            args=("home",),
+        )
+
+        st.button(
+            "🎮  Entraînement",
+            key="teacher_left_training",
+            use_container_width=True,
+            on_click=set_teacher_page_fast,
+            args=("free_activity",),
+        )
+
+        st.button(
+            "🏆  Défi",
+            key="teacher_left_challenge",
+            use_container_width=True,
+            on_click=set_teacher_page_fast,
+            args=("challenge",),
+        )
+
         st.markdown(
-            '<div class="teacher-left-section">Navigation</div>',
+            '<div class="teacher-left-separator"></div>',
             unsafe_allow_html=True,
         )
 
-        for target, label in items:
-            if target == section:
+        # --------------------------------------------------------
+        # Espace professeur
+        # --------------------------------------------------------
+        if section == "dashboard":
+            st.markdown(
+                '<div class="teacher-left-active">👨‍🏫 Espace professeur</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.button(
+                "👨‍🏫  Espace professeur",
+                key="teacher_left_dashboard",
+                use_container_width=True,
+                on_click=set_teacher_section_fast,
+                args=("dashboard",),
+            )
+
+        st.markdown(
+            '<div class="teacher-left-tree">',
+            unsafe_allow_html=True,
+        )
+
+        teacher_items = [
+            ("classes_students", "👥  Classes et élèves"),
+            ("contents", "📚  Contenus"),
+            ("tracking", "👀  Suivi des élèves"),
+            ("challenges", "🏆  Création des défis"),
+            ("results", "📊  Résultats"),
+        ]
+
+        for target, label in teacher_items:
+            if section == target:
                 st.markdown(
-                    f'<div class="teacher-left-active">{label}</div>',
+                    f'<div class="teacher-left-subactive">{label}</div>',
                     unsafe_allow_html=True,
                 )
             else:
                 st.button(
-                    label,
+                    f"↳  {label}",
                     key=f"teacher_left_{target}",
                     use_container_width=True,
                     on_click=set_teacher_section_fast,
                     args=(target,),
                 )
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown(
             '<div class="teacher-left-separator"></div>',
@@ -14789,44 +14869,17 @@ def teacher_left_panel(section):
         )
 
         st.button(
-            "🏠  Accueil",
-            key="teacher_left_home",
-            use_container_width=True,
-            on_click=set_teacher_home_fast,
-        )
-
-        st.button(
             "🚪  Déconnexion",
             key="teacher_left_logout",
             use_container_width=True,
-            on_click=logout_app,
+            on_click=teacher_logout_fast,
         )
 
-        st.markdown(
-            f"""
-            <div class="teacher-left-account">
-                <strong>{current_teacher_name()}</strong><br>
-                Compte professeur
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
 
 def teacher_dashboard():
-    # Affiche tout de suite la structure de la page.
-    # Les données réseau arrivent ensuite pour éviter un écran figé.
-    hero()
-
-    st.markdown(
-        f"""
-        <div class="teacher-band">
-            <div class="teacher-band-title">👨‍🏫 Espace professeur — {current_teacher_name()}</div>
-            <div>Gérez vos classes et élèves, vos contenus, vos préparations, vos défis et vos résultats.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Titre unique de l'espace professeur.
+    teacher_header()
 
     classes = get_classes()
     students = get_students()
@@ -14901,119 +14954,97 @@ def teacher_dashboard():
         unsafe_allow_html=True,
     )
 
-    with st.expander("⚠️ Administration et réinitialisation"):
+
+
+def teacher_advanced_management(scope):
+    """
+    Gestion avancée contextualisée.
+    Chaque action concerne uniquement le professeur connecté.
+    """
+    configs = {
+        "classes_students": {
+            "title": "⚙️ Gestion avancée — Classes et élèves",
+            "phrase": "SUPPRIMER CLASSES ET ELEVES",
+            "button": "🗑️ Supprimer mes classes et mes élèves",
+            "message": (
+                "Toutes vos classes et tous vos élèves seront supprimés. "
+                "Les défis et résultats déjà enregistrés sont conservés."
+            ),
+            "success": "Vos classes et vos élèves ont été supprimés.",
+            "action": reset_classes_and_students,
+        },
+        "contents": {
+            "title": "⚙️ Gestion avancée — Contenus",
+            "phrase": "REINITIALISER LES CONTENUS",
+            "button": "🗑️ Réinitialiser l'ouverture des contenus",
+            "message": (
+                "Tous les réglages d'ouverture ou de fermeture des contenus "
+                "seront remis à zéro pour vos classes."
+            ),
+            "success": "Les réglages de contenus ont été réinitialisés.",
+            "action": lambda: save_content_access({}),
+        },
+        "tracking": {
+            "title": "⚙️ Gestion avancée — Suivi des élèves",
+            "phrase": "SUPPRIMER LE SUIVI",
+            "button": "🗑️ Supprimer mon suivi pédagogique",
+            "message": (
+                "Les réalisations d'exercices et les préparations d'évaluation "
+                "seront supprimées. Les élèves, contenus, défis et résultats sont conservés."
+            ),
+            "success": "Le suivi pédagogique a été supprimé.",
+            "action": reset_tracking,
+        },
+        "challenges": {
+            "title": "⚙️ Gestion avancée — Création des défis",
+            "phrase": "SUPPRIMER LES DEFIS",
+            "button": "🗑️ Supprimer tous mes défis",
+            "message": (
+                "Vos défis seront supprimés ainsi que les équipes collaboratives associées. "
+                "Les classes, élèves et résultats passés sont conservés."
+            ),
+            "success": "Tous vos défis ont été supprimés.",
+            "action": reset_challenges,
+        },
+        "results": {
+            "title": "⚙️ Gestion avancée — Résultats",
+            "phrase": "SUPPRIMER LES RESULTATS",
+            "button": "🗑️ Supprimer tous mes résultats",
+            "message": (
+                "Tous vos résultats enregistrés seront supprimés. "
+                "Les classes, élèves et défis sont conservés."
+            ),
+            "success": "Tous vos résultats ont été supprimés.",
+            "action": reset_results,
+        },
+    }
+
+    config = configs.get(scope)
+    if not config:
+        return
+
+    with st.expander(config["title"]):
         st.warning(
-            "Les suppressions effectuées ici concernent uniquement votre espace professeur "
-            "et sont irréversibles."
+            "Cette zone contient des opérations irréversibles. "
+            "Elles concernent uniquement votre espace professeur."
         )
-
-        reset_choice = st.selectbox(
-            "Que voulez-vous réinitialiser ?",
-            [
-                "Défis",
-                "Résultats",
-                "Suivi pédagogique",
-                "Élèves",
-                "Classes et élèves",
-                "Toutes les données",
-            ],
-            key="reset_choice",
-        )
-
-        reset_config = {
-            "Défis": {
-                "phrase": "SUPPRIMER LES DEFIS",
-                "button": "🗑️ Supprimer tous les défis",
-                "message": (
-                    "Les défis seront supprimés, ainsi que les équipes collaboratives "
-                    "qui leur sont associées. Les classes, élèves et résultats passés "
-                    "seront conservés."
-                ),
-                "success": "Tous les défis ont été supprimés.",
-            },
-            "Résultats": {
-                "phrase": "SUPPRIMER LES RESULTATS",
-                "button": "🗑️ Supprimer tous les résultats",
-                "message": (
-                    "Tous les résultats enregistrés seront supprimés. "
-                    "Les classes, élèves et défis seront conservés."
-                ),
-                "success": "Tous les résultats ont été supprimés.",
-            },
-            "Suivi pédagogique": {
-                "phrase": "SUPPRIMER LE SUIVI",
-                "button": "🗑️ Supprimer le suivi pédagogique",
-                "message": (
-                    "Les réalisations d'exercices et les préparations d'évaluation seront supprimées. "
-                    "Les élèves, contenus, défis et résultats des défis seront conservés."
-                ),
-                "success": "Le suivi pédagogique a été supprimé.",
-            },
-            "Élèves": {
-                "phrase": "SUPPRIMER LES ELEVES",
-                "button": "🗑️ Supprimer tous les élèves",
-                "message": (
-                    "Tous les élèves seront supprimés, mais les classes resteront disponibles. "
-                    "Les résultats déjà enregistrés sont conservés comme historique."
-                ),
-                "success": "Tous les élèves ont été supprimés.",
-            },
-            "Classes et élèves": {
-                "phrase": "SUPPRIMER CLASSES ET ELEVES",
-                "button": "🗑️ Supprimer les classes et les élèves",
-                "message": (
-                    "Toutes les classes et tous les élèves seront supprimés. "
-                    "Les défis et les résultats déjà enregistrés seront conservés."
-                ),
-                "success": "Toutes les classes et tous les élèves ont été supprimés.",
-            },
-            "Toutes les données": {
-                "phrase": "REINITIALISER TOUT",
-                "button": "🗑️ Réinitialiser tout mon espace",
-                "message": (
-                    "Les classes, élèves, défis, équipes collaboratives et résultats "
-                    "seront définitivement supprimés."
-                ),
-                "success": "Votre espace professeur a été entièrement réinitialisé.",
-            },
-        }
-
-        config = reset_config[reset_choice]
         st.info(config["message"])
 
-        reset_confirmation = st.text_input(
+        confirmation = st.text_input(
             f"Pour confirmer, saisissez exactement : {config['phrase']}",
-            key="reset_confirmation",
+            key=f"advanced_confirm_{scope}",
         )
 
         if st.button(
             config["button"],
-            disabled=reset_confirmation != config["phrase"],
+            disabled=confirmation != config["phrase"],
             use_container_width=True,
-            key="reset_action_button",
+            key=f"advanced_action_{scope}",
         ):
-            if reset_choice == "Défis":
-                reset_challenges()
-            elif reset_choice == "Résultats":
-                reset_results()
-            elif reset_choice == "Suivi pédagogique":
-                reset_tracking()
-            elif reset_choice == "Élèves":
-                reset_students()
-            elif reset_choice == "Classes et élèves":
-                reset_classes_and_students()
-            else:
-                reset_database()
-
-            for session_key in [
-                "challenge_student",
-                "active_challenge",
-                "collab_team_code",
-            ]:
-                st.session_state.pop(session_key, None)
-
+            config["action"]()
             st.success(config["success"])
             st.rerun()
+
 
 def teacher_classes_students():
     teacher_header("Classes et élèves")
@@ -15401,6 +15432,8 @@ def teacher_classes_students():
             st.info("Aucune classe enregistrée.")
 
 
+    teacher_advanced_management("classes_students")
+
 def teacher_contents():
     teacher_header("Contenus")
 
@@ -15507,6 +15540,8 @@ def teacher_contents():
         )
     else:
         st.info("Aucun contenu n'est actuellement ouvert pour cette classe.")
+
+    teacher_advanced_management("contents")
 
 def teacher_challenges():
     teacher_header("Défis")
@@ -15754,6 +15789,8 @@ def teacher_challenges():
                 st.dataframe(rows, use_container_width=True, hide_index=True)
 
 
+
+    teacher_advanced_management("challenges")
 
 def teacher_tracking():
     teacher_header("Suivi des élèves")
@@ -16191,6 +16228,8 @@ def teacher_tracking():
                         st.rerun()
 
 
+    teacher_advanced_management("tracking")
+
 def teacher_results():
     teacher_header("Résultats")
 
@@ -16296,6 +16335,8 @@ def teacher_results():
         hide_index=True,
     )
 
+
+    teacher_advanced_management("results")
 
 def page_teacher():
     if not teacher_login():
