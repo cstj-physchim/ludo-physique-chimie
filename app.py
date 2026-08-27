@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V65_VISIBLE_LEFT_PANEL_STEP1
+# VERSION_UI_2026_08_27_V65_VISIBLE_LEFT_PANEL_STEP2_NO_OUTER_MARGIN
 import re
 import base64
 import json
@@ -756,9 +756,9 @@ st.markdown(
         background:
             radial-gradient(circle at 50% 94%, rgba(62, 106, 255, .22), transparent 35%),
             linear-gradient(180deg, #083e7e 0%, #06336b 52%, #042858 100%);
-        border-radius: 20px;
+        border-radius: 16px;
         min-height: calc(100vh - 1.4rem);
-        padding: .8rem .72rem 1rem .72rem;
+        padding: .8rem .68rem 1rem .68rem;
         box-shadow: 0 12px 28px rgba(18, 48, 93, .16);
         border: 1px solid rgba(255,255,255,.08);
         position: sticky;
@@ -16327,6 +16327,25 @@ def page_teacher():
     if not teacher_login():
         return
 
+    # Dans la V65, .block-container est limité à 1500 px et centré.
+    # Sur un grand écran cela crée une large bande vide à gauche et à droite.
+    # Pour l'espace professeur uniquement, on utilise toute la largeur utile.
+    st.markdown(
+        """
+        <style>
+        .stMainBlockContainer,
+        [data-testid="stMainBlockContainer"],
+        .block-container {
+            max-width: none !important;
+            width: 100% !important;
+            padding-left: 0.7rem !important;
+            padding-right: 0.9rem !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     section = st.session_state.get(
         "teacher_section",
         "dashboard",
@@ -16335,8 +16354,8 @@ def page_teacher():
     # Vrai bandeau gauche dans la mise en page principale :
     # il ne dépend pas de l'état de la sidebar Streamlit.
     left_col, main_col = st.columns(
-        [1.35, 6.65],
-        gap="large",
+        [1.18, 7.82],
+        gap="medium",
         vertical_alignment="top",
     )
 
