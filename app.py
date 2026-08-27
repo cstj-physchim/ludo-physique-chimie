@@ -1,6 +1,5 @@
-# VERSION_UI_2026_08_27_TEACHER_FINAL_POLISH_V70
+# VERSION_UI_2026_08_27_PREP_EXPORT_DELETE_V65
 import re
-import html
 import base64
 import json
 import math
@@ -37,7 +36,6 @@ st.set_page_config(
     page_title="Ludothèque Physique-Chimie",
     page_icon="🧪",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
 
@@ -746,564 +744,6 @@ st.markdown(
         text-align: center;
         margin-top: 0.15rem;
     }
-
-    /* ============================================================
-       ESPACE PROFESSEUR — INTERFACE MODERNE
-       ============================================================ */
-
-    /* Barre latérale sombre, proche de la maquette */
-    section[data-testid="stSidebar"] {
-        background:
-            radial-gradient(circle at 50% 92%, rgba(49, 103, 255, .22), transparent 34%),
-            linear-gradient(180deg, #06356f 0%, #042a5e 52%, #03244f 100%) !important;
-        border-right: 1px solid rgba(255,255,255,.08);
-    }
-
-    section[data-testid="stSidebar"] > div {
-        background: transparent !important;
-    }
-
-    section[data-testid="stSidebar"] * {
-        color: #f7fbff;
-    }
-
-    section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
-        min-height: 2.8rem;
-        justify-content: flex-start;
-        text-align: left;
-        color: #edf5ff !important;
-        background: transparent !important;
-        border: 1px solid transparent !important;
-        box-shadow: none !important;
-        border-radius: 12px !important;
-        padding-left: .85rem !important;
-    }
-
-    section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
-        background: rgba(79, 118, 255, .24) !important;
-        border-color: rgba(180, 205, 255, .18) !important;
-        transform: none !important;
-    }
-
-    .teacher-side-logo {
-        padding: .7rem .55rem 1.15rem .55rem;
-        margin-bottom: .55rem;
-        border-bottom: 1px solid rgba(255,255,255,.11);
-    }
-
-    .teacher-side-logo-title {
-        font-size: 1.05rem;
-        line-height: 1.15;
-        font-weight: 900;
-        letter-spacing: -.02em;
-        color: #ffffff;
-    }
-
-    .teacher-side-logo-sub {
-        margin-top: .25rem;
-        color: #c9dcff;
-        font-size: .79rem;
-        font-weight: 650;
-    }
-
-    .teacher-side-current {
-        display: flex;
-        gap: .65rem;
-        align-items: center;
-        padding: .76rem .82rem;
-        margin: .18rem 0;
-        border-radius: 12px;
-        color: white;
-        font-weight: 800;
-        background: linear-gradient(135deg, #315cff 0%, #436eff 100%);
-        box-shadow: 0 8px 18px rgba(22, 74, 220, .28);
-    }
-
-    .teacher-side-account {
-        margin-top: 1rem;
-        padding: .8rem .75rem;
-        border-top: 1px solid rgba(255,255,255,.10);
-        color: #c9dcff;
-        font-size: .82rem;
-        line-height: 1.45;
-    }
-
-    section[data-testid="stSidebar"] {
-        min-width: 245px !important;
-        max-width: 245px !important;
-        width: 245px !important;
-    }
-    section[data-testid="stSidebar"] > div:first-child {
-        width: 245px !important;
-    }
-    [data-testid="stSidebarCollapseButton"],
-    [data-testid="stExpandSidebarButton"],
-    [data-testid="collapsedControl"] {
-        display: none !important;
-    }
-    .teacher-side-group {
-        color: #91b3df !important;
-        font-size: .67rem;
-        text-transform: uppercase;
-        letter-spacing: .12em;
-        font-weight: 900;
-        margin: .95rem .72rem .35rem .72rem;
-    }
-    .teacher-side-parent {
-        display:flex;align-items:center;gap:.62rem;
-        min-height:2.8rem;padding:.68rem .82rem;border-radius:12px;
-        color:#f5f9ff !important;font-weight:850;
-        background:rgba(255,255,255,.08);
-        border:1px solid rgba(255,255,255,.08);
-    }
-    .teacher-tree {
-        margin:.28rem 0 .55rem 1rem;
-        padding-left:.68rem;
-        border-left:2px solid rgba(147,181,232,.30);
-    }
-    .teacher-tree-selected {
-        position:relative;padding:.52rem .65rem;margin:.16rem 0;
-        border-radius:9px;color:#fff !important;font-size:.80rem;
-        font-weight:850;background:rgba(66,103,255,.30);
-    }
-    .teacher-tree-selected::before {
-        content:"";position:absolute;left:-.76rem;top:50%;
-        width:.66rem;height:2px;background:rgba(154,187,236,.48);
-    }
-    .stMainBlockContainer,
-    [data-testid="stMainBlockContainer"],
-    .block-container {
-        max-width:1420px !important;
-        padding-left:2rem !important;
-        padding-right:2rem !important;
-    }
-    .tracking-nav-note {
-        color:#73839a;font-size:.82rem;margin:-.15rem 0 .6rem 0;
-    }
-    .training-filter-title {
-        color:#102a56;font-size:1.14rem;font-weight:900;margin-bottom:.15rem;
-    }
-    .training-filter-sub {
-        color:#7b899d;font-size:.83rem;margin-bottom:.55rem;
-    }
-    .training-stat-grid {
-        display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-        gap:.85rem;margin:.8rem 0 1rem 0;
-    }
-    .training-stat {
-        display:flex;align-items:center;gap:.78rem;min-height:94px;
-        padding:.9rem .95rem;background:#fff;border:1px solid #e1e7f0;
-        border-radius:17px;box-shadow:0 6px 18px rgba(31,55,90,.055);
-    }
-    .training-stat-icon {
-        width:42px;height:42px;min-width:42px;border-radius:50%;
-        display:flex;align-items:center;justify-content:center;font-size:1.15rem;
-    }
-    .training-stat-value {color:#102a56;font-size:1.35rem;line-height:1;font-weight:900;}
-    .training-stat-label {color:#314863;font-size:.80rem;font-weight:800;margin-top:.22rem;}
-    .training-stat-sub {color:#8a97a8;font-size:.70rem;margin-top:.1rem;}
-    .training-blue {background:#edf3ff;color:#3166e5;}
-    .training-green {background:#eaf8ef;color:#159654;}
-    .training-orange {background:#fff4e3;color:#e28a18;}
-    .training-purple {background:#f1edff;color:#7559df;}
-    .training-table-wrap {
-        overflow-x:auto;border:1px solid #e0e6ef;border-radius:16px;
-        background:#fff;box-shadow:0 7px 22px rgba(31,55,90,.055);margin-top:.35rem;
-    }
-    .training-modern-table {
-        width:100%;min-width:1080px;border-collapse:collapse;
-        color:#263b56;font-size:.82rem;
-    }
-    .training-modern-table th {
-        text-align:left;padding:.72rem .72rem;background:#f8fafd;color:#5a687c;
-        font-size:.73rem;font-weight:850;border-bottom:1px solid #e2e7ef;white-space:nowrap;
-    }
-    .training-modern-table td {
-        padding:.58rem .72rem;border-bottom:1px solid #edf1f5;vertical-align:middle;
-    }
-    .training-modern-table tr:last-child td {border-bottom:none;}
-    .training-student {display:flex;align-items:center;gap:.52rem;font-weight:800;white-space:nowrap;}
-    .training-avatar {
-        width:27px;height:27px;min-width:27px;border-radius:50%;
-        display:flex;align-items:center;justify-content:center;
-        background:#eaf0ff;color:#315ed0;font-size:.66rem;font-weight:900;
-    }
-    .training-badge {
-        display:inline-flex;align-items:center;padding:.24rem .5rem;border-radius:999px;
-        font-weight:800;font-size:.70rem;white-space:nowrap;
-    }
-    .training-badge-idle {background:#f1f3f6;color:#7a8798;}
-    .training-badge-work {background:#fff4e5;color:#dc8317;}
-    .training-badge-done {background:#eaf8ef;color:#209252;}
-    .training-progress {
-        display:grid;grid-template-columns:44px minmax(85px,1fr);
-        gap:.5rem;align-items:center;white-space:nowrap;
-    }
-    .training-progress-track {height:6px;border-radius:999px;overflow:hidden;background:#e8ebf0;}
-    .training-progress-fill {height:100%;border-radius:999px;background:#f4a11f;}
-    .training-progress-fill.done {background:#18a75b;}
-    .training-score {
-        display:inline-flex;justify-content:center;min-width:48px;padding:.23rem .45rem;
-        border-radius:999px;font-size:.70rem;font-weight:900;background:#edf8ef;color:#23904f;
-    }
-    .training-chip {
-        display:inline-flex;min-width:30px;justify-content:center;padding:.20rem .42rem;
-        border-radius:8px;background:#f3f6fa;color:#53647a;font-weight:800;
-    }
-    .training-date {color:#6f7e92;white-space:nowrap;font-size:.75rem;}
-    @media (max-width:1050px) {
-        .training-stat-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
-    }
-    @media (max-width:720px) {
-        .training-stat-grid {grid-template-columns:1fr;}
-        .stMainBlockContainer,[data-testid="stMainBlockContainer"],.block-container {
-            padding-left:.8rem !important;padding-right:.8rem !important;
-        }
-    }
-
-    /* En-tête léger plutôt que l'ancien bandeau sombre */
-    .teacher-modern-topbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        padding: .15rem 0 .8rem 0;
-        margin-bottom: .1rem;
-        border-bottom: 1px solid #e5ebf4;
-    }
-
-    .teacher-modern-breadcrumb {
-        color: #667993;
-        font-size: .9rem;
-        font-weight: 650;
-    }
-
-    .teacher-modern-account {
-        color: #18335f;
-        font-size: .86rem;
-        font-weight: 800;
-        background: #f3f6fc;
-        border: 1px solid #e0e7f2;
-        border-radius: 999px;
-        padding: .45rem .8rem;
-    }
-
-    /* Onglets façon boutons de navigation */
-    div[data-baseweb="tab-list"] {
-        gap: .65rem !important;
-        background: transparent !important;
-        border-bottom: 1px solid #e1e7f0;
-        padding-bottom: .45rem;
-    }
-
-    button[data-baseweb="tab"] {
-        height: 3rem !important;
-        border: 1px solid #d8e1ef !important;
-        border-radius: 12px !important;
-        padding: 0 1.1rem !important;
-        background: #ffffff !important;
-        font-weight: 800 !important;
-        color: #25415f !important;
-    }
-
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #315cff !important;
-        border-color: #315cff !important;
-        background: #f5f7ff !important;
-        box-shadow: 0 5px 14px rgba(49, 92, 255, .10);
-    }
-
-    div[data-baseweb="tab-highlight"] {
-        display: none !important;
-    }
-
-    .prep-page-intro {
-        margin: .65rem 0 1rem 0;
-    }
-
-    .prep-page-intro h2 {
-        margin: 0;
-        color: #102a56;
-        font-size: 2rem;
-        font-weight: 900;
-        letter-spacing: -.035em;
-    }
-
-    .prep-page-intro p {
-        color: #718096;
-        margin: .35rem 0 0 0;
-        font-size: .98rem;
-        line-height: 1.45;
-    }
-
-    /* Cartes de contrôle */
-    .prep-control-card,
-    .prep-select-card {
-        background: rgba(255,255,255,.96);
-        border: 1px solid #dfe6f1;
-        border-radius: 18px;
-        box-shadow: 0 8px 24px rgba(28, 56, 105, .07);
-        padding: 1rem 1.1rem;
-        margin-bottom: .6rem;
-    }
-
-    .prep-card-title {
-        display: flex;
-        align-items: center;
-        gap: .6rem;
-        color: #142f5a;
-        font-size: 1.05rem;
-        font-weight: 900;
-        margin-bottom: .25rem;
-    }
-
-    .prep-card-sub {
-        color: #77879c;
-        font-size: .86rem;
-        margin-bottom: .55rem;
-    }
-
-    .prep-active-strip {
-        margin-top: .55rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        padding: .65rem .8rem;
-        border-radius: 11px;
-        background: #edf9f2;
-        color: #16814b;
-        font-weight: 750;
-        font-size: .84rem;
-    }
-
-    .prep-active-date {
-        color: #708095;
-        font-weight: 600;
-    }
-
-    /* Cartes statistiques */
-    .prep-stat-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: .9rem;
-        margin: .9rem 0 1rem 0;
-    }
-
-    .prep-stat {
-        background: #ffffff;
-        border: 1px solid #e1e7f0;
-        border-radius: 18px;
-        padding: 1rem;
-        box-shadow: 0 7px 21px rgba(31, 55, 90, .06);
-        min-height: 106px;
-        display: flex;
-        align-items: center;
-        gap: .9rem;
-    }
-
-    .prep-stat-icon {
-        width: 48px;
-        height: 48px;
-        min-width: 48px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.35rem;
-        font-weight: 900;
-    }
-
-    .prep-stat-blue { background:#edf3ff; color:#2f67ed; }
-    .prep-stat-purple { background:#f2edff; color:#7556ec; }
-    .prep-stat-green { background:#eaf9f1; color:#00a05c; }
-    .prep-stat-gold { background:#fff5df; color:#e49a22; }
-
-    .prep-stat-value {
-        color: #102a56;
-        font-size: 1.55rem;
-        font-weight: 900;
-        line-height: 1;
-    }
-
-    .prep-stat-label {
-        color: #27415f;
-        font-weight: 800;
-        font-size: .88rem;
-        margin-top: .2rem;
-    }
-
-    .prep-stat-sub {
-        color: #8592a5;
-        font-size: .76rem;
-        margin-top: .12rem;
-    }
-
-    /* Tableau personnalisé */
-    .prep-table-wrap {
-        overflow-x: auto;
-        margin-top: .45rem;
-        border: 1px solid #e0e6ef;
-        border-radius: 17px;
-        background: #fff;
-        box-shadow: 0 8px 24px rgba(31, 55, 90, .06);
-    }
-
-    .prep-modern-table {
-        width: 100%;
-        min-width: 860px;
-        border-collapse: collapse;
-        color: #243955;
-        font-size: .88rem;
-    }
-
-    .prep-modern-table th {
-        text-align: left;
-        padding: .78rem .85rem;
-        color: #53647c;
-        background: #f8fafd;
-        border-bottom: 1px solid #e2e8f0;
-        font-weight: 850;
-        font-size: .79rem;
-    }
-
-    .prep-modern-table td {
-        padding: .67rem .85rem;
-        border-bottom: 1px solid #edf1f5;
-        vertical-align: middle;
-    }
-
-    .prep-modern-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .prep-student {
-        display: flex;
-        align-items: center;
-        gap: .62rem;
-        font-weight: 800;
-        color: #233958;
-    }
-
-    .prep-avatar {
-        width: 30px;
-        height: 30px;
-        min-width: 30px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #e9efff;
-        color: #3260dc;
-        font-size: .72rem;
-        font-weight: 900;
-    }
-
-    .prep-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: .28rem;
-        padding: .28rem .55rem;
-        border-radius: 999px;
-        font-weight: 800;
-        font-size: .75rem;
-        white-space: nowrap;
-    }
-
-    .prep-badge-not { background:#fff0f2; color:#e4475f; }
-    .prep-badge-partial { background:#fff5e7; color:#df8618; }
-    .prep-badge-done { background:#eaf8ef; color:#229552; }
-
-    .prep-progress-cell {
-        display: grid;
-        grid-template-columns: 52px minmax(120px, 1fr);
-        align-items: center;
-        gap: .65rem;
-    }
-
-    .prep-progress-track {
-        height: 7px;
-        background: #e8ebf0;
-        border-radius: 999px;
-        overflow: hidden;
-    }
-
-    .prep-progress-fill {
-        height: 100%;
-        border-radius: 999px;
-    }
-
-    .prep-fill-zero { background:#d5dae2; }
-    .prep-fill-partial { background:#f6a623; }
-    .prep-fill-done { background:#18a85b; }
-
-    .prep-score {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 48px;
-        padding: .25rem .48rem;
-        border-radius: 999px;
-        font-weight: 900;
-        font-size: .75rem;
-    }
-
-    .prep-score-low { background:#fff0f2; color:#e33f58; }
-    .prep-score-mid { background:#fff5e5; color:#df8518; }
-    .prep-score-high { background:#eaf8ef; color:#229552; }
-
-    .prep-bonus {
-        color: #179a57;
-        font-weight: 900;
-        white-space: nowrap;
-    }
-
-    .prep-muted {
-        color: #8794a6;
-    }
-
-    .prep-action-title {
-        margin: 1rem 0 .4rem 0;
-        color: #30445f;
-        font-weight: 800;
-        font-size: .83rem;
-    }
-
-    /* Expander de création plus proche d'une carte */
-    div[data-testid="stExpander"] {
-        border: 1px solid #dfe6f1 !important;
-        border-radius: 16px !important;
-        background: #ffffff !important;
-        box-shadow: 0 6px 18px rgba(31, 55, 90, .045);
-    }
-
-    /* Selectbox plus ample */
-    div[data-baseweb="select"] > div {
-        min-height: 3rem;
-        border-radius: 11px !important;
-        border-color: #d8e1ee !important;
-        background: #f9fbfe !important;
-    }
-
-    @media (max-width: 1100px) {
-        .prep-stat-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-    }
-
-    @media (max-width: 720px) {
-        .prep-stat-grid {
-            grid-template-columns: 1fr;
-        }
-        .teacher-modern-topbar {
-            align-items: flex-start;
-            flex-direction: column;
-        }
-        .prep-page-intro h2 {
-            font-size: 1.55rem;
-        }
-    }
-
     </style>
     """,
     unsafe_allow_html=True,
@@ -15120,116 +14560,43 @@ def teacher_login():
 # ESPACE PROFESSEUR
 # ============================================================
 
-def set_teacher_tracking_view(view):
-    """Sélectionne l'onglet secondaire du suivi pédagogique."""
-    st.session_state["teacher_section"] = "tracking"
-    st.session_state["teacher_tracking_view"] = view
-    request_page_transition()
-
-
-def teacher_sidebar_nav(section):
-    """Navigation professeur permanente, organisée comme un arbre."""
-    section = section or "dashboard"
-    tracking_view = st.session_state.get("teacher_tracking_view", "training")
-
-    with st.sidebar:
-        st.markdown(
-            """
-            <div class="teacher-side-logo">
-                <div class="teacher-side-logo-title">🧪 Ludothèque<br>Physique-Chimie</div>
-                <div class="teacher-side-logo-sub">Espace professeur</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown('<div class="teacher-side-group">Accueil</div>', unsafe_allow_html=True)
-        if section == "dashboard":
-            st.markdown('<div class="teacher-side-current">⌂ &nbsp;Tableau de bord</div>', unsafe_allow_html=True)
-        else:
-            st.button("⌂  Tableau de bord", key="teacher_side_dashboard",
-                      use_container_width=True, on_click=set_teacher_section, args=("dashboard",))
-
-        st.markdown('<div class="teacher-side-group">Pédagogie</div>', unsafe_allow_html=True)
-
-        if section == "contents":
-            st.markdown('<div class="teacher-side-current">📚 &nbsp;Contenus</div>', unsafe_allow_html=True)
-        else:
-            st.button("📚  Contenus", key="teacher_side_contents",
-                      use_container_width=True, on_click=set_teacher_section, args=("contents",))
-
-        if section == "tracking":
-            st.markdown('<div class="teacher-side-parent">📈 &nbsp;Suivi pédagogique</div>', unsafe_allow_html=True)
-            st.markdown('<div class="teacher-tree">', unsafe_allow_html=True)
-
-            if tracking_view == "training":
-                st.markdown('<div class="teacher-tree-selected">📚 Entraînement</div>', unsafe_allow_html=True)
-            else:
-                st.button("↳  Entraînement", key="teacher_tree_training",
-                          use_container_width=True, on_click=set_teacher_tracking_view, args=("training",))
-
-            if tracking_view == "evaluation":
-                st.markdown('<div class="teacher-tree-selected">🎯 Préparation des évaluations</div>', unsafe_allow_html=True)
-            else:
-                st.button("↳  Préparation évaluations", key="teacher_tree_evaluation",
-                          use_container_width=True, on_click=set_teacher_tracking_view, args=("evaluation",))
-
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.button("📈  Suivi pédagogique", key="teacher_side_tracking",
-                      use_container_width=True, on_click=set_teacher_section, args=("tracking",))
-
-        if section == "challenges":
-            st.markdown('<div class="teacher-side-current">🏆 &nbsp;Défis</div>', unsafe_allow_html=True)
-        else:
-            st.button("🏆  Défis", key="teacher_side_challenges",
-                      use_container_width=True, on_click=set_teacher_section, args=("challenges",))
-
-        if section == "results":
-            st.markdown('<div class="teacher-side-current">📊 &nbsp;Résultats</div>', unsafe_allow_html=True)
-        else:
-            st.button("📊  Résultats", key="teacher_side_results",
-                      use_container_width=True, on_click=set_teacher_section, args=("results",))
-
-        st.markdown('<div class="teacher-side-group">Gestion</div>', unsafe_allow_html=True)
-        if section == "classes_students":
-            st.markdown('<div class="teacher-side-current">👥 &nbsp;Classes et élèves</div>', unsafe_allow_html=True)
-        else:
-            st.button("👥  Classes et élèves", key="teacher_side_classes_students",
-                      use_container_width=True, on_click=set_teacher_section, args=("classes_students",))
-
-        st.markdown(
-            f"""
-            <div class="teacher-side-account">
-                <strong>{html.escape(current_teacher_name())}</strong><br>
-                Compte professeur
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.button("🏠  Accueil Ludothèque", key="teacher_side_home",
-                  use_container_width=True, on_click=set_page, args=("home",))
-        st.button("↪  Déconnexion", key="teacher_side_logout",
-                  use_container_width=True, on_click=logout_app)
-
-
-
 def teacher_header(title):
     st.markdown(
         f"""
-        <div class="teacher-modern-topbar">
-            <div class="teacher-modern-breadcrumb">
-                ⌂ &nbsp;›&nbsp; Espace professeur &nbsp;›&nbsp; {html.escape(str(title))}
-            </div>
-            <div class="teacher-modern-account">
-                👨‍🏫 {html.escape(current_teacher_name())}
-            </div>
+        <div class="teacher-band">
+            <div class="teacher-band-title">👨‍🏫 {current_teacher_name()} — {title}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
+    c1, c2, c3 = st.columns([1.4, 1.1, 4.5])
+
+    with c1:
+        st.button(
+            "← Tableau de bord",
+            use_container_width=True,
+            on_click=set_teacher_section,
+            args=("dashboard",),
+            key=f"teacher_back_dashboard_{title}",
+        )
+
+    with c2:
+        st.button(
+            "🏠 Accueil",
+            use_container_width=True,
+            on_click=set_page,
+            args=("home",),
+            key=f"teacher_home_{title}",
+        )
+
+    with c3:
+        st.button(
+            "Déconnexion",
+            use_container_width=False,
+            key=f"teacher_logout_{title}",
+            on_click=logout_app,
+        )
 
 
 def teacher_dashboard():
@@ -16248,73 +15615,50 @@ def teacher_challenges():
 
 
 def teacher_tracking():
-    teacher_header("Suivi pédagogique")
+    teacher_header("Suivi des élèves")
 
     if not content_pilot_enabled_for_teacher():
         st.info("Le suivi pédagogique est actuellement en phase de test sur un seul compte professeur.")
         return
 
     st.markdown(
-        """
-        <div class="prep-page-intro">
-            <h2>Suivi pédagogique</h2>
-            <p>Suivez l'entraînement libre des élèves et leurs préparations volontaires aux évaluations.</p>
-        </div>
-        """,
+        '<div class="section-title">👀 Suivi des élèves</div>',
         unsafe_allow_html=True,
     )
-
-    tracking_view = st.session_state.get("teacher_tracking_view", "training")
-
-    nav1, nav2, nav_spacer = st.columns([1.25, 2.0, 4.5], gap="small")
-    with nav1:
-        st.button(
-            "📚 Entraînement",
-            key="tracking_nav_training",
-            use_container_width=True,
-            type="primary" if tracking_view == "training" else "secondary",
-            on_click=set_teacher_tracking_view,
-            args=("training",),
-        )
-    with nav2:
-        st.button(
-            "🎯 Préparation des évaluations",
-            key="tracking_nav_evaluation",
-            use_container_width=True,
-            type="primary" if tracking_view == "evaluation" else "secondary",
-            on_click=set_teacher_tracking_view,
-            args=("evaluation",),
-        )
-
-    st.markdown(
-        '<div class="tracking-nav-note">La même navigation est disponible dans le bandeau de gauche.</div>',
-        unsafe_allow_html=True,
+    st.caption(
+        "Ce tableau sert au suivi pédagogique de la Ludothèque. "
+        "Il distingue l'entraînement libre de la préparation volontaire d'une évaluation."
     )
+
+    training_tab, evaluation_tab = st.tabs([
+        "📚 Entraînement",
+        "🎯 Préparation des évaluations",
+    ])
 
     students = get_students()
     rows = get_activity_log()
 
-    if tracking_view == "training":
-        st.markdown(
-            """
-            <div class="prep-control-card">
-                <div class="training-filter-title">📚 Entraînement courant</div>
-                <div class="training-filter-sub">Filtrez le suivi par classe, chapitre ou exercice.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    with training_tab:
+        st.markdown("### Entraînement courant")
 
-        c1, c2, c3 = st.columns(3, gap="medium")
+        c1, c2, c3 = st.columns(3)
         with c1:
-            class_filter = st.selectbox("Classe", ["Toutes"] + get_classes(), key="tracking_class_filter")
+            class_filter = st.selectbox(
+                "Classe",
+                ["Toutes"] + get_classes(),
+                key="tracking_class_filter",
+            )
 
         chapters = [
             chapter for chapter in PROGRESSION_CHAPTERS
             if chapter != "Autres contenus déjà prêts"
         ]
         with c2:
-            chapter_filter = st.selectbox("Chapitre", ["Tous"] + chapters, key="tracking_chapter_filter")
+            chapter_filter = st.selectbox(
+                "Chapitre",
+                ["Tous"] + chapters,
+                key="tracking_chapter_filter",
+            )
 
         exercise_options = {
             info["label"]: content_id
@@ -16332,7 +15676,10 @@ def teacher_tracking():
             row for row in rows
             if row.get("activity_kind") == "training"
             and (class_filter == "Toutes" or row.get("class_name") == class_filter)
-            and (chapter_filter == "Tous" or row.get("chapter") == chapter_filter)
+            and (
+                chapter_filter == "Tous"
+                or row.get("chapter") == chapter_filter
+            )
             and (
                 exercise_label == "Tous"
                 or row.get("resource_id") == exercise_options.get(exercise_label)
@@ -16343,8 +15690,8 @@ def teacher_tracking():
         attempt_counts, restart_counts = training_attempt_counts(filtered_rows)
 
         selected_students = [
-            student for student in students
-            if class_filter == "Toutes" or student.get("class_name") == class_filter
+            s for s in students
+            if class_filter == "Toutes" or s.get("class_name") == class_filter
         ]
 
         if exercise_label != "Tous":
@@ -16357,8 +15704,7 @@ def teacher_tracking():
         else:
             resource_ids = tracked_exercise_ids()
 
-        view_rows = []
-
+        table = []
         for student in sorted(
             selected_students,
             key=lambda s: (s.get("class_name", ""), s.get("first_name", "").lower()),
@@ -16370,366 +15716,171 @@ def teacher_tracking():
             ]
 
             completed_rows = [
-                row for row in filtered_rows
-                if row.get("student_id") == student.get("id")
-                and row.get("resource_id") in resource_ids
-                and row.get("status", "completed") == "completed"
+                r for r in filtered_rows
+                if r.get("student_id") == student.get("id")
+                and r.get("resource_id") in resource_ids
+                and r.get("status", "completed") == "completed"
             ]
 
-            done_resources = {row.get("resource_id") for row in completed_rows}
-
-            valid_scores = []
-            for row in completed_rows:
-                try:
-                    valid_scores.append(float(row.get("score_percent")))
-                except (TypeError, ValueError):
-                    pass
-
-            best = max(valid_scores) if valid_scores else None
-            done = len(done_resources)
+            done_resources = {
+                r.get("resource_id") for r in completed_rows
+            }
 
             if latest_rows or completed_rows:
+                valid_scores = []
+                for row in completed_rows:
+                    try:
+                        valid_scores.append(float(row.get("score_percent")))
+                    except (TypeError, ValueError):
+                        pass
+                best = max(valid_scores) if valid_scores else None
+                done = len(done_resources)
                 last_activity = max(
-                    [str(row.get("finished_at", "")) for row in latest_rows + completed_rows]
+                    [str(r.get("finished_at", "")) for r in latest_rows + completed_rows]
                 )
+                attempts = sum(
+                    attempt_counts.get((student.get("id"), rid), 0)
+                    for rid in resource_ids
+                )
+                restarts = sum(
+                    restart_counts.get((student.get("id"), rid), 0)
+                    for rid in resource_ids
+                )
+
+                if done == len(resource_ids) and resource_ids:
+                    status = "✅ Actif"
+                elif attempts > 0:
+                    status = "🟠 En cours"
+                else:
+                    status = "⚪ Non commencé"
+
+                result_text = f"{best} %" if best is not None else "—"
             else:
+                done = 0
+                attempts = 0
+                restarts = 0
                 last_activity = ""
+                status = "⚪ Non commencé"
+                result_text = "—"
 
-            attempts = sum(
-                attempt_counts.get((student.get("id"), rid), 0)
-                for rid in resource_ids
-            )
-            restarts = sum(
-                restart_counts.get((student.get("id"), rid), 0)
-                for rid in resource_ids
-            )
-
-            if done == len(resource_ids) and resource_ids:
-                status_key = "done"
-            elif attempts > 0:
-                status_key = "work"
-            else:
-                status_key = "idle"
-
-            view_rows.append({
-                "student_name": (
-                    f"{student.get('first_name', '')} "
-                    f"{student.get('last_initial', '')}."
-                ).strip(),
-                "first_name": student.get("first_name", ""),
-                "last_initial": student.get("last_initial", ""),
-                "class_name": student.get("class_name", ""),
-                "status_key": status_key,
-                "done": done,
-                "total": len(resource_ids),
-                "best": best,
-                "attempts": attempts,
-                "restarts": restarts,
-                "last_activity": format_short_datetime(last_activity),
-                "last_login": format_short_datetime(student.get("last_login_at")),
+            table.append({
+                "Élève": f"{student.get('first_name', '')} {student.get('last_initial', '')}.",
+                "Classe": student.get("class_name", ""),
+                "Activité": status,
+                "Exercices faits": f"{done}/{len(resource_ids)}" if resource_ids else "—",
+                "Résultat": result_text,
+                "Tentatives": attempts if attempts else "—",
+                "Recommencées": restarts if restarts else "—",
+                "Dernière activité": format_short_datetime(last_activity),
+                "Dernière connexion": format_short_datetime(student.get("last_login_at")),
             })
 
-        active_students = sum(1 for row in view_rows if row["status_key"] != "idle")
-        total_done = sum(row["done"] for row in view_rows)
-        total_attempts = sum(row["attempts"] for row in view_rows)
-        total_restarts = sum(row["restarts"] for row in view_rows)
-
-        st.markdown(
-            f"""
-            <div class="training-stat-grid">
-                <div class="training-stat">
-                    <div class="training-stat-icon training-blue">👥</div>
-                    <div>
-                        <div class="training-stat-value">{active_students}</div>
-                        <div class="training-stat-label">Élèves actifs</div>
-                        <div class="training-stat-sub">sur {len(view_rows)} affiché(s)</div>
-                    </div>
-                </div>
-                <div class="training-stat">
-                    <div class="training-stat-icon training-green">✓</div>
-                    <div>
-                        <div class="training-stat-value">{total_done}</div>
-                        <div class="training-stat-label">Exercices terminés</div>
-                        <div class="training-stat-sub">dans le filtre actuel</div>
-                    </div>
-                </div>
-                <div class="training-stat">
-                    <div class="training-stat-icon training-orange">↻</div>
-                    <div>
-                        <div class="training-stat-value">{total_attempts}</div>
-                        <div class="training-stat-label">Tentatives</div>
-                        <div class="training-stat-sub">activité enregistrée</div>
-                    </div>
-                </div>
-                <div class="training-stat">
-                    <div class="training-stat-icon training-purple">⟲</div>
-                    <div>
-                        <div class="training-stat-value">{total_restarts}</div>
-                        <div class="training-stat-label">Recommencées</div>
-                        <div class="training-stat-sub">tentatives relancées</div>
-                    </div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        if view_rows:
-            html_rows = []
-            for row in view_rows:
-                initials = (
-                    (str(row["first_name"])[:1] + str(row["last_initial"])[:1])
-                    .upper().strip()
-                ) or "EL"
-                total = row["total"]
-                done = row["done"]
-                pct = round(100 * done / total) if total else 0
-
-                if row["status_key"] == "done":
-                    badge = '<span class="training-badge training-badge-done">✓ Terminé</span>'
-                    fill_class = "training-progress-fill done"
-                elif row["status_key"] == "work":
-                    badge = '<span class="training-badge training-badge-work">◷ En cours</span>'
-                    fill_class = "training-progress-fill"
-                else:
-                    badge = '<span class="training-badge training-badge-idle">○ Non commencé</span>'
-                    fill_class = "training-progress-fill"
-
-                score_html = (
-                    f'<span class="training-score">{row["best"]:g} %</span>'
-                    if row["best"] is not None
-                    else '<span class="prep-muted">—</span>'
-                )
-                attempts_html = (
-                    f'<span class="training-chip">{row["attempts"]}</span>'
-                    if row["attempts"] else '<span class="prep-muted">—</span>'
-                )
-                restarts_html = (
-                    f'<span class="training-chip">{row["restarts"]}</span>'
-                    if row["restarts"] else '<span class="prep-muted">—</span>'
-                )
-
-                html_rows.append(
-                    f"""
-                    <tr>
-                        <td>
-                            <div class="training-student">
-                                <span class="training-avatar">{html.escape(initials)}</span>
-                                <span>{html.escape(row["student_name"])}</span>
-                            </div>
-                        </td>
-                        <td>{html.escape(str(row["class_name"]))}</td>
-                        <td>{badge}</td>
-                        <td>
-                            <div class="training-progress">
-                                <span>{done} / {total}</span>
-                                <div class="training-progress-track">
-                                    <div class="{fill_class}" style="width:{pct}%;"></div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>{score_html}</td>
-                        <td>{attempts_html}</td>
-                        <td>{restarts_html}</td>
-                        <td><span class="training-date">{html.escape(str(row["last_activity"]))}</span></td>
-                        <td><span class="training-date">{html.escape(str(row["last_login"]))}</span></td>
-                    </tr>
-                    """
-                )
-
-            st.markdown(
-                f"""
-                <div class="training-table-wrap">
-                    <table class="training-modern-table">
-                        <thead>
-                            <tr>
-                                <th>Élève</th>
-                                <th>Classe</th>
-                                <th>Activité</th>
-                                <th>Exercices faits</th>
-                                <th>Résultat</th>
-                                <th>Tentatives</th>
-                                <th>Recommencées</th>
-                                <th>Dernière activité</th>
-                                <th>Dernière connexion</th>
-                            </tr>
-                        </thead>
-                        <tbody>{''.join(html_rows)}</tbody>
-                    </table>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        if table:
+            st.dataframe(table, use_container_width=True, hide_index=True)
         else:
             st.info("Aucun élève ne correspond à ces filtres.")
 
-    if tracking_view == "evaluation":
-        st.markdown(
-            """
-            <div class="prep-page-intro">
-                <h2>Préparation des évaluations</h2>
-                <p>
-                    Choisissez les exercices qui constituent une préparation.
-                    La Ludothèque suit ensuite l'avancement, le résultat moyen
-                    et l'éligibilité éventuelle au bonus.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+    with evaluation_tab:
+        st.markdown("### Préparation des évaluations")
+        st.caption(
+            "Le professeur choisit les exercices qui constituent la préparation. "
+            "La Ludothèque indique ensuite l'avancement et une éventuelle éligibilité au bonus ; "
+            "le professeur reste seul décisionnaire."
         )
 
-        # ========================================================
-        # ZONE HAUTE : création + préparation à consulter
-        # ========================================================
-        create_col, select_col = st.columns([1.05, 1], gap="large")
-
-        with create_col:
-            st.markdown(
-                """
-                <div class="prep-control-card">
-                    <div class="prep-card-title">🧾 Créer une préparation d'évaluation</div>
-                    <div class="prep-card-sub">
-                        Sélectionnez une classe, un chapitre, des exercices et un seuil indicatif.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+        with st.expander("➕ Créer une préparation d'évaluation"):
+            prep_class = st.selectbox(
+                "Classe",
+                get_classes(),
+                key="prep_class",
             )
 
-            with st.expander("＋ Paramétrer une nouvelle préparation"):
-                prep_class = st.selectbox(
-                    "Classe",
-                    get_classes(),
-                    key="prep_class",
-                )
+            prep_chapter = st.selectbox(
+                "Chapitre",
+                [
+                    chapter for chapter in PROGRESSION_CHAPTERS
+                    if chapter != "Autres contenus déjà prêts"
+                ],
+                key="prep_chapter",
+            )
 
-                prep_chapter = st.selectbox(
-                    "Chapitre",
-                    [
-                        chapter for chapter in PROGRESSION_CHAPTERS
-                        if chapter != "Autres contenus déjà prêts"
-                    ],
-                    key="prep_chapter",
-                )
+            eligible = {
+                info["label"]: cid
+                for cid, info in PILOT_CONTENTS.items()
+                if cid in tracked_exercise_ids()
+                and info.get("chapter") == prep_chapter
+            }
 
-                eligible = {
-                    info["label"]: cid
-                    for cid, info in PILOT_CONTENTS.items()
-                    if cid in tracked_exercise_ids()
-                    and info.get("chapter") == prep_chapter
-                }
+            prep_name = st.text_input(
+                "Nom de la préparation",
+                placeholder="Ex. Évaluation — Chapitre 1",
+                key="prep_name",
+            )
 
-                prep_name = st.text_input(
-                    "Nom de la préparation",
-                    placeholder="Ex. Interrogation 2",
-                    key="prep_name",
-                )
+            selected_labels = st.multiselect(
+                "Exercices à refaire",
+                list(eligible.keys()),
+                key="prep_exercises",
+            )
 
-                selected_labels = st.multiselect(
-                    "Exercices à refaire",
-                    list(eligible.keys()),
-                    key="prep_exercises",
-                )
+            threshold = st.slider(
+                "Seuil indicatif pour « +1 possible »",
+                min_value=50,
+                max_value=100,
+                value=80,
+                step=5,
+                key="prep_threshold",
+            )
 
-                threshold = st.slider(
-                    "Seuil indicatif pour « +1 possible »",
-                    min_value=50,
-                    max_value=100,
-                    value=80,
-                    step=5,
-                    key="prep_threshold",
-                )
-
-                if st.button(
-                    "＋ Créer la préparation",
-                    type="primary",
-                    use_container_width=True,
-                    disabled=not prep_name.strip() or not selected_labels,
-                ):
-                    preparations = get_evaluation_preparations()
-                    preparations.append({
-                        "id": secrets.token_urlsafe(10),
-                        "name": prep_name.strip(),
-                        "class_name": prep_class,
-                        "chapter": prep_chapter,
-                        "resource_ids": [eligible[label] for label in selected_labels],
-                        "threshold": int(threshold),
-                        "active": True,
-                        "created_at": datetime.now().isoformat(timespec="seconds"),
-                    })
-                    save_evaluation_preparations(preparations)
-                    st.success("Préparation créée.")
-                    st.rerun()
+            if st.button(
+                "Créer la préparation",
+                type="primary",
+                use_container_width=True,
+                disabled=not prep_name.strip() or not selected_labels,
+            ):
+                preparations = get_evaluation_preparations()
+                preparations.append({
+                    "id": secrets.token_urlsafe(10),
+                    "name": prep_name.strip(),
+                    "class_name": prep_class,
+                    "chapter": prep_chapter,
+                    "resource_ids": [eligible[label] for label in selected_labels],
+                    "threshold": int(threshold),
+                    "active": True,
+                    "created_at": datetime.now().isoformat(timespec="seconds"),
+                })
+                save_evaluation_preparations(preparations)
+                st.success("Préparation créée.")
+                st.rerun()
 
         preparations = get_evaluation_preparations()
-
-        with select_col:
-            st.markdown(
-                """
-                <div class="prep-select-card">
-                    <div class="prep-card-title">👁️ Préparation à consulter</div>
-                    <div class="prep-card-sub">
-                        Sélectionnez la préparation dont vous souhaitez suivre l'avancement.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            if not preparations:
-                st.info("Aucune préparation d'évaluation n'est encore créée.")
-                selected_prep_label = None
-                prep = None
-            else:
-                prep_labels = {
-                    f"{p['name']} — {p['class_name']}": p["id"]
-                    for p in preparations
-                }
-
-                selected_prep_label = st.selectbox(
-                    "Préparation à consulter",
-                    list(prep_labels.keys()),
-                    key="prep_tracking_select",
-                    label_visibility="collapsed",
-                )
-
-                prep = next(
-                    p for p in preparations
-                    if p["id"] == prep_labels[selected_prep_label]
-                )
-
-                created_text = format_short_datetime(prep.get("created_at"))
-                st.markdown(
-                    f"""
-                    <div class="prep-active-strip">
-                        <span>● Préparation active</span>
-                        <span class="prep-active-date">Créée le {html.escape(created_text)}</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-        if not preparations or prep is None:
-            st.markdown(
-                """
-                <div style="
-                    margin-top:1rem;padding:1.25rem;border-radius:16px;
-                    border:1px dashed #cbd6e5;background:#f8fbff;
-                    color:#687b95;text-align:center;">
-                    Créez une première préparation pour afficher le tableau de suivi.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        if not preparations:
+            st.info("Aucune préparation d'évaluation n'est encore créée.")
         else:
-            # ====================================================
-            # DONNÉES DE LA PRÉPARATION
-            # ====================================================
+            prep_labels = {
+                f"{p['name']} — {p['class_name']}": p["id"]
+                for p in preparations
+            }
+            selected_prep_label = st.selectbox(
+                "Préparation à consulter",
+                list(prep_labels.keys()),
+                key="prep_tracking_select",
+            )
+            prep = next(
+                p for p in preparations
+                if p["id"] == prep_labels[selected_prep_label]
+            )
+
             target_students = [
                 s for s in students
                 if s.get("class_name") == prep.get("class_name")
             ]
-
+            # Pour une préparation d'évaluation, seuls les exercices réellement
+            # terminés doivent compter. Une ligne "restarted" peut avoir
+            # score_percent = None : elle ne doit donc ni être considérée comme
+            # un exercice fait, ni entrer dans le calcul de la moyenne.
+            # Une préparation d'évaluation constitue un nouveau point de départ :
+            # seules les tentatives terminées APRÈS sa création doivent compter.
             prep_created_at = str(prep.get("created_at", "") or "")
 
             completed_training_rows = [
@@ -16748,8 +15899,6 @@ def teacher_tracking():
             threshold = int(prep.get("threshold", 80))
 
             prep_table = []
-            prep_view_rows = []
-
             for student in sorted(
                 target_students,
                 key=lambda s: s.get("first_name", "").lower(),
@@ -16759,267 +15908,65 @@ def teacher_tracking():
                     for rid in required
                     if (student.get("id"), rid) in latest_all
                 ]
-
                 done = len(done_rows)
                 total = len(required)
 
-                numeric_scores = []
-                for row in done_rows:
-                    try:
-                        numeric_scores.append(float(row.get("score_percent")))
-                    except (TypeError, ValueError):
-                        pass
-
-                average = (
-                    round(sum(numeric_scores) / len(numeric_scores))
-                    if numeric_scores
-                    else None
-                )
-
                 if done == 0:
                     status = "❌ Non commencée"
-                    status_key = "not"
                     result = "—"
                     bonus = "—"
-                elif done == total and total > 0:
-                    status = "✅ Terminée"
-                    status_key = "done"
-                    result = f"{average} %" if average is not None else "—"
-                    bonus = (
-                        "+1 possible"
-                        if average is not None and average >= threshold
-                        else "—"
-                    )
                 else:
-                    status = "🟠 En cours"
-                    status_key = "partial"
-                    result = f"{average} %" if average is not None else "—"
-                    bonus = "—"
+                    numeric_scores = []
+                    for row in done_rows:
+                        try:
+                            numeric_scores.append(float(row.get("score_percent")))
+                        except (TypeError, ValueError):
+                            pass
 
-                student_name = (
-                    f"{student.get('first_name', '')} "
-                    f"{student.get('last_initial', '')}."
-                ).strip()
+                    if numeric_scores:
+                        average = round(sum(numeric_scores) / len(numeric_scores))
+                        result = f"{average} %"
+                    else:
+                        average = None
+                        result = "—"
+                    if done == total:
+                        status = "✅ Terminée"
+                        bonus = (
+                            "+1 possible"
+                            if average is not None and average >= threshold
+                            else "—"
+                        )
+                    else:
+                        status = "🟠 Partielle"
+                        bonus = "—"
 
                 prep_table.append({
-                    "Élève": student_name,
+                    "Élève": f"{student.get('first_name', '')} {student.get('last_initial', '')}.",
                     "Préparation": status,
                     "Exercices faits": f"{done}/{total}",
                     "Résultat": result,
                     "Bonus": bonus,
                 })
 
-                prep_view_rows.append({
-                    "student_name": student_name,
-                    "first_name": student.get("first_name", ""),
-                    "last_initial": student.get("last_initial", ""),
-                    "done": done,
-                    "total": total,
-                    "average": average,
-                    "status_key": status_key,
-                    "bonus": bonus,
-                })
-
-            # ====================================================
-            # EN-TÊTE DE LA PRÉPARATION
-            # ====================================================
             st.markdown(
-                f"""
-                <div class="prep-control-card" style="margin-top:.9rem;">
-                    <div class="prep-card-title">
-                        🎯 {html.escape(str(prep.get("name", "")))}
-                    </div>
-                    <div class="prep-card-sub">
-                        {html.escape(str(prep.get("chapter", "")))} ·
-                        classe <strong>{html.escape(str(prep.get("class_name", "")))}</strong> ·
-                        seuil indicatif <strong>{threshold} %</strong>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+                f"**{prep['name']}** · {prep['chapter']} · "
+                f"seuil indicatif : **{threshold} %**"
             )
 
-            # ====================================================
-            # CARTES STATISTIQUES
-            # ====================================================
-            student_count = len(prep_view_rows)
-            preparation_count = len(preparations)
-
-            if prep_view_rows and required:
-                progress_mean = round(
-                    sum(
-                        (row["done"] / row["total"]) * 100
-                        if row["total"] else 0
-                        for row in prep_view_rows
-                    ) / len(prep_view_rows)
+            if prep_created_at:
+                st.caption(
+                    "Seules les tentatives réalisées depuis la création de cette "
+                    "préparation sont prises en compte."
                 )
-            else:
-                progress_mean = 0
-
-            bonus_count = sum(
-                1 for row in prep_view_rows
-                if row["done"] == row["total"]
-                and row["total"] > 0
-                and row["average"] is not None
-                and row["average"] >= threshold
+            st.dataframe(
+                prep_table,
+                use_container_width=True,
+                hide_index=True,
             )
 
-            completed_count = sum(
-                1 for row in prep_view_rows
-                if row["done"] == row["total"] and row["total"] > 0
-            )
-
-            st.markdown(
-                f"""
-                <div class="prep-stat-grid">
-                    <div class="prep-stat">
-                        <div class="prep-stat-icon prep-stat-blue">👥</div>
-                        <div>
-                            <div class="prep-stat-value">{student_count}</div>
-                            <div class="prep-stat-label">Élèves concernés</div>
-                            <div class="prep-stat-sub">Classe {html.escape(str(prep.get("class_name", "")))}</div>
-                        </div>
-                    </div>
-
-                    <div class="prep-stat">
-                        <div class="prep-stat-icon prep-stat-purple">📋</div>
-                        <div>
-                            <div class="prep-stat-value">{completed_count}</div>
-                            <div class="prep-stat-label">Préparations terminées</div>
-                            <div class="prep-stat-sub">{preparation_count} préparation(s) enregistrée(s)</div>
-                        </div>
-                    </div>
-
-                    <div class="prep-stat">
-                        <div class="prep-stat-icon prep-stat-green">📈</div>
-                        <div>
-                            <div class="prep-stat-value">{progress_mean} %</div>
-                            <div class="prep-stat-label">Progression moyenne</div>
-                            <div class="prep-stat-sub">Exercices réalisés</div>
-                        </div>
-                    </div>
-
-                    <div class="prep-stat">
-                        <div class="prep-stat-icon prep-stat-gold">★</div>
-                        <div>
-                            <div class="prep-stat-value">{bonus_count}</div>
-                            <div class="prep-stat-label">Bonus possibles</div>
-                            <div class="prep-stat-sub">Seuil : {threshold} %</div>
-                        </div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            # ====================================================
-            # TABLEAU HTML MODERNE
-            # ====================================================
-            table_rows_html = []
-
-            for row in prep_view_rows:
-                total = row["total"]
-                done = row["done"]
-                pct = round((done / total) * 100) if total else 0
-
-                initials = (
-                    (str(row["first_name"])[:1] + str(row["last_initial"])[:1])
-                    .upper()
-                    .strip()
-                ) or "EL"
-
-                if row["status_key"] == "done":
-                    status_html = (
-                        '<span class="prep-badge prep-badge-done">✓ Terminée</span>'
-                    )
-                    fill_class = "prep-fill-done"
-                elif row["status_key"] == "partial":
-                    status_html = (
-                        '<span class="prep-badge prep-badge-partial">◷ En cours</span>'
-                    )
-                    fill_class = "prep-fill-partial"
-                else:
-                    status_html = (
-                        '<span class="prep-badge prep-badge-not">✕ Non commencée</span>'
-                    )
-                    fill_class = "prep-fill-zero"
-
-                if row["average"] is None:
-                    score_html = '<span class="prep-muted">—</span>'
-                else:
-                    avg = int(row["average"])
-                    if avg >= threshold:
-                        score_class = "prep-score-high"
-                    elif avg >= 50:
-                        score_class = "prep-score-mid"
-                    else:
-                        score_class = "prep-score-low"
-
-                    score_html = (
-                        f'<span class="prep-score {score_class}">{avg} %</span>'
-                    )
-
-                bonus_html = (
-                    '<span class="prep-bonus">★ Éligible</span>'
-                    if row["bonus"] == "+1 possible"
-                    else '<span class="prep-muted">—</span>'
-                )
-
-                table_rows_html.append(
-                    f"""
-                    <tr>
-                        <td>
-                            <div class="prep-student">
-                                <span class="prep-avatar">{html.escape(initials)}</span>
-                                <span>{html.escape(str(row["student_name"]))}</span>
-                            </div>
-                        </td>
-                        <td>{status_html}</td>
-                        <td>
-                            <div class="prep-progress-cell">
-                                <span>{done} / {total}</span>
-                                <div class="prep-progress-track">
-                                    <div class="prep-progress-fill {fill_class}"
-                                         style="width:{pct}%;"></div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>{score_html}</td>
-                        <td>{bonus_html}</td>
-                    </tr>
-                    """
-                )
-
-            st.markdown(
-                f"""
-                <div class="prep-table-wrap">
-                    <table class="prep-modern-table">
-                        <thead>
-                            <tr>
-                                <th>Élève</th>
-                                <th>Préparation</th>
-                                <th>Exercices faits</th>
-                                <th>Résultat</th>
-                                <th>Bonus</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {''.join(table_rows_html)}
-                        </tbody>
-                    </table>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.caption(
-                "Seules les tentatives réalisées depuis la création de cette "
-                "préparation sont prises en compte."
-            )
-
-            # ====================================================
-            # EXPORT CSV
-            # ====================================================
+            # ------------------------------------------------------------
+            # Export CSV de la préparation sélectionnée
+            # ------------------------------------------------------------
             export_rows = []
             for row in prep_table:
                 export_rows.append({
@@ -17053,11 +16000,6 @@ def teacher_tracking():
                 str(prep.get("class_name", "classe")).strip(),
             ).strip("_") or "classe"
 
-            st.markdown(
-                '<div class="prep-action-title">Actions sur cette préparation</div>',
-                unsafe_allow_html=True,
-            )
-
             action_export, action_delete = st.columns(2, gap="large")
 
             with action_export:
@@ -17070,9 +16012,9 @@ def teacher_tracking():
                     key=f"download_prep_{prep.get('id', 'current')}",
                 )
 
-            # ====================================================
-            # SUPPRESSION AVEC CONFIRMATION
-            # ====================================================
+            # ------------------------------------------------------------
+            # Suppression protégée de la préparation
+            # ------------------------------------------------------------
             prep_id = prep.get("id")
             confirm_key = f"confirm_delete_prep_{prep_id}"
 
@@ -17083,7 +16025,6 @@ def teacher_tracking():
                         "Les résultats et l'historique d'entraînement des élèves "
                         "sont conservés."
                     )
-
                     confirmed = st.checkbox(
                         "Je confirme la suppression de cette préparation.",
                         key=confirm_key,
@@ -17101,6 +16042,7 @@ def teacher_tracking():
                         ]
                         save_evaluation_preparations(updated_preparations)
 
+                        # Nettoyer la sélection devenue invalide avant rerun.
                         st.session_state.pop("prep_tracking_select", None)
                         st.session_state.pop(confirm_key, None)
 
@@ -17222,8 +16164,6 @@ def page_teacher():
         "teacher_section",
         "dashboard",
     )
-
-    teacher_sidebar_nav(section)
 
     if section == "dashboard":
         teacher_dashboard()
