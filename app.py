@@ -1,4 +1,4 @@
-# VERSION_UI_2026_08_27_V78_TEACHER_CHALLENGE_SANDBOX
+# VERSION_UI_2026_09_02_V79_EXERCISE_EDITOR_AI
 import re
 import base64
 import json
@@ -9,6 +9,8 @@ import random
 import textwrap
 import secrets
 import time
+import urllib.request
+import urllib.error
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -2793,6 +2795,513 @@ def format_short_datetime(value):
         return dt.strftime("%d/%m/%Y %H:%M")
     except Exception:
         return str(value)
+
+
+
+# ============================================================
+# BANQUE D'EXERCICES — DONNÉES + ASSISTANT IA
+# ============================================================
+
+EXERCISE_QUESTION_TYPES = [
+    "QCM",
+    "Vrai / Faux",
+    "Réponse courte",
+    "Nombre + unité",
+    "Texte à trous",
+    "Association",
+    "Classement",
+    "Tableau à compléter",
+    "Image / schéma à compléter",
+    "Réponse développée",
+]
+
+EXERCISE_LEVELS = ["6e", "5e", "4e", "3e"]
+EXERCISE_DIFFICULTIES = ["Facile", "Intermédiaire", "Difficile"]
+
+
+def get_teacher_exercises():
+    data = redis_read_json(teacher_key("exercise_bank"), [])
+    return data if isinstance(data, list) else []
+
+
+def save_teacher_exercises(exercises):
+    redis_write_json(teacher_key("exercise_bank"), exercises)
+
+
+def exercise_new_id():
+    return f"exo_{int(time.time())}_{secrets.token_hex(4)}"
+
+
+def exercise_new_question(question_type="Réponse courte"):
+    return {
+        "id": f"q_{secrets.token_hex(5)}",
+        "type": question_type,
+        "prompt": "",
+        "options": [],
+        "answer": "",
+        "unit": "",
+        "tolerance": 0.0,
+        "pairs": [],
+        "items": [],
+        "correction": "",
+        "aids": [],
+    }
+
+
+def exercise_blank_draft():
+    return {
+        "id": exercise_new_id(),
+        "title": "",
+        "levels": ["4e"],
+        "chapter": "",
+        "notion": "",
+        "difficulty": "Intermédiaire",
+        "statement_text": "",
+        "statement_image_b64": "",
+        "statement_image_mime": "",
+        "statement_image_name": "",
+        "questions": [exercise_new_question()],
+        "status": "draft",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def exercise_normalize_question(question):
+    q = exercise_new_question(question.get("type", "Réponse courte"))
+    q.update({
+        "id": str(question.get("id") or q["id"]),
+        "type": str(question.get("type") or "Réponse courte"),
+        "prompt": str(question.get("prompt") or ""),
+        "options": [str(x) for x in (question.get("options") or [])],
+        "answer": str(question.get("answer") or ""),
+        "unit": str(question.get("unit") or ""),
+        "tolerance": float(question.get("tolerance") or 0.0),
+        "pairs": [
+            {
+                "left": str(pair.get("left") or ""),
+                "right": str(pair.get("right") or ""),
+            }
+            for pair in (question.get("pairs") or [])
+            if isinstance(pair, dict)
+        ],
+        "items": [str(x) for x in (question.get("items") or [])],
+        "correction": str(question.get("correction") or ""),
+        "aids": [str(x) for x in (question.get("aids") or []) if str(x).strip()],
+    })
+    if q["type"] not in EXERCISE_QUESTION_TYPES:
+        q["type"] = "Réponse courte"
+    return q
+
+
+def exercise_normalize_draft(data):
+    base = exercise_blank_draft()
+    if isinstance(data, dict):
+        base.update(data)
+
+    base["id"] = str(base.get("id") or exercise_new_id())
+    base["title"] = str(base.get("title") or "")
+    base["levels"] = [
+        level for level in (base.get("levels") or [])
+        if level in EXERCISE_LEVELS
+    ] or ["4e"]
+    base["chapter"] = str(base.get("chapter") or "")
+    base["notion"] = str(base.get("notion") or "")
+    base["difficulty"] = (
+        base.get("difficulty")
+        if base.get("difficulty") in EXERCISE_DIFFICULTIES
+        else "Intermédiaire"
+    )
+    base["statement_text"] = str(base.get("statement_text") or "")
+    base["statement_image_b64"] = str(base.get("statement_image_b64") or "")
+    base["statement_image_mime"] = str(base.get("statement_image_mime") or "")
+    base["statement_image_name"] = str(base.get("statement_image_name") or "")
+    base["questions"] = [
+        exercise_normalize_question(q)
+        for q in (base.get("questions") or [])
+        if isinstance(q, dict)
+    ] or [exercise_new_question()]
+    base["status"] = base.get("status") if base.get("status") in ("draft", "ready") else "draft"
+    return base
+
+
+def exercise_save_draft(draft):
+    draft = exercise_normalize_draft(draft)
+    exercises = get_teacher_exercises()
+    now = datetime.now().isoformat(timespec="seconds")
+    draft["updated_at"] = now
+
+    found = False
+    for index, exercise in enumerate(exercises):
+        if str(exercise.get("id")) == str(draft["id"]):
+            # On conserve la date de création originale.
+            draft["created_at"] = exercise.get("created_at") or draft.get("created_at") or now
+            exercises[index] = draft
+            found = True
+            break
+
+    if not found:
+        draft["created_at"] = draft.get("created_at") or now
+        exercises.append(draft)
+
+    save_teacher_exercises(exercises)
+    return draft
+
+
+def exercise_delete(exercise_id):
+    exercises = [
+        exercise for exercise in get_teacher_exercises()
+        if str(exercise.get("id")) != str(exercise_id)
+    ]
+    save_teacher_exercises(exercises)
+
+
+def exercise_image_from_upload(uploaded_file):
+    """
+    Compresse une image pour la stocker dans la banque d'exercices.
+    V1 : l'image est intégrée au JSON Upstash. On limite donc fortement sa taille.
+    """
+    if uploaded_file is None:
+        return None
+
+    raw = uploaded_file.getvalue()
+    image = Image.open(BytesIO(raw))
+    image.thumbnail((1200, 900), Image.LANCZOS)
+
+    # Fond blanc pour les PNG transparents, puis JPEG raisonnablement compact.
+    if image.mode in ("RGBA", "LA"):
+        background = Image.new("RGB", image.size, "white")
+        alpha = image.getchannel("A")
+        background.paste(image.convert("RGB"), mask=alpha)
+        image = background
+    else:
+        image = image.convert("RGB")
+
+    out = BytesIO()
+    image.save(out, format="JPEG", quality=82, optimize=True)
+    encoded = base64.b64encode(out.getvalue()).decode("ascii")
+
+    return {
+        "b64": encoded,
+        "mime": "image/jpeg",
+        "name": str(getattr(uploaded_file, "name", "document.jpg")),
+    }
+
+
+def exercise_image_bytes(draft):
+    encoded = str(draft.get("statement_image_b64") or "")
+    if not encoded:
+        return None
+    try:
+        return BytesIO(base64.b64decode(encoded))
+    except Exception:
+        return None
+
+
+def openai_api_key():
+    try:
+        value = str(st.secrets["OPENAI_API_KEY"]).strip()
+        return value
+    except Exception:
+        return ""
+
+
+def openai_model():
+    try:
+        configured = str(st.secrets.get("OPENAI_MODEL", "")).strip()
+    except Exception:
+        configured = ""
+    # Luna est volontairement choisi par défaut : très faible coût pour
+    # la génération structurée d'exercices. Le secret OPENAI_MODEL permet
+    # de changer de modèle sans modifier app.py.
+    return configured or "gpt-5.6-luna"
+
+
+def exercise_ai_schema():
+    question = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "type": {"type": "string", "enum": EXERCISE_QUESTION_TYPES},
+            "prompt": {"type": "string"},
+            "options": {"type": "array", "items": {"type": "string"}},
+            "answer": {"type": "string"},
+            "unit": {"type": "string"},
+            "tolerance": {"type": "number"},
+            "pairs": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "left": {"type": "string"},
+                        "right": {"type": "string"},
+                    },
+                    "required": ["left", "right"],
+                },
+            },
+            "items": {"type": "array", "items": {"type": "string"}},
+            "correction": {"type": "string"},
+            "aids": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": [
+            "type", "prompt", "options", "answer", "unit", "tolerance",
+            "pairs", "items", "correction", "aids",
+        ],
+    }
+
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "title": {"type": "string"},
+            "levels": {
+                "type": "array",
+                "items": {"type": "string", "enum": EXERCISE_LEVELS},
+            },
+            "chapter": {"type": "string"},
+            "notion": {"type": "string"},
+            "difficulty": {
+                "type": "string",
+                "enum": EXERCISE_DIFFICULTIES,
+            },
+            "statement_text": {"type": "string"},
+            "questions": {
+                "type": "array",
+                "items": question,
+            },
+        },
+        "required": [
+            "title", "levels", "chapter", "notion",
+            "difficulty", "statement_text", "questions",
+        ],
+    }
+
+
+def openai_extract_output_text(payload):
+    # Réponse REST de l'API Responses : on rassemble tous les output_text.
+    texts = []
+    for item in payload.get("output", []) if isinstance(payload, dict) else []:
+        for content in item.get("content", []) if isinstance(item, dict) else []:
+            if content.get("type") == "output_text" and content.get("text"):
+                texts.append(str(content["text"]))
+    return "\n".join(texts).strip()
+
+
+def openai_generate_exercise(
+    *,
+    levels,
+    chapter,
+    notion,
+    difficulty,
+    question_count,
+    question_types,
+    aid_count,
+    statement_text="",
+    statement_image_b64="",
+    statement_image_mime="image/jpeg",
+    existing_exercise=None,
+    transformation="generate",
+):
+    """
+    Génération structurée côté serveur.
+    Aucune donnée élève n'est envoyée : uniquement le contenu pédagogique du prof.
+    """
+    api_key = openai_api_key()
+    if not api_key:
+        raise RuntimeError(
+            "La clé OpenAI n'est pas configurée. "
+            "Ajoutez OPENAI_API_KEY dans les Secrets Streamlit."
+        )
+
+    question_types = question_types or EXERCISE_QUESTION_TYPES[:5]
+
+    if transformation == "improve" and existing_exercise:
+        task = (
+            "Améliore l'exercice fourni sans en changer la notion. "
+            "Rends les consignes claires, vérifie scientifiquement les réponses, "
+            "améliore les corrections et construis des aides progressives réellement utiles."
+        )
+    elif transformation == "variant" and existing_exercise:
+        task = (
+            "Crée une variante originale de l'exercice fourni : même compétence et niveau, "
+            "mais contexte, valeurs et formulations différents. Ne copie pas l'exercice."
+        )
+    elif transformation == "questions" and existing_exercise:
+        task = (
+            "À partir du document et des informations fournis, propose un exercice cohérent "
+            "avec plusieurs questions variées, leurs réponses, corrections et aides progressives."
+        )
+    else:
+        task = (
+            "Crée un exercice original de physique-chimie pour le collège, utilisable en classe "
+            "ou en entraînement numérique. Ne reproduis aucun exercice de manuel ou site existant."
+        )
+
+    brief = {
+        "niveaux": levels,
+        "chapitre": chapter,
+        "notion": notion,
+        "difficulte": difficulty,
+        "nombre_questions": int(question_count),
+        "types_autorises": question_types,
+        "nombre_max_aides_par_question": int(aid_count),
+        "document_ou_enonce": statement_text,
+    }
+
+    if existing_exercise:
+        # On retire l'image b64 du JSON textuel envoyé au modèle.
+        clean_existing = {
+            key: value for key, value in existing_exercise.items()
+            if key not in (
+                "statement_image_b64",
+                "statement_image_mime",
+                "statement_image_name",
+            )
+        }
+        brief["exercice_existant"] = clean_existing
+
+    system_text = (
+        "Tu es un assistant pédagogique spécialisé dans l'enseignement français "
+        "de physique-chimie au collège. Tu produis des exercices scientifiquement exacts, "
+        "progressifs et adaptés au niveau demandé. Les aides doivent guider sans donner "
+        "immédiatement la réponse. La correction doit expliquer le raisonnement. "
+        "Pour 'Nombre + unité', indique la valeur attendue dans answer, l'unité dans unit "
+        "et une tolérance numérique raisonnable dans tolerance. Pour un QCM, place les choix "
+        "dans options et la bonne réponse exacte dans answer. Pour Association, utilise pairs. "
+        "Pour Classement, utilise items dans l'ordre correct. Pour les autres types, laisse "
+        "les champs non pertinents vides. Respecte strictement le nombre maximal d'aides."
+    )
+
+    user_text = task + "\n\nCahier des charges :\n" + json.dumps(
+        brief, ensure_ascii=False, indent=2
+    )
+
+    content = [{"type": "input_text", "text": user_text}]
+    if statement_image_b64:
+        content.append({
+            "type": "input_image",
+            "image_url": (
+                f"data:{statement_image_mime or 'image/jpeg'};"
+                f"base64,{statement_image_b64}"
+            ),
+        })
+
+    body = {
+        "model": openai_model(),
+        "instructions": system_text,
+        "input": [
+            {
+                "role": "user",
+                "content": content,
+            }
+        ],
+        "max_output_tokens": 6500,
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "exercise_editor",
+                "strict": True,
+                "schema": exercise_ai_schema(),
+            }
+        },
+    }
+
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/responses",
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        try:
+            detail_obj = json.loads(detail)
+            message = detail_obj.get("error", {}).get("message") or detail
+        except Exception:
+            message = detail
+        raise RuntimeError(f"OpenAI : {message}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Connexion à OpenAI impossible : {exc.reason}") from exc
+
+    output_text = openai_extract_output_text(payload)
+    if not output_text:
+        raise RuntimeError("OpenAI n'a renvoyé aucun exercice exploitable.")
+
+    try:
+        generated = json.loads(output_text)
+    except Exception as exc:
+        raise RuntimeError("La réponse IA n'a pas pu être convertie en exercice.") from exc
+
+    generated = exercise_normalize_draft(generated)
+
+    # Les paramètres explicitement choisis par le professeur restent prioritaires.
+    generated["levels"] = levels or generated["levels"]
+    generated["chapter"] = chapter or generated["chapter"]
+    generated["notion"] = notion or generated["notion"]
+    generated["difficulty"] = difficulty or generated["difficulty"]
+
+    # Si le prof avait fourni son propre document, il reste le document de référence.
+    if statement_text.strip():
+        generated["statement_text"] = statement_text
+    if statement_image_b64:
+        generated["statement_image_b64"] = statement_image_b64
+        generated["statement_image_mime"] = statement_image_mime
+
+    generated["id"] = exercise_new_id()
+    generated["created_at"] = datetime.now().isoformat(timespec="seconds")
+    generated["updated_at"] = generated["created_at"]
+    generated["status"] = "draft"
+
+    for question in generated["questions"]:
+        question["id"] = f"q_{secrets.token_hex(5)}"
+        question["aids"] = question["aids"][: int(aid_count)]
+
+    return generated
+
+
+def exercise_editor_start(draft=None, creation_mode="manual"):
+    st.session_state.exercise_bank_draft = exercise_normalize_draft(
+        draft or exercise_blank_draft()
+    )
+    st.session_state.exercise_bank_creation_mode = creation_mode
+    st.session_state.exercise_bank_screen = "editor"
+    st.session_state.exercise_bank_editor_token = secrets.token_hex(5)
+
+
+def exercise_editor_close():
+    st.session_state.exercise_bank_screen = "home"
+    st.session_state.pop("exercise_bank_draft", None)
+    st.session_state.pop("exercise_bank_editor_token", None)
+    st.session_state.pop("exercise_bank_creation_mode", None)
+
+
+def exercise_validate(draft):
+    errors = []
+    if not str(draft.get("title") or "").strip():
+        errors.append("Ajoutez un titre.")
+    if not draft.get("levels"):
+        errors.append("Sélectionnez au moins un niveau.")
+    if not draft.get("questions"):
+        errors.append("Ajoutez au moins une question.")
+    for index, question in enumerate(draft.get("questions") or [], start=1):
+        if not str(question.get("prompt") or "").strip():
+            errors.append(f"La question {index} n'a pas d'énoncé.")
+        if question.get("type") == "QCM" and len(question.get("options") or []) < 2:
+            errors.append(f"La question {index} (QCM) doit proposer au moins deux choix.")
+        if not str(question.get("answer") or "").strip() and question.get("type") not in (
+            "Réponse développée",
+            "Image / schéma à compléter",
+        ):
+            errors.append(f"La question {index} n'a pas de réponse attendue.")
+    return errors
 
 
 # ============================================================
@@ -15517,6 +16026,7 @@ def teacher_dashboard():
     challenges = get_challenges()
     results = get_results()
     activity_rows = get_activity_log()
+    exercise_bank_rows = get_teacher_exercises()
 
     open_challenges = sum(
         1 for challenge in challenges
@@ -15554,7 +16064,7 @@ def teacher_dashboard():
             "icon_class": "teacher-card-teal",
             "title": "Banque d’exercices",
             "text": "Créez, classez et partagez vos propres exercices interactifs.",
-            "stat": "Éditeur d’exercices",
+            "stat": f"{len(exercise_bank_rows)} exercice(s) dans ma banque",
             "button": "Ouvrir la banque  ›",
         },
         {
@@ -15643,39 +16153,891 @@ def teacher_dashboard():
 
 
 
+def teacher_exercise_bank_question_editor(draft, question, index, token):
+    question_id = question["id"]
+    prefix = f"exed_{token}_{question_id}"
+
+    st.markdown(
+        f"<div style='font-size:1.03rem;font-weight:850;color:#17365f;"
+        f"margin:.25rem 0 .45rem 0;'>Question {index}</div>",
+        unsafe_allow_html=True,
+    )
+
+    qtype = st.selectbox(
+        "Type de question",
+        EXERCISE_QUESTION_TYPES,
+        index=EXERCISE_QUESTION_TYPES.index(question["type"]),
+        key=f"{prefix}_type",
+    )
+    question["type"] = qtype
+
+    question["prompt"] = st.text_area(
+        "Énoncé de la question",
+        value=question.get("prompt", ""),
+        height=90,
+        key=f"{prefix}_prompt",
+    )
+
+    if qtype == "QCM":
+        options_text = st.text_area(
+            "Choix proposés — un choix par ligne",
+            value="\n".join(question.get("options") or []),
+            height=105,
+            key=f"{prefix}_options",
+        )
+        question["options"] = [
+            line.strip() for line in options_text.splitlines() if line.strip()
+        ]
+        question["answer"] = st.text_input(
+            "Bonne réponse — recopier exactement l'un des choix",
+            value=question.get("answer", ""),
+            key=f"{prefix}_answer",
+        )
+
+    elif qtype == "Vrai / Faux":
+        current = question.get("answer") if question.get("answer") in ("Vrai", "Faux") else "Vrai"
+        question["answer"] = st.selectbox(
+            "Réponse attendue",
+            ["Vrai", "Faux"],
+            index=0 if current == "Vrai" else 1,
+            key=f"{prefix}_answer_bool",
+        )
+        question["options"] = ["Vrai", "Faux"]
+
+    elif qtype == "Nombre + unité":
+        c1, c2, c3 = st.columns([1.25, 1, 1], gap="small")
+        with c1:
+            question["answer"] = st.text_input(
+                "Valeur attendue",
+                value=question.get("answer", ""),
+                placeholder="Ex. 12,5",
+                key=f"{prefix}_number",
+            )
+        with c2:
+            question["unit"] = st.text_input(
+                "Unité",
+                value=question.get("unit", ""),
+                placeholder="Ex. V, A, m/s",
+                key=f"{prefix}_unit",
+            )
+        with c3:
+            question["tolerance"] = float(st.number_input(
+                "Tolérance",
+                min_value=0.0,
+                value=float(question.get("tolerance") or 0.0),
+                step=0.01,
+                key=f"{prefix}_tolerance",
+            ))
+
+    elif qtype == "Association":
+        pair_text = "\n".join(
+            f"{pair.get('left','')} = {pair.get('right','')}"
+            for pair in (question.get("pairs") or [])
+        )
+        pair_text = st.text_area(
+            "Paires correctes — une par ligne sous la forme gauche = droite",
+            value=pair_text,
+            height=120,
+            key=f"{prefix}_pairs",
+        )
+        pairs = []
+        for line in pair_text.splitlines():
+            if "=" in line:
+                left, right = line.split("=", 1)
+                if left.strip() and right.strip():
+                    pairs.append({"left": left.strip(), "right": right.strip()})
+        question["pairs"] = pairs
+        question["answer"] = "Association définie" if pairs else ""
+
+    elif qtype == "Classement":
+        items_text = st.text_area(
+            "Éléments dans l'ordre correct — un élément par ligne",
+            value="\n".join(question.get("items") or []),
+            height=120,
+            key=f"{prefix}_items",
+        )
+        question["items"] = [
+            line.strip() for line in items_text.splitlines() if line.strip()
+        ]
+        question["answer"] = "Ordre défini" if question["items"] else ""
+
+    else:
+        answer_label = (
+            "Éléments attendus dans la réponse / critères de réussite"
+            if qtype in ("Réponse développée", "Image / schéma à compléter")
+            else "Réponse attendue"
+        )
+        question["answer"] = st.text_area(
+            answer_label,
+            value=question.get("answer", ""),
+            height=85,
+            key=f"{prefix}_answer_text",
+        )
+
+    question["correction"] = st.text_area(
+        "Correction explicative",
+        value=question.get("correction", ""),
+        height=100,
+        key=f"{prefix}_correction",
+        help="La correction doit expliquer la démarche, pas seulement donner la réponse.",
+    )
+
+    st.markdown(
+        "<div style='font-weight:800;color:#385b7e;margin:.35rem 0 .2rem 0;'>"
+        "Aides progressives</div>",
+        unsafe_allow_html=True,
+    )
+    aids = list(question.get("aids") or [])
+    aid_count = st.number_input(
+        "Nombre d'aides",
+        min_value=0,
+        max_value=3,
+        value=min(3, len(aids)),
+        step=1,
+        key=f"{prefix}_aid_count",
+    )
+    aid_count = int(aid_count)
+    while len(aids) < aid_count:
+        aids.append("")
+    aids = aids[:aid_count]
+
+    for aid_index in range(aid_count):
+        aids[aid_index] = st.text_input(
+            f"Aide {aid_index + 1}",
+            value=aids[aid_index],
+            placeholder=(
+                "Petit indice" if aid_index == 0
+                else "Indice plus précis" if aid_index == 1
+                else "Démarche fortement guidée"
+            ),
+            key=f"{prefix}_aid_{aid_index}",
+        )
+
+    question["aids"] = [aid for aid in aids if aid.strip()]
+
+    remove_col, spacer = st.columns([1, 3])
+    with remove_col:
+        if st.button(
+            "🗑️ Supprimer cette question",
+            key=f"{prefix}_delete",
+            use_container_width=True,
+        ):
+            draft["questions"] = [
+                q for q in draft["questions"]
+                if q["id"] != question_id
+            ]
+            if not draft["questions"]:
+                draft["questions"].append(exercise_new_question())
+            st.session_state.exercise_bank_draft = draft
+            st.session_state.exercise_bank_editor_token = secrets.token_hex(5)
+            st.rerun()
+
+
+def teacher_exercise_preview(draft):
+    st.markdown("### 👁️ Aperçu élève")
+    st.markdown(
+        f"<div style='padding:1rem 1.15rem;border:1px solid #dfe7f1;"
+        f"border-radius:16px;background:white;'>"
+        f"<div style='font-size:1.25rem;font-weight:900;color:#17365f;'>"
+        f"{html.escape(draft.get('title') or 'Exercice sans titre')}</div>"
+        f"<div style='margin-top:.25rem;color:#6a7d97;font-size:.86rem;'>"
+        f"{' · '.join(draft.get('levels') or [])} · "
+        f"{html.escape(draft.get('notion') or 'Notion non renseignée')} · "
+        f"{html.escape(draft.get('difficulty') or '')}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    if draft.get("statement_text"):
+        st.markdown("#### Document / énoncé")
+        st.write(draft["statement_text"])
+
+    image_bytes = exercise_image_bytes(draft)
+    if image_bytes:
+        st.image(image_bytes, caption=draft.get("statement_image_name") or "Document")
+
+    for i, question in enumerate(draft.get("questions") or [], start=1):
+        st.markdown(f"#### Question {i}")
+        st.write(question.get("prompt") or "")
+        qtype = question.get("type")
+        if qtype == "QCM":
+            st.radio(
+                "Choisissez une réponse",
+                question.get("options") or ["—"],
+                key=f"preview_{draft['id']}_{question['id']}",
+                disabled=True,
+            )
+        elif qtype == "Vrai / Faux":
+            st.radio(
+                "Votre réponse",
+                ["Vrai", "Faux"],
+                key=f"preview_{draft['id']}_{question['id']}",
+                disabled=True,
+            )
+        elif qtype == "Association":
+            for pair in question.get("pairs") or []:
+                st.write(f"• {pair.get('left','')}  ↔  …")
+        elif qtype == "Classement":
+            for item in reversed(question.get("items") or []):
+                st.write(f"☰ {item}")
+        elif qtype == "Nombre + unité":
+            c1, c2 = st.columns([2, 1])
+            with c1:
+                st.text_input(
+                    "Valeur",
+                    disabled=True,
+                    key=f"preview_num_{question['id']}",
+                )
+            with c2:
+                st.text_input(
+                    "Unité",
+                    disabled=True,
+                    key=f"preview_unit_{question['id']}",
+                )
+        else:
+            st.text_area(
+                "Votre réponse",
+                disabled=True,
+                height=80,
+                key=f"preview_text_{question['id']}",
+            )
+
+        if question.get("aids"):
+            with st.expander("💡 Besoin d'un coup de pouce ?"):
+                for aid_index, aid in enumerate(question["aids"], start=1):
+                    st.write(f"**Aide {aid_index} :** {aid}")
+
+
+def teacher_exercise_editor():
+    draft = exercise_normalize_draft(
+        st.session_state.get("exercise_bank_draft") or exercise_blank_draft()
+    )
+    st.session_state.exercise_bank_draft = draft
+    token = st.session_state.get("exercise_bank_editor_token") or secrets.token_hex(5)
+    st.session_state.exercise_bank_editor_token = token
+    creation_mode = st.session_state.get("exercise_bank_creation_mode", "manual")
+
+    top_left, top_right = st.columns([1, 4])
+    with top_left:
+        if st.button("← Banque", use_container_width=True, key=f"exed_{token}_back"):
+            exercise_editor_close()
+            st.rerun()
+    with top_right:
+        mode_label = {
+            "manual": "Création manuelle",
+            "assisted": "Création avec assistance IA",
+            "generated": "Exercice généré par l'IA",
+            "edit": "Modification d'un exercice existant",
+        }.get(creation_mode, "Éditeur")
+        st.caption(mode_label)
+
+    st.markdown(
+        """
+        <div style="padding:1rem 1.15rem;border:1px solid #dce9f2;border-radius:18px;
+                    background:linear-gradient(135deg,#fbfffe,#f5fbff);margin:.3rem 0 1rem 0;">
+          <div style="font-size:1.32rem;font-weight:900;color:#14345d;">Éditeur d’exercice</div>
+          <div style="color:#667b96;margin-top:.25rem;">
+            L’exercice reste sous votre contrôle. L’IA peut proposer ; vous validez et modifiez avant utilisation.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### 1. Informations générales")
+    c1, c2 = st.columns([2.2, 1], gap="medium")
+    with c1:
+        draft["title"] = st.text_input(
+            "Titre de l'exercice",
+            value=draft.get("title", ""),
+            placeholder="Ex. Identifier un ion à partir de sa composition",
+            key=f"exed_{token}_title",
+        )
+    with c2:
+        draft["difficulty"] = st.selectbox(
+            "Difficulté",
+            EXERCISE_DIFFICULTIES,
+            index=EXERCISE_DIFFICULTIES.index(draft.get("difficulty", "Intermédiaire")),
+            key=f"exed_{token}_difficulty",
+        )
+
+    c1, c2, c3 = st.columns([1.2, 1.4, 1.4], gap="medium")
+    with c1:
+        draft["levels"] = st.multiselect(
+            "Niveau(x)",
+            EXERCISE_LEVELS,
+            default=draft.get("levels") or ["4e"],
+            key=f"exed_{token}_levels",
+        )
+    with c2:
+        draft["chapter"] = st.text_input(
+            "Chapitre / thème",
+            value=draft.get("chapter", ""),
+            placeholder="Ex. Organisation de la matière",
+            key=f"exed_{token}_chapter",
+        )
+    with c3:
+        draft["notion"] = st.text_input(
+            "Notion / compétence travaillée",
+            value=draft.get("notion", ""),
+            placeholder="Ex. Atomes et ions",
+            key=f"exed_{token}_notion",
+        )
+
+    st.markdown("### 2. Document / énoncé")
+    draft["statement_text"] = st.text_area(
+        "Texte — vous pouvez saisir ou copier-coller un énoncé, un document ou des données",
+        value=draft.get("statement_text", ""),
+        height=150,
+        key=f"exed_{token}_statement",
+    )
+
+    uploaded = st.file_uploader(
+        "Ajouter une image au document / énoncé",
+        type=["png", "jpg", "jpeg", "webp"],
+        key=f"exed_{token}_image_upload",
+        help="L'image est automatiquement réduite et compressée pour limiter le stockage.",
+    )
+    if uploaded is not None:
+        try:
+            prepared = exercise_image_from_upload(uploaded)
+            if prepared and prepared["b64"] != draft.get("statement_image_b64"):
+                draft["statement_image_b64"] = prepared["b64"]
+                draft["statement_image_mime"] = prepared["mime"]
+                draft["statement_image_name"] = prepared["name"]
+                st.session_state.exercise_bank_draft = draft
+        except Exception as exc:
+            st.error(f"Impossible de préparer cette image : {exc}")
+
+    image_bytes = exercise_image_bytes(draft)
+    if image_bytes:
+        image_col, remove_col = st.columns([4, 1])
+        with image_col:
+            st.image(
+                image_bytes,
+                caption=draft.get("statement_image_name") or "Document",
+                width=420,
+            )
+        with remove_col:
+            st.write("")
+            if st.button(
+                "Retirer l'image",
+                key=f"exed_{token}_remove_image",
+                use_container_width=True,
+            ):
+                draft["statement_image_b64"] = ""
+                draft["statement_image_mime"] = ""
+                draft["statement_image_name"] = ""
+                st.session_state.exercise_bank_draft = draft
+                st.session_state.exercise_bank_editor_token = secrets.token_hex(5)
+                st.rerun()
+
+    # IA ponctuelle disponible dans tous les modes, mais jamais obligatoire.
+    with st.expander("✨ Assistant IA — facultatif", expanded=(creation_mode == "assisted")):
+        if openai_api_key():
+            st.success(f"IA configurée · modèle : {openai_model()}")
+        else:
+            st.warning(
+                "IA non configurée. Ajoutez OPENAI_API_KEY dans les Secrets Streamlit. "
+                "L'éditeur manuel reste entièrement utilisable."
+            )
+
+        ai_action = st.selectbox(
+            "Que voulez-vous demander à l'IA ?",
+            [
+                "Proposer les questions à partir de mon document / ma notion",
+                "Améliorer les questions, corrections et aides",
+                "Créer une variante de cet exercice",
+            ],
+            key=f"exed_{token}_ai_action",
+        )
+        ai_question_count = int(st.number_input(
+            "Nombre de questions souhaité",
+            min_value=1,
+            max_value=12,
+            value=max(1, len(draft.get("questions") or [])),
+            step=1,
+            key=f"exed_{token}_ai_qcount",
+        ))
+        ai_aid_count = int(st.number_input(
+            "Nombre maximal d'aides progressives par question",
+            min_value=0,
+            max_value=3,
+            value=3,
+            step=1,
+            key=f"exed_{token}_ai_aids",
+        ))
+        ai_types = st.multiselect(
+            "Types de questions autorisés",
+            EXERCISE_QUESTION_TYPES,
+            default=EXERCISE_QUESTION_TYPES[:6],
+            key=f"exed_{token}_ai_types",
+        )
+
+        if st.button(
+            "✨ Lancer l'assistant IA",
+            type="primary",
+            use_container_width=True,
+            disabled=not bool(openai_api_key()),
+            key=f"exed_{token}_ai_run",
+        ):
+            action_code = (
+                "questions"
+                if ai_action.startswith("Proposer")
+                else "improve"
+                if ai_action.startswith("Améliorer")
+                else "variant"
+            )
+            try:
+                with st.spinner("L'IA prépare une proposition…"):
+                    generated = openai_generate_exercise(
+                        levels=draft.get("levels") or ["4e"],
+                        chapter=draft.get("chapter", ""),
+                        notion=draft.get("notion", ""),
+                        difficulty=draft.get("difficulty", "Intermédiaire"),
+                        question_count=ai_question_count,
+                        question_types=ai_types,
+                        aid_count=ai_aid_count,
+                        statement_text=draft.get("statement_text", ""),
+                        statement_image_b64=draft.get("statement_image_b64", ""),
+                        statement_image_mime=draft.get("statement_image_mime", "image/jpeg"),
+                        existing_exercise=draft,
+                        transformation=action_code,
+                    )
+                # Pour amélioration/questions, on garde l'identité de l'exercice.
+                if action_code != "variant":
+                    generated["id"] = draft["id"]
+                    generated["created_at"] = draft.get("created_at")
+                    if draft.get("statement_image_b64"):
+                        generated["statement_image_b64"] = draft["statement_image_b64"]
+                        generated["statement_image_mime"] = draft.get("statement_image_mime", "")
+                        generated["statement_image_name"] = draft.get("statement_image_name", "")
+                st.session_state.exercise_bank_draft = generated
+                st.session_state.exercise_bank_editor_token = secrets.token_hex(5)
+                st.success("Proposition IA chargée dans l'éditeur. Vous pouvez tout modifier.")
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+
+    st.markdown("### 3. Questions")
+    for index, question in enumerate(list(draft.get("questions") or []), start=1):
+        with st.container(border=True):
+            teacher_exercise_bank_question_editor(
+                draft,
+                question,
+                index,
+                token,
+            )
+
+    if st.button(
+        "➕ Ajouter une question",
+        use_container_width=True,
+        key=f"exed_{token}_add_question",
+    ):
+        draft["questions"].append(exercise_new_question())
+        st.session_state.exercise_bank_draft = draft
+        st.session_state.exercise_bank_editor_token = secrets.token_hex(5)
+        st.rerun()
+
+    st.session_state.exercise_bank_draft = draft
+
+    st.markdown("### 4. Validation")
+    status_label = st.radio(
+        "État de l'exercice",
+        ["Brouillon", "Prêt à utiliser"],
+        horizontal=True,
+        index=0 if draft.get("status") == "draft" else 1,
+        key=f"exed_{token}_status",
+        help="Une génération IA n'est jamais publiée automatiquement.",
+    )
+    draft["status"] = "draft" if status_label == "Brouillon" else "ready"
+
+    preview_col, save_col = st.columns(2, gap="medium")
+
+    with preview_col:
+        if st.button(
+            "👁️ Prévisualiser comme un élève",
+            use_container_width=True,
+            key=f"exed_{token}_preview_button",
+        ):
+            st.session_state.exercise_bank_preview = not st.session_state.get(
+                "exercise_bank_preview", False
+            )
+
+    with save_col:
+        if st.button(
+            "💾 Enregistrer dans ma banque",
+            type="primary",
+            use_container_width=True,
+            key=f"exed_{token}_save",
+        ):
+            validation_errors = exercise_validate(draft)
+            if validation_errors:
+                for error in validation_errors:
+                    st.error(error)
+            else:
+                saved = exercise_save_draft(draft)
+                st.session_state.exercise_bank_draft = saved
+                st.success("Exercice enregistré dans votre banque.")
+                st.rerun()
+
+    if st.session_state.get("exercise_bank_preview", False):
+        st.markdown("---")
+        teacher_exercise_preview(draft)
+
+
+def teacher_exercise_ai_generation_screen():
+    st.markdown("### ✨ Générer un exercice complet avec l'IA")
+    st.caption(
+        "Indiquez simplement le niveau, la notion et vos préférences. "
+        "L'exercice généré sera ensuite ouvert dans l'éditeur pour validation."
+    )
+
+    if openai_api_key():
+        st.success(f"Connexion IA prête · {openai_model()}")
+    else:
+        st.error(
+            "OPENAI_API_KEY n'est pas encore présent dans les Secrets Streamlit."
+        )
+
+    c1, c2 = st.columns(2, gap="medium")
+    with c1:
+        levels = st.multiselect(
+            "Niveau(x)",
+            EXERCISE_LEVELS,
+            default=["4e"],
+            key="exgen_levels",
+        )
+        chapter = st.text_input(
+            "Chapitre / thème",
+            placeholder="Ex. Organisation de la matière",
+            key="exgen_chapter",
+        )
+        notion = st.text_input(
+            "Notion / compétence",
+            placeholder="Ex. Identifier un ion à partir de sa composition",
+            key="exgen_notion",
+        )
+    with c2:
+        difficulty = st.selectbox(
+            "Difficulté",
+            EXERCISE_DIFFICULTIES,
+            index=1,
+            key="exgen_difficulty",
+        )
+        question_count = int(st.number_input(
+            "Nombre de questions",
+            min_value=1,
+            max_value=12,
+            value=5,
+            step=1,
+            key="exgen_qcount",
+        ))
+        aid_count = int(st.number_input(
+            "Aides progressives par question — maximum",
+            min_value=0,
+            max_value=3,
+            value=3,
+            step=1,
+            key="exgen_aids",
+        ))
+
+    types = st.multiselect(
+        "Types de questions souhaités",
+        EXERCISE_QUESTION_TYPES,
+        default=[
+            "QCM",
+            "Réponse courte",
+            "Nombre + unité",
+            "Vrai / Faux",
+            "Association",
+        ],
+        key="exgen_types",
+    )
+
+    statement = st.text_area(
+        "Document / consigne de départ — facultatif",
+        height=130,
+        placeholder=(
+            "Vous pouvez coller ici un texte, des données, une situation-problème "
+            "ou simplement laisser vide pour que l'IA crée le contexte."
+        ),
+        key="exgen_statement",
+    )
+
+    uploaded = st.file_uploader(
+        "Image de départ — facultatif",
+        type=["png", "jpg", "jpeg", "webp"],
+        key="exgen_image",
+    )
+
+    back_col, generate_col = st.columns([1, 2])
+    with back_col:
+        if st.button("← Retour", use_container_width=True, key="exgen_back"):
+            st.session_state.exercise_bank_screen = "new"
+            st.rerun()
+
+    with generate_col:
+        if st.button(
+            "✨ Générer puis ouvrir dans l'éditeur",
+            type="primary",
+            use_container_width=True,
+            disabled=not bool(openai_api_key()),
+            key="exgen_generate",
+        ):
+            if not levels:
+                st.error("Sélectionnez au moins un niveau.")
+            elif not notion.strip():
+                st.error("Indiquez au moins la notion ou compétence à travailler.")
+            else:
+                image_data = None
+                if uploaded is not None:
+                    try:
+                        image_data = exercise_image_from_upload(uploaded)
+                    except Exception as exc:
+                        st.error(f"Impossible de préparer l'image : {exc}")
+                        return
+                try:
+                    with st.spinner("Création de l'exercice par l'IA…"):
+                        generated = openai_generate_exercise(
+                            levels=levels,
+                            chapter=chapter,
+                            notion=notion,
+                            difficulty=difficulty,
+                            question_count=question_count,
+                            question_types=types,
+                            aid_count=aid_count,
+                            statement_text=statement,
+                            statement_image_b64=(image_data or {}).get("b64", ""),
+                            statement_image_mime=(image_data or {}).get("mime", "image/jpeg"),
+                            transformation="generate",
+                        )
+                    if image_data:
+                        generated["statement_image_name"] = image_data.get("name", "")
+                    exercise_editor_start(generated, creation_mode="generated")
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
+
+
+def teacher_exercise_new_screen():
+    st.markdown("### ➕ Créer un nouvel exercice")
+    st.caption("Choisissez simplement la manière dont vous souhaitez travailler.")
+
+    c1, c2, c3 = st.columns(3, gap="medium")
+
+    with c1:
+        with st.container(border=True):
+            st.markdown("#### ✍️ Je construis moi-même")
+            st.write(
+                "Vous créez l'énoncé, les questions, les réponses, "
+                "les corrections et les aides sans utiliser l'IA."
+            )
+            if st.button(
+                "Commencer sans IA",
+                use_container_width=True,
+                key="exercise_new_manual",
+            ):
+                exercise_editor_start(creation_mode="manual")
+                st.rerun()
+
+    with c2:
+        with st.container(border=True):
+            st.markdown("#### ✨ L'IA m'aide")
+            st.write(
+                "Vous préparez votre exercice et sollicitez l'IA seulement "
+                "pour les questions, corrections, aides ou variantes."
+            )
+            if st.button(
+                "Créer avec assistance",
+                use_container_width=True,
+                key="exercise_new_assisted",
+            ):
+                exercise_editor_start(creation_mode="assisted")
+                st.rerun()
+
+    with c3:
+        with st.container(border=True):
+            st.markdown("#### 🤖 L'IA prépare tout")
+            st.write(
+                "Vous choisissez niveau, notion et difficulté. "
+                "L'IA génère une proposition entièrement modifiable."
+            )
+            if st.button(
+                "Générer avec l'IA",
+                type="primary",
+                use_container_width=True,
+                key="exercise_new_generated",
+            ):
+                st.session_state.exercise_bank_screen = "generate"
+                st.rerun()
+
+    if st.button("← Retour à la banque", key="exercise_new_back"):
+        st.session_state.exercise_bank_screen = "home"
+        st.rerun()
+
+
+def teacher_exercise_existing_screen():
+    exercises = get_teacher_exercises()
+
+    st.markdown("### ✏️ Modifier un exercice existant")
+
+    if not exercises:
+        st.info("Votre banque ne contient encore aucun exercice.")
+    else:
+        search = st.text_input(
+            "Rechercher",
+            placeholder="Titre, notion, chapitre…",
+            key="exercise_bank_search",
+        ).strip().lower()
+
+        filtered = []
+        for exercise in exercises:
+            haystack = " ".join([
+                str(exercise.get("title", "")),
+                str(exercise.get("chapter", "")),
+                str(exercise.get("notion", "")),
+                " ".join(exercise.get("levels") or []),
+            ]).lower()
+            if not search or search in haystack:
+                filtered.append(exercise)
+
+        filtered.sort(key=lambda x: str(x.get("updated_at", "")), reverse=True)
+
+        for exercise in filtered:
+            with st.container(border=True):
+                c1, c2 = st.columns([4, 1.15], gap="medium")
+                with c1:
+                    status = "✅ Prêt" if exercise.get("status") == "ready" else "📝 Brouillon"
+                    st.markdown(f"#### {html.escape(str(exercise.get('title') or 'Sans titre'))}")
+                    st.caption(
+                        f"{' · '.join(exercise.get('levels') or [])} · "
+                        f"{exercise.get('difficulty','')} · {status}"
+                    )
+                    if exercise.get("notion"):
+                        st.write(f"**Notion :** {exercise['notion']}")
+                    st.write(f"{len(exercise.get('questions') or [])} question(s)")
+                with c2:
+                    if st.button(
+                        "Modifier",
+                        use_container_width=True,
+                        key=f"exercise_edit_{exercise['id']}",
+                    ):
+                        exercise_editor_start(exercise, creation_mode="edit")
+                        st.rerun()
+
+                    confirm_key = f"exercise_delete_confirm_{exercise['id']}"
+                    if st.checkbox(
+                        "Autoriser suppression",
+                        key=confirm_key,
+                    ):
+                        if st.button(
+                            "🗑️ Supprimer",
+                            use_container_width=True,
+                            key=f"exercise_delete_{exercise['id']}",
+                        ):
+                            exercise_delete(exercise["id"])
+                            st.success("Exercice supprimé.")
+                            st.rerun()
+
+    if st.button("← Retour à la banque", key="exercise_existing_back"):
+        st.session_state.exercise_bank_screen = "home"
+        st.rerun()
+
+
 def teacher_exercise_bank():
     teacher_header("Banque d’exercices")
+
+    exercises = get_teacher_exercises()
+    ready_count = sum(1 for exercise in exercises if exercise.get("status") == "ready")
+    draft_count = len(exercises) - ready_count
+
     st.markdown(
         """
         <div style="padding:1rem 1.1rem;border:1px solid #dce9f2;border-radius:18px;
                     background:linear-gradient(135deg,#f8fffe,#f5fbff);margin-bottom:1rem;">
           <div style="font-size:1.35rem;font-weight:850;color:#14345d;">📝 Banque d’exercices</div>
           <div style="color:#667b96;margin-top:.3rem;">
-            Votre atelier pour créer, organiser, tester et partager des exercices.
+            Créez vos exercices vous-même, avec une aide ponctuelle de l’IA,
+            ou laissez l’IA préparer une première proposition que vous pourrez entièrement modifier.
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
     c1, c2, c3 = st.columns(3, gap="medium")
     with c1:
-        st.metric("Mes exercices", "0")
+        st.metric("Mes exercices", len(exercises))
     with c2:
-        st.metric("Partagés avec moi", "0")
+        st.metric("Prêts à utiliser", ready_count)
     with c3:
-        st.metric("Banque commune", "0")
+        st.metric("Brouillons", draft_count)
 
-    st.info("L’éditeur complet arrive à l’étape suivante. La rubrique et son architecture sont maintenant intégrées.")
-    with st.expander("➕ Créer un exercice", expanded=True):
-        st.selectbox("Type d’exercice", [
-            "QCM", "Réponse courte", "Vrai / Faux", "Texte à trous",
-            "Associer des éléments", "Remettre dans l’ordre",
-            "Question avec image", "Question ouverte"
-        ], key="exercise_bank_type")
-        st.text_input("Titre de l’exercice", key="exercise_bank_title")
-        st.text_area("Consigne", key="exercise_bank_instruction", height=100)
-        st.text_area("Réponse attendue / correction", key="exercise_bank_answer", height=100)
-        st.caption("Cette première version prépare l’éditeur sans encore enregistrer de nouvel exercice dans Upstash.")
+    screen = st.session_state.get("exercise_bank_screen", "home")
+
+    if screen == "editor":
+        teacher_exercise_editor()
+        return
+    if screen == "new":
+        teacher_exercise_new_screen()
+        return
+    if screen == "generate":
+        teacher_exercise_ai_generation_screen()
+        return
+    if screen == "existing":
+        teacher_exercise_existing_screen()
+        return
+
+    st.markdown("### Que souhaitez-vous faire ?")
+    create_col, edit_col = st.columns(2, gap="large")
+
+    with create_col:
+        with st.container(border=True):
+            st.markdown("#### ➕ Créer un nouvel exercice")
+            st.write(
+                "Création manuelle, assistance ponctuelle de l'IA "
+                "ou génération complète : vous choisissez."
+            )
+            if st.button(
+                "Créer un nouvel exercice",
+                type="primary",
+                use_container_width=True,
+                key="exercise_bank_create",
+            ):
+                st.session_state.exercise_bank_screen = "new"
+                st.rerun()
+
+    with edit_col:
+        with st.container(border=True):
+            st.markdown("#### ✏️ Modifier un exercice existant")
+            st.write(
+                "Retrouvez vos exercices, corrigez-les, enrichissez-les "
+                "ou transformez-les avec l'assistant IA."
+            )
+            if st.button(
+                "Modifier un exercice",
+                use_container_width=True,
+                key="exercise_bank_modify",
+            ):
+                st.session_state.exercise_bank_screen = "existing"
+                st.rerun()
+
+    if exercises:
+        st.markdown("### Exercices récents")
+        recent = sorted(
+            exercises,
+            key=lambda x: str(x.get("updated_at", "")),
+            reverse=True,
+        )[:5]
+        for exercise in recent:
+            status = "✅ Prêt" if exercise.get("status") == "ready" else "📝 Brouillon"
+            st.markdown(
+                f"- **{html.escape(str(exercise.get('title') or 'Sans titre'))}** "
+                f"— {' · '.join(exercise.get('levels') or [])} "
+                f"— {len(exercise.get('questions') or [])} question(s) — {status}"
+            )
+
 
 
 def teacher_murlab():
