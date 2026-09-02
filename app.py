@@ -1,4 +1,4 @@
-# VERSION_UI_2026_09_02_V81_SHARING_AND_STUDENT_ANSWERS
+# VERSION_UI_2026_09_02_V82_SEMANTIC_GRADING_AI_QUALITY_CONTROL
 import re
 import base64
 import json
@@ -3304,6 +3304,234 @@ def openai_extract_output_text(payload):
     return "\n".join(texts).strip()
 
 
+
+def openai_post_json(body, timeout=90):
+    """Appel commun à l'API Responses, côté serveur uniquement."""
+    api_key = openai_api_key()
+    if not api_key:
+        raise RuntimeError(
+            "La clé OpenAI n'est pas configurée. "
+            "Ajoutez OPENAI_API_KEY dans les Secrets Streamlit."
+        )
+
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/responses",
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        try:
+            detail_obj = json.loads(detail)
+            message = detail_obj.get("error", {}).get("message") or detail
+        except Exception:
+            message = detail
+        raise RuntimeError(f"OpenAI : {message}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Connexion à OpenAI impossible : {exc.reason}") from exc
+
+
+def openai_review_exercise_consistency(exercise):
+    """
+    Deuxième passe indépendante après génération :
+    vérifie la cohérence scientifique entre question, réponse attendue,
+    paires d'association, ordre, calculs et correction expliquée.
+    """
+    clean = {
+        key: value
+        for key, value in exercise.items()
+        if key not in (
+            "statement_image_b64",
+            "statement_image_mime",
+            "statement_image_name",
+        )
+    }
+
+    instructions = (
+        "Tu es relecteur scientifique d'exercices de physique-chimie pour le collège français. "
+        "Relis l'exercice COMPLET avant qu'il soit proposé à des élèves. "
+        "Corrige toute contradiction entre l'énoncé, les réponses attendues et les corrections. "
+        "Vérifie notamment les calculs, unités, charges ioniques, nombres de protons/électrons, "
+        "formules chimiques, QCM, classements et associations. "
+        "Pour une question Association, les champs pairs doivent contenir directement les "
+        "associations scientifiquement correctes ; n'utilise pas de lettres A/B/C comme vérité "
+        "de fond si elles risquent de contredire les couples. "
+        "La correction expliquée doit décrire exactement les mêmes réponses que les données "
+        "structurées. Ne change pas la notion ni le niveau. "
+        "Retourne l'exercice corrigé dans le schéma demandé, sans commentaire extérieur."
+    )
+
+    body = {
+        "model": openai_model(),
+        "instructions": instructions,
+        "input": [{
+            "role": "user",
+            "content": [{
+                "type": "input_text",
+                "text": json.dumps(clean, ensure_ascii=False, indent=2),
+            }],
+        }],
+        "max_output_tokens": 6500,
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "exercise_quality_review",
+                "strict": True,
+                "schema": exercise_ai_schema(),
+            }
+        },
+    }
+
+    payload = openai_post_json(body, timeout=90)
+    output_text = openai_extract_output_text(payload)
+    if not output_text:
+        raise RuntimeError("Le contrôle qualité IA n'a renvoyé aucun exercice.")
+
+    try:
+        reviewed = json.loads(output_text)
+    except Exception as exc:
+        raise RuntimeError(
+            "Le contrôle qualité IA n'a pas renvoyé un exercice exploitable."
+        ) from exc
+
+    reviewed = exercise_normalize_draft(reviewed)
+
+    # Normalisation forte des types structurés :
+    # l'information de référence est dans pairs/items, jamais dans un vieux champ answer.
+    for question in reviewed.get("questions") or []:
+        if question.get("type") == "Association":
+            question["answer"] = "Association définie"
+        elif question.get("type") == "Classement":
+            question["answer"] = "Ordre défini"
+
+    reviewed["quality_checked_at"] = datetime.now().isoformat(timespec="seconds")
+    reviewed["quality_checked"] = True
+    return reviewed
+
+
+def semantic_grade_schema(question_ids):
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "evaluations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "question_id": {
+                            "type": "string",
+                            "enum": [str(qid) for qid in question_ids],
+                        },
+                        "correct": {"type": "boolean"},
+                        "reason": {"type": "string"},
+                    },
+                    "required": ["question_id", "correct", "reason"],
+                },
+            }
+        },
+        "required": ["evaluations"],
+    }
+
+
+def openai_grade_short_answers(exercise, student_answers):
+    """
+    Corrige en une seule requête les réponses courtes qui ne correspondent pas
+    textuellement à la réponse attendue.
+
+    Aucune identité élève n'est transmise à l'API.
+    """
+    candidates = []
+    for question in exercise.get("questions") or []:
+        if question.get("type") != "Réponse courte":
+            continue
+
+        qid = str(question.get("id"))
+        answer = student_answers.get(question.get("id"))
+
+        # Une égalité textuelle évidente ne mérite pas un appel IA.
+        if _normalize_student_text(answer) == _normalize_student_text(
+            question.get("answer", "")
+        ):
+            continue
+
+        candidates.append({
+            "question_id": qid,
+            "question": question.get("prompt", ""),
+            "student_answer": str(answer or ""),
+            "expected_answer": question.get("answer", ""),
+            "correction_reference": question.get("correction", ""),
+        })
+
+    if not candidates:
+        return {}
+
+    if not openai_api_key():
+        return {}
+
+    ids = [item["question_id"] for item in candidates]
+
+    instructions = (
+        "Tu corriges des réponses courtes d'élèves de collège en physique-chimie. "
+        "Évalue le SENS scientifique et non une correspondance mot à mot. "
+        "Une formulation différente, une faute mineure, une phrase plus longue ou un calcul "
+        "écrit autrement doivent être acceptés si le raisonnement et le résultat scientifique "
+        "sont corrects. Une réponse contenant la bonne valeur ET une justification correcte "
+        "doit être acceptée même si elle ne reprend pas la phrase attendue. "
+        "Refuse une réponse scientifiquement fausse ou contradictoire. "
+        "Le champ reason doit être très court, clair et pédagogique. "
+        "Ne tiens compte d'aucune identité d'élève : elle n'est pas fournie."
+    )
+
+    body = {
+        "model": openai_model(),
+        "instructions": instructions,
+        "input": [{
+            "role": "user",
+            "content": [{
+                "type": "input_text",
+                "text": json.dumps(candidates, ensure_ascii=False, indent=2),
+            }],
+        }],
+        "max_output_tokens": 1800,
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "semantic_short_answer_grading",
+                "strict": True,
+                "schema": semantic_grade_schema(ids),
+            }
+        },
+    }
+
+    payload = openai_post_json(body, timeout=60)
+    output_text = openai_extract_output_text(payload)
+    if not output_text:
+        return {}
+
+    try:
+        parsed = json.loads(output_text)
+    except Exception:
+        return {}
+
+    return {
+        str(item.get("question_id")): {
+            "correct": bool(item.get("correct")),
+            "reason": str(item.get("reason") or "").strip(),
+        }
+        for item in (parsed.get("evaluations") or [])
+    }
+
+
 def openai_generate_exercise(
     *,
     levels,
@@ -3423,29 +3651,7 @@ def openai_generate_exercise(
         },
     }
 
-    request = urllib.request.Request(
-        "https://api.openai.com/v1/responses",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(request, timeout=90) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        try:
-            detail_obj = json.loads(detail)
-            message = detail_obj.get("error", {}).get("message") or detail
-        except Exception:
-            message = detail
-        raise RuntimeError(f"OpenAI : {message}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Connexion à OpenAI impossible : {exc.reason}") from exc
+    payload = openai_post_json(body, timeout=90)
 
     output_text = openai_extract_output_text(payload)
     if not output_text:
@@ -3480,7 +3686,31 @@ def openai_generate_exercise(
         question["id"] = f"q_{secrets.token_hex(5)}"
         question["aids"] = question["aids"][: int(aid_count)]
 
-    return generated
+    # Deuxième passe obligatoire : l'exercice généré est relu avant d'arriver
+    # dans l'éditeur afin d'éliminer les contradictions internes.
+    original_id = generated["id"]
+    original_created = generated.get("created_at")
+    image_b64 = generated.get("statement_image_b64", "")
+    image_mime = generated.get("statement_image_mime", "")
+    image_name = generated.get("statement_image_name", "")
+
+    reviewed = openai_review_exercise_consistency(generated)
+    reviewed["id"] = original_id
+    reviewed["created_at"] = original_created
+    reviewed["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    reviewed["status"] = "draft"
+
+    if image_b64:
+        reviewed["statement_image_b64"] = image_b64
+        reviewed["statement_image_mime"] = image_mime
+        reviewed["statement_image_name"] = image_name
+
+    # Les identifiants de questions restent internes à notre éditeur.
+    for question in reviewed.get("questions") or []:
+        question["id"] = f"q_{secrets.token_hex(5)}"
+        question["aids"] = question["aids"][: int(aid_count)]
+
+    return reviewed
 
 
 def exercise_editor_start(draft=None, creation_mode="manual"):
@@ -5812,7 +6042,12 @@ def bank_question_check(question, student_answer):
     if not bank_question_is_auto_correctable(question):
         return None
 
-    if qtype in ("QCM", "Vrai / Faux", "Réponse courte", "Texte à trous", "Tableau à compléter"):
+    if qtype in ("QCM", "Vrai / Faux", "Texte à trous", "Tableau à compléter"):
+        return _normalize_student_text(student_answer) == _normalize_student_text(expected)
+
+    if qtype == "Réponse courte":
+        # L'égalité évidente est traitée ici. Si elle échoue, une seconde passe
+        # sémantique IA pourra reconnaître une formulation équivalente.
         return _normalize_student_text(student_answer) == _normalize_student_text(expected)
 
     if qtype == "Nombre + unité":
@@ -5908,9 +6143,11 @@ def page_bank_exercise_play():
     submitted_key = f"bankplay_{exercise_id}_submitted"
     results_key = f"bankplay_{exercise_id}_results"
     answers_key = f"bankplay_{exercise_id}_answers"
+    feedback_key = f"bankplay_{exercise_id}_semantic_feedback"
     submitted = bool(st.session_state.get(submitted_key, False))
     student_answers = {}
     stored_answers = st.session_state.get(answers_key) or {}
+    semantic_feedback = st.session_state.get(feedback_key) or {}
 
     for index, question in enumerate(exercise.get("questions") or [], start=1):
         qid = question.get("id")
@@ -5948,6 +6185,10 @@ def page_bank_exercise_play():
                 else:
                     st.info("Cette question demande une correction ou une appréciation personnelle.")
 
+                feedback = semantic_feedback.get(str(qid)) or {}
+                if feedback.get("reason"):
+                    st.caption(f"Évaluation de ta réponse : {feedback.get('reason')}")
+
                 st.markdown("**Ta réponse**")
                 st.text(bank_format_answer(question, given_answer, expected=False))
 
@@ -5970,19 +6211,46 @@ def page_bank_exercise_play():
             key=f"bankplay_{exercise_id}_submit",
         ):
             results = {}
-            auto_total = 0
-            auto_correct = 0
+            semantic_feedback = {}
+
+            # Première passe : règles déterministes (QCM, calculs, associations…).
             for question in exercise.get("questions") or []:
                 qid = question.get("id")
                 answer = student_answers.get(qid)
                 result = bank_question_check(question, answer)
                 results[qid] = result
+
+            # Deuxième passe : uniquement les réponses courtes non reconnues mot à mot.
+            # Une seule requête IA pour tout l'exercice, sans identité élève.
+            try:
+                semantic_evaluations = openai_grade_short_answers(
+                    exercise,
+                    student_answers,
+                )
+            except Exception:
+                semantic_evaluations = {}
+
+            for question in exercise.get("questions") or []:
+                if question.get("type") != "Réponse courte":
+                    continue
+                qid = str(question.get("id"))
+                evaluation = semantic_evaluations.get(qid)
+                if evaluation:
+                    results[question.get("id")] = bool(evaluation.get("correct"))
+                    semantic_feedback[qid] = {
+                        "reason": evaluation.get("reason", ""),
+                    }
+
+            auto_total = 0
+            auto_correct = 0
+            for result in results.values():
                 if result is not None:
                     auto_total += 1
-                    if result:
+                    if result is True:
                         auto_correct += 1
 
             st.session_state[results_key] = results
+            st.session_state[feedback_key] = semantic_feedback
             # On mémorise exactement les réponses données avant le rerun.
             # Elles seront affichées avec la correction.
             st.session_state[answers_key] = json.loads(
@@ -17061,6 +17329,9 @@ def teacher_exercise_editor():
         unsafe_allow_html=True,
     )
 
+    if draft.get("quality_checked"):
+        st.success("🔎 Cohérence scientifique vérifiée par l'assistant IA.")
+
     st.markdown("### 1. Informations générales")
     c1, c2 = st.columns([2.2, 1], gap="medium")
     with c1:
@@ -17164,6 +17435,7 @@ def teacher_exercise_editor():
             [
                 "Proposer les questions à partir de mon document / ma notion",
                 "Améliorer les questions, corrections et aides",
+                "Vérifier la cohérence scientifique de l'exercice",
                 "Créer une variante de cet exercice",
             ],
             key=f"exed_{token}_ai_action",
@@ -17203,24 +17475,39 @@ def teacher_exercise_editor():
                 if ai_action.startswith("Proposer")
                 else "improve"
                 if ai_action.startswith("Améliorer")
+                else "quality"
+                if ai_action.startswith("Vérifier")
                 else "variant"
             )
             try:
-                with st.spinner("L'IA prépare une proposition…"):
-                    generated = openai_generate_exercise(
-                        levels=draft.get("levels") or ["4e"],
-                        chapter=draft.get("chapter", ""),
-                        notion=draft.get("notion", ""),
-                        difficulty=draft.get("difficulty", "Intermédiaire"),
-                        question_count=ai_question_count,
-                        question_types=ai_types,
-                        aid_count=ai_aid_count,
-                        statement_text=draft.get("statement_text", ""),
-                        statement_image_b64=draft.get("statement_image_b64", ""),
-                        statement_image_mime=draft.get("statement_image_mime", "image/jpeg"),
-                        existing_exercise=draft,
-                        transformation=action_code,
-                    )
+                if action_code == "quality":
+                    with st.spinner("Vérification scientifique de l'exercice…"):
+                        generated = openai_review_exercise_consistency(draft)
+                        generated["id"] = draft["id"]
+                        generated["created_at"] = draft.get("created_at")
+                        generated["status"] = draft.get("status", "draft")
+                        if draft.get("statement_image_b64"):
+                            generated["statement_image_b64"] = draft["statement_image_b64"]
+                            generated["statement_image_mime"] = draft.get("statement_image_mime", "")
+                            generated["statement_image_name"] = draft.get("statement_image_name", "")
+                        for question in generated.get("questions") or []:
+                            question["id"] = f"q_{secrets.token_hex(5)}"
+                else:
+                    with st.spinner("L'IA prépare une proposition…"):
+                        generated = openai_generate_exercise(
+                            levels=draft.get("levels") or ["4e"],
+                            chapter=draft.get("chapter", ""),
+                            notion=draft.get("notion", ""),
+                            difficulty=draft.get("difficulty", "Intermédiaire"),
+                            question_count=ai_question_count,
+                            question_types=ai_types,
+                            aid_count=ai_aid_count,
+                            statement_text=draft.get("statement_text", ""),
+                            statement_image_b64=draft.get("statement_image_b64", ""),
+                            statement_image_mime=draft.get("statement_image_mime", "image/jpeg"),
+                            existing_exercise=draft,
+                            transformation=action_code,
+                        )
                 # Pour amélioration/questions, on garde l'identité de l'exercice.
                 if action_code != "variant":
                     generated["id"] = draft["id"]
@@ -17231,7 +17518,12 @@ def teacher_exercise_editor():
                         generated["statement_image_name"] = draft.get("statement_image_name", "")
                 st.session_state.exercise_bank_draft = generated
                 st.session_state.exercise_bank_editor_token = secrets.token_hex(5)
-                st.success("Proposition IA chargée dans l'éditeur. Vous pouvez tout modifier.")
+                st.success(
+                    "Contrôle terminé : la version vérifiée est chargée dans l’éditeur. "
+                    "Vous pouvez encore tout modifier."
+                    if action_code == "quality"
+                    else "Proposition IA chargée dans l’éditeur. Vous pouvez tout modifier."
+                )
                 st.rerun()
             except Exception as exc:
                 st.error(str(exc))
