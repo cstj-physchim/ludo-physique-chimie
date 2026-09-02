@@ -1,4 +1,4 @@
-# VERSION_UI_2026_09_02_V79_EXERCISE_EDITOR_AI
+# VERSION_UI_2026_09_02_V80_EXERCISE_PUBLICATION_STUDENT_ACCESS
 import re
 import base64
 import json
@@ -2686,6 +2686,10 @@ def record_training_result(
     completed_items,
     total_items,
     errors=0,
+    resource_label=None,
+    chapter=None,
+    aid_level=None,
+    aids_used_count=None,
 ):
     """Enregistre une réalisation d'exercice sans transformer l'entraînement en note."""
     teacher_id = student.get("_teacher_id")
@@ -2711,12 +2715,14 @@ def record_training_result(
         "last_initial": student.get("last_initial"),
         "class_name": student.get("class_name"),
         "resource_id": resource_id,
-        "resource_label": PILOT_CONTENTS.get(resource_id, {}).get("label", resource_id),
-        "chapter": PILOT_CONTENTS.get(resource_id, {}).get("chapter", ""),
+        "resource_label": resource_label or PILOT_CONTENTS.get(resource_id, {}).get("label", resource_id),
+        "chapter": chapter if chapter is not None else PILOT_CONTENTS.get(resource_id, {}).get("chapter", ""),
         "score_percent": int(score_percent),
         "completed_items": int(completed_items),
         "total_items": int(total_items),
         "errors": int(errors),
+        "aid_level": int(aid_level) if aid_level is not None else None,
+        "aids_used_count": int(aids_used_count) if aids_used_count is not None else None,
         "attempt_number": len(previous) + 1,
         "finished_at": now,
     })
@@ -2819,13 +2825,92 @@ EXERCISE_LEVELS = ["6e", "5e", "4e", "3e"]
 EXERCISE_DIFFICULTIES = ["Facile", "Intermédiaire", "Difficile"]
 
 
-def get_teacher_exercises():
-    data = redis_read_json(teacher_key("exercise_bank"), [])
+def get_teacher_exercises(teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        return []
+    data = redis_read_json(teacher_key("exercise_bank", teacher_id), [])
     return data if isinstance(data, list) else []
 
 
-def save_teacher_exercises(exercises):
-    redis_write_json(teacher_key("exercise_bank"), exercises)
+def save_teacher_exercises(exercises, teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        raise RuntimeError("Aucun professeur associé à la banque d’exercices.")
+    redis_write_json(teacher_key("exercise_bank", teacher_id), exercises)
+
+
+def bank_exercise_content_id(exercise_id):
+    return f"bank_exercise:{exercise_id}"
+
+
+def class_level_label(class_name):
+    """Déduit 4e depuis 4B, 5e depuis 5A, etc. sans imposer un format de classe."""
+    match = re.match(r"\s*([3-6])", str(class_name or ""))
+    return f"{match.group(1)}e" if match else "Autre"
+
+
+def ready_teacher_exercises(teacher_id=None):
+    return [
+        exercise for exercise in get_teacher_exercises(teacher_id)
+        if exercise.get("status") == "ready"
+    ]
+
+
+def bank_exercise_is_available_for_current_user(exercise):
+    if not exercise or exercise.get("status") != "ready":
+        return False
+
+    if st.session_state.get("app_user_type") == "teacher":
+        return True
+
+    if st.session_state.get("app_user_type") != "student":
+        return False
+
+    student = st.session_state.get("app_student") or {}
+    teacher_id = student.get("_teacher_id")
+    class_name = student.get("class_name", "")
+    if not teacher_id:
+        return False
+
+    class_level = class_level_label(class_name)
+    exercise_levels = exercise.get("levels") or []
+    if class_level != "Autre" and exercise_levels and class_level not in exercise_levels:
+        return False
+
+    return content_is_open_for_class(
+        bank_exercise_content_id(exercise.get("id")),
+        class_name,
+        teacher_id,
+    )
+
+
+def bank_exercises_available_for_current_user():
+    if st.session_state.get("app_user_type") == "teacher":
+        return ready_teacher_exercises()
+
+    if st.session_state.get("app_user_type") != "student":
+        return []
+
+    student = st.session_state.get("app_student") or {}
+    teacher_id = student.get("_teacher_id")
+    if not teacher_id:
+        return []
+
+    return [
+        exercise for exercise in ready_teacher_exercises(teacher_id)
+        if bank_exercise_is_available_for_current_user(exercise)
+    ]
+
+
+def start_bank_exercise(exercise_id):
+    prefix = f"bankplay_{exercise_id}_"
+    for key in list(st.session_state.keys()):
+        if str(key).startswith(prefix):
+            st.session_state.pop(key, None)
+    st.session_state.bank_exercise_id = exercise_id
+    request_page_transition()
+    st.session_state.page = "bank_exercise_play"
 
 
 def exercise_new_id():
@@ -5066,6 +5151,8 @@ def _page_free_activity_body():
     )
 
     states_ready = states_matter_available_for_current_user()
+    custom_exercises_ready = bool(bank_exercises_available_for_current_user())
+    exercises_ready = states_ready or custom_exercises_ready
 
     cols = st.columns(5)
 
@@ -5073,7 +5160,7 @@ def _page_free_activity_body():
         ("🁢", "Dominos", "Associez les dominos et construisez le bon chemin.", "card-blue", False),
         ("🧠", "Memory", "Retrouvez les paires correspondantes.", "card-pink", True),
         ("🔗", "Associations", "Associez les bonnes réponses.", "card-cyan", True),
-        ("📝", "Exercices", "Entraînez-vous avec des questions autocorrigées et des explications.", "card-purple", not states_ready),
+        ("📝", "Exercices", "Entraînez-vous avec des questions autocorrigées et des explications.", "card-purple", not exercises_ready),
         ("⚡", "Défis rapides", "De courts défis pour tester vos connaissances.", "card-orange", True),
     ]
 
@@ -5089,7 +5176,7 @@ def _page_free_activity_body():
                     on_click=set_page,
                     args=("free_theme",),
                 )
-            elif title == "Exercices" and states_ready:
+            elif title == "Exercices" and exercises_ready:
                 st.button(
                     "Choisir",
                     key="choose_exercises",
@@ -5380,6 +5467,26 @@ def page_exercise_topics():
             "key": "start_states_matter",
         })
 
+    custom_session = (
+        "Exercices de ma banque"
+        if st.session_state.get("app_user_type") == "teacher"
+        else "Exercices proposés par mon professeur"
+    )
+    for bank_exercise in bank_exercises_available_for_current_user():
+        exercises.append({
+            "session": custom_session,
+            "icon": "🧠",
+            "title": bank_exercise.get("title") or "Exercice",
+            "description": (
+                bank_exercise.get("notion")
+                or bank_exercise.get("chapter")
+                or "Exercice créé par le professeur."
+            ),
+            "color": "card-green",
+            "bank_exercise_id": bank_exercise.get("id"),
+            "key": f"start_bank_{bank_exercise.get('id')}",
+        })
+
     if not exercises:
         st.info("Aucun exercice n'est encore ouvert pour ta classe.")
         return
@@ -5388,7 +5495,7 @@ def page_exercise_topics():
     for exercise in exercises:
         grouped.setdefault(exercise["session"], []).append(exercise)
 
-    session_order = [session1, session2]
+    session_order = [session1, session2, custom_session]
 
     for session_name in session_order:
         session_exercises = grouped.get(session_name, [])
@@ -5424,14 +5531,338 @@ def page_exercise_topics():
                 with c2:
                     st.write("")
                     st.write("")
-                    st.button(
-                        "Commencer →",
-                        key=exercise["key"],
-                        use_container_width=True,
-                        type="primary",
-                        on_click=set_page,
-                        args=(exercise["page"],),
-                    )
+                    if exercise.get("bank_exercise_id"):
+                        st.button(
+                            "Commencer →",
+                            key=exercise["key"],
+                            use_container_width=True,
+                            type="primary",
+                            on_click=start_bank_exercise,
+                            args=(exercise["bank_exercise_id"],),
+                        )
+                    else:
+                        st.button(
+                            "Commencer →",
+                            key=exercise["key"],
+                            use_container_width=True,
+                            type="primary",
+                            on_click=set_page,
+                            args=(exercise["page"],),
+                        )
+
+
+def _normalize_student_text(value):
+    return re.sub(r"\s+", " ", str(value or "").strip().casefold())
+
+
+def _parse_student_number(value):
+    try:
+        return float(str(value).strip().replace(" ", "").replace(",", "."))
+    except Exception:
+        return None
+
+
+def bank_question_is_auto_correctable(question):
+    return question.get("type") not in (
+        "Réponse développée",
+        "Image / schéma à compléter",
+    )
+
+
+def bank_question_student_answer(exercise_id, question):
+    qid = question.get("id")
+    prefix = f"bankplay_{exercise_id}_{qid}"
+    qtype = question.get("type")
+
+    if qtype == "QCM":
+        options = question.get("options") or ["—"]
+        return st.radio(
+            "Votre réponse",
+            options,
+            index=None,
+            key=f"{prefix}_answer_qcm",
+        )
+
+    if qtype == "Vrai / Faux":
+        return st.radio(
+            "Votre réponse",
+            ["Vrai", "Faux"],
+            index=None,
+            key=f"{prefix}_answer_bool",
+        )
+
+    if qtype == "Nombre + unité":
+        c1, c2 = st.columns([2, 1], gap="small")
+        with c1:
+            value = st.text_input("Valeur", key=f"{prefix}_number")
+        with c2:
+            unit = st.text_input("Unité", key=f"{prefix}_unit")
+        return {"value": value, "unit": unit}
+
+    if qtype == "Association":
+        pairs = question.get("pairs") or []
+        rights = sorted({str(pair.get("right", "")) for pair in pairs if pair.get("right")})
+        answers = {}
+        for index, pair in enumerate(pairs):
+            left = str(pair.get("left", ""))
+            answers[left] = st.selectbox(
+                left or f"Élément {index + 1}",
+                ["—"] + rights,
+                key=f"{prefix}_pair_{index}",
+            )
+        return answers
+
+    if qtype == "Classement":
+        items = list(question.get("items") or [])
+        answers = []
+        for index in range(len(items)):
+            answers.append(st.selectbox(
+                f"Position {index + 1}",
+                ["—"] + items,
+                key=f"{prefix}_rank_{index}",
+            ))
+        return answers
+
+    height = 120 if qtype in ("Réponse développée", "Tableau à compléter") else 75
+    return st.text_area(
+        "Votre réponse",
+        height=height,
+        key=f"{prefix}_answer_text",
+    )
+
+
+def bank_question_check(question, student_answer):
+    qtype = question.get("type")
+    expected = question.get("answer", "")
+
+    if not bank_question_is_auto_correctable(question):
+        return None
+
+    if qtype in ("QCM", "Vrai / Faux", "Réponse courte", "Texte à trous", "Tableau à compléter"):
+        return _normalize_student_text(student_answer) == _normalize_student_text(expected)
+
+    if qtype == "Nombre + unité":
+        got_value = _parse_student_number((student_answer or {}).get("value"))
+        expected_value = _parse_student_number(expected)
+        if got_value is None or expected_value is None:
+            return False
+        tolerance = float(question.get("tolerance") or 0.0)
+        unit_ok = (
+            _normalize_student_text((student_answer or {}).get("unit"))
+            == _normalize_student_text(question.get("unit", ""))
+        )
+        return abs(got_value - expected_value) <= tolerance and unit_ok
+
+    if qtype == "Association":
+        expected_pairs = {
+            str(pair.get("left", "")): str(pair.get("right", ""))
+            for pair in (question.get("pairs") or [])
+        }
+        return bool(expected_pairs) and all(
+            _normalize_student_text((student_answer or {}).get(left))
+            == _normalize_student_text(right)
+            for left, right in expected_pairs.items()
+        )
+
+    if qtype == "Classement":
+        return [str(x) for x in (student_answer or [])] == [
+            str(x) for x in (question.get("items") or [])
+        ]
+
+    return _normalize_student_text(student_answer) == _normalize_student_text(expected)
+
+
+def page_bank_exercise_play():
+    hero()
+    back_button("exercise_topics")
+
+    exercise_id = st.session_state.get("bank_exercise_id")
+    user_type = st.session_state.get("app_user_type")
+
+    if user_type == "student":
+        student = st.session_state.get("app_student") or {}
+        teacher_id = student.get("_teacher_id")
+    else:
+        student = None
+        teacher_id = st.session_state.get("teacher_id")
+
+    exercises = get_teacher_exercises(teacher_id)
+    exercise = next(
+        (item for item in exercises if str(item.get("id")) == str(exercise_id)),
+        None,
+    )
+
+    if not exercise:
+        st.error("Cet exercice n'existe plus.")
+        return
+
+    if user_type == "student" and not bank_exercise_is_available_for_current_user(exercise):
+        st.warning("Cet exercice n'est pas ouvert pour ta classe.")
+        return
+
+    st.markdown(
+        '<div class="breadcrumb">Accueil › Mon espace d’entraînement › Exercices › Exercice du professeur</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f'<div class="section-title">📝 {html.escape(str(exercise.get("title") or "Exercice"))}</div>',
+        unsafe_allow_html=True,
+    )
+    details = " · ".join(
+        part for part in [
+            " / ".join(exercise.get("levels") or []),
+            exercise.get("notion", ""),
+            exercise.get("difficulty", ""),
+        ] if part
+    )
+    if details:
+        st.caption(details)
+
+    if exercise.get("statement_text"):
+        st.markdown("### Document / énoncé")
+        st.write(exercise.get("statement_text"))
+
+    image_bytes = exercise_image_bytes(exercise)
+    if image_bytes:
+        st.image(
+            image_bytes,
+            caption=exercise.get("statement_image_name") or "Document",
+            use_container_width=False,
+            width=650,
+        )
+
+    submitted_key = f"bankplay_{exercise_id}_submitted"
+    results_key = f"bankplay_{exercise_id}_results"
+    submitted = bool(st.session_state.get(submitted_key, False))
+    student_answers = {}
+
+    for index, question in enumerate(exercise.get("questions") or [], start=1):
+        qid = question.get("id")
+        aid_key = f"bankplay_{exercise_id}_{qid}_aid_level"
+        current_aid = int(st.session_state.get(aid_key, 0))
+
+        with st.container(border=True):
+            st.markdown(f"### Question {index}")
+            st.write(question.get("prompt") or "")
+
+            if not submitted:
+                student_answers[qid] = bank_question_student_answer(exercise_id, question)
+
+                aids = question.get("aids") or []
+                if aids:
+                    st.markdown("**Besoin d'un coup de pouce ?**")
+                    for aid_index, aid in enumerate(aids, start=1):
+                        if aid_index <= current_aid:
+                            st.info(f"💡 Aide {aid_index} — {aid}")
+                    if current_aid < len(aids):
+                        if st.button(
+                            f"Afficher l'aide {current_aid + 1}",
+                            key=f"bankplay_{exercise_id}_{qid}_show_aid_{current_aid + 1}",
+                        ):
+                            st.session_state[aid_key] = current_aid + 1
+                            st.rerun()
+            else:
+                result = (st.session_state.get(results_key) or {}).get(qid)
+                if result is True:
+                    st.success("✅ Bonne réponse")
+                elif result is False:
+                    st.error("❌ Réponse à revoir")
+                else:
+                    st.info("Cette question demande une correction ou une appréciation personnelle.")
+
+                if question.get("correction"):
+                    st.markdown("**Correction expliquée**")
+                    st.write(question.get("correction"))
+                elif question.get("answer"):
+                    st.markdown("**Réponse attendue**")
+                    st.write(question.get("answer"))
+
+                aids = question.get("aids") or []
+                if aids and current_aid:
+                    st.caption(f"Aides utilisées : niveau {current_aid}/{len(aids)}")
+
+    if not submitted:
+        if st.button(
+            "✅ Vérifier mes réponses",
+            type="primary",
+            use_container_width=True,
+            key=f"bankplay_{exercise_id}_submit",
+        ):
+            results = {}
+            auto_total = 0
+            auto_correct = 0
+            for question in exercise.get("questions") or []:
+                qid = question.get("id")
+                answer = student_answers.get(qid)
+                result = bank_question_check(question, answer)
+                results[qid] = result
+                if result is not None:
+                    auto_total += 1
+                    if result:
+                        auto_correct += 1
+
+            st.session_state[results_key] = results
+            st.session_state[submitted_key] = True
+
+            if user_type == "student" and student and auto_total > 0:
+                max_aid = max(
+                    [
+                        int(st.session_state.get(
+                            f"bankplay_{exercise_id}_{question.get('id')}_aid_level",
+                            0,
+                        ))
+                        for question in exercise.get("questions") or []
+                    ] or [0]
+                )
+                aids_used_count = sum(
+                    1 for question in exercise.get("questions") or []
+                    if int(st.session_state.get(
+                        f"bankplay_{exercise_id}_{question.get('id')}_aid_level",
+                        0,
+                    )) > 0
+                )
+                score = round(100 * auto_correct / auto_total)
+                record_training_result(
+                    student,
+                    bank_exercise_content_id(exercise_id),
+                    score,
+                    auto_correct,
+                    auto_total,
+                    errors=auto_total - auto_correct,
+                    resource_label=exercise.get("title") or "Exercice de la banque",
+                    chapter=exercise.get("chapter", ""),
+                    aid_level=max_aid,
+                    aids_used_count=aids_used_count,
+                )
+            st.rerun()
+    else:
+        results = st.session_state.get(results_key) or {}
+        graded = [value for value in results.values() if value is not None]
+        if graded:
+            correct = sum(1 for value in graded if value)
+            score = round(100 * correct / len(graded))
+            st.markdown("---")
+            st.metric("Résultat des questions autocorrigées", f"{score} %")
+        else:
+            st.info("Cet exercice ne comporte pas de question autocorrigée.")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button(
+                "🔄 Refaire l'exercice",
+                use_container_width=True,
+                key=f"bankplay_{exercise_id}_retry",
+            ):
+                start_bank_exercise(exercise_id)
+                st.rerun()
+        with c2:
+            st.button(
+                "← Retour aux exercices",
+                use_container_width=True,
+                key=f"bankplay_{exercise_id}_return",
+                on_click=set_page,
+                args=("exercise_topics",),
+            )
 
 
 EXERCISE1_STATES_WATER = [
@@ -16677,8 +17108,10 @@ def teacher_exercise_editor():
                     st.error(error)
             else:
                 saved = exercise_save_draft(draft)
-                st.session_state.exercise_bank_draft = saved
-                st.success("Exercice enregistré dans votre banque.")
+                st.session_state.exercise_bank_flash = (
+                    f"✅ Exercice « {saved.get('title') or 'Sans titre'} » enregistré dans la banque d’exercices."
+                )
+                exercise_editor_close()
                 st.rerun()
 
     if st.session_state.get("exercise_bank_preview", False):
@@ -16975,6 +17408,9 @@ def teacher_exercise_bank():
         st.metric("Brouillons", draft_count)
 
     screen = st.session_state.get("exercise_bank_screen", "home")
+
+    if screen == "home" and st.session_state.get("exercise_bank_flash"):
+        st.success(st.session_state.pop("exercise_bank_flash"))
 
     if screen == "editor":
         teacher_exercise_editor()
@@ -17568,16 +18004,34 @@ def teacher_contents():
         unsafe_allow_html=True,
     )
     st.caption(
-        "Les contenus suivent la progression de 4e. Chaque ressource reste indépendante : "
-        "vous pouvez ouvrir ou fermer un exercice ou un jeu sans ouvrir tout le chapitre. "
-        "Les ressources fermées restent invisibles pour les élèves."
+        "Choisissez d’abord un niveau puis une classe. Les ressources fermées restent "
+        "invisibles pour les élèves. Les exercices de la Banque apparaissent ici dès "
+        "qu’ils sont marqués « Prêt à utiliser »."
     )
 
-    selected_class = st.selectbox(
-        "Classe à configurer",
-        classes,
-        key="content_class_select",
-    )
+    classes_by_level = {}
+    for class_name in classes:
+        classes_by_level.setdefault(class_level_label(class_name), []).append(class_name)
+
+    preferred_order = ["6e", "5e", "4e", "3e", "Autre"]
+    level_options = [level for level in preferred_order if level in classes_by_level]
+    if not level_options:
+        level_options = sorted(classes_by_level)
+
+    level_col, class_col = st.columns([1, 2], gap="medium")
+    with level_col:
+        selected_level = st.selectbox(
+            "Niveau",
+            level_options,
+            key="content_level_select",
+        )
+    with class_col:
+        selected_class = st.selectbox(
+            "Classe à configurer",
+            sorted(classes_by_level.get(selected_level, [])),
+            key="content_class_select_v80",
+        )
+
     access = get_content_access()
     class_access = dict(access.get(selected_class, {}))
 
@@ -17589,76 +18043,120 @@ def teacher_contents():
 
     changed = False
 
-    for chapter in PROGRESSION_CHAPTERS:
-        resources = [
-            (content_id, info)
-            for content_id, info in PILOT_CONTENTS.items()
-            if info.get("chapter") == chapter
-        ]
-        resources.sort(key=lambda item: item[1].get("order", 999))
+    # Catalogue historique : pour l'instant principalement la progression 4e.
+    if selected_level == "4e":
+        for chapter in PROGRESSION_CHAPTERS:
+            resources = [
+                (content_id, info)
+                for content_id, info in PILOT_CONTENTS.items()
+                if info.get("chapter") == chapter
+            ]
+            resources.sort(key=lambda item: item[1].get("order", 999))
 
-        opened_count = sum(
-            1
-            for content_id, _ in resources
-            if bool(class_access.get(content_id, False))
+            opened_count = sum(
+                1
+                for content_id, _ in resources
+                if bool(class_access.get(content_id, False))
+            )
+            total_count = len(resources)
+
+            if chapter == "Autres contenus déjà prêts":
+                title = f"🧰 {chapter} — {opened_count}/{total_count} ouvert(s)"
+            else:
+                title = f"{chapter} — {opened_count}/{total_count} ouvert(s)"
+
+            with st.expander(title, expanded=(chapter == "Chapitre 1 — Organisation de la matière")):
+                if not resources:
+                    st.caption("Aucune ressource n'est encore ajoutée dans ce chapitre.")
+                    continue
+
+                for content_id, info in resources:
+                    c1, c2 = st.columns([4.8, 1.2])
+                    with c1:
+                        st.markdown(f"**{info['label']}**")
+                        st.caption(info["description"])
+                    with c2:
+                        old_value = bool(class_access.get(content_id, False))
+                        value = st.toggle(
+                            "Visible",
+                            value=old_value,
+                            key=f"content_toggle_{selected_class}_{content_id}",
+                            help="Affiche ou masque uniquement cette ressource pour la classe.",
+                        )
+                        if value != old_value:
+                            class_access[content_id] = value
+                            changed = True
+
+    # Exercices créés dans la banque du professeur.
+    ready_bank = [
+        exercise for exercise in ready_teacher_exercises()
+        if selected_level in (exercise.get("levels") or [])
+    ]
+
+    st.markdown("### 📝 Exercices de ma banque")
+    if not ready_bank:
+        st.info(
+            f"Aucun exercice marqué « Prêt à utiliser » n'est actuellement associé au niveau {selected_level}."
         )
-        total_count = len(resources)
-
-        if chapter == "Autres contenus déjà prêts":
-            title = f"🧰 {chapter} — {opened_count}/{total_count} ouvert(s)"
-        else:
-            title = f"{chapter} — {opened_count}/{total_count} ouvert(s)"
-
-        with st.expander(title, expanded=(chapter == "Chapitre 1 — Organisation de la matière")):
-            if not resources:
-                st.caption(
-                    "Aucune ressource n'est encore ajoutée dans ce chapitre. "
-                    "Les futurs exercices seront classés ici au fur et à mesure."
+    else:
+        st.caption(
+            "Activez ici les exercices que les élèves de cette classe retrouveront dans "
+            "Entraînement → Exercices."
+        )
+        for exercise in sorted(ready_bank, key=lambda e: str(e.get("title", "")).lower()):
+            content_id = bank_exercise_content_id(exercise.get("id"))
+            c1, c2 = st.columns([4.8, 1.2])
+            with c1:
+                st.markdown(f"**{exercise.get('title') or 'Exercice sans titre'}**")
+                details = " · ".join(
+                    part for part in [
+                        exercise.get("notion", ""),
+                        exercise.get("difficulty", ""),
+                        f"{len(exercise.get('questions') or [])} question(s)",
+                    ] if part
                 )
-                continue
-
-            for content_id, info in resources:
-                c1, c2 = st.columns([4.8, 1.2])
-
-                with c1:
-                    st.markdown(f"**{info['label']}**")
-                    st.caption(info["description"])
-
-                with c2:
-                    old_value = bool(class_access.get(content_id, False))
-                    value = st.toggle(
-                        "Visible",
-                        value=old_value,
-                        key=f"content_toggle_{selected_class}_{content_id}",
-                        help="Affiche ou masque uniquement cette ressource pour la classe.",
-                    )
-
-                    if value != old_value:
-                        class_access[content_id] = value
-                        changed = True
+                st.caption(details)
+            with c2:
+                old_value = bool(class_access.get(content_id, False))
+                value = st.toggle(
+                    "Visible",
+                    value=old_value,
+                    key=f"bank_content_toggle_{selected_class}_{exercise.get('id')}",
+                    help="Rend cet exercice visible dans l'espace Entraînement de la classe.",
+                )
+                if value != old_value:
+                    class_access[content_id] = value
+                    changed = True
 
     if changed:
         access[selected_class] = class_access
         save_content_access(access)
-        st.success(f"Accès de la classe {selected_class} mis à jour.")
+        st.session_state.content_flash = f"✅ Accès de la classe {selected_class} mis à jour."
         st.rerun()
 
-    opened = [
+    if st.session_state.get("content_flash"):
+        st.success(st.session_state.pop("content_flash"))
+
+    opened_static = [
         info["label"]
         for content_id, info in PILOT_CONTENTS.items()
         if class_access.get(content_id)
     ]
+    opened_bank = [
+        exercise.get("title") or "Exercice"
+        for exercise in ready_bank
+        if class_access.get(bank_exercise_content_id(exercise.get("id")))
+    ]
 
     st.markdown("---")
+    opened = opened_static + opened_bank
     if opened:
-        st.info(
-            "Actuellement visible pour cette classe : "
-            + ", ".join(opened)
-        )
+        st.info("Actuellement visible pour cette classe : " + ", ".join(opened))
     else:
         st.info("Aucun contenu n'est actuellement ouvert pour cette classe.")
 
     teacher_advanced_management("contents")
+
 
 def teacher_challenges():
     teacher_header("Défis")
@@ -18852,6 +19350,8 @@ elif page == "exercise14_molecule_formulas":
     page_exercise14_molecule_formulas()
 elif page == "exercise_states_matter":
     page_states_matter_training()
+elif page == "bank_exercise_play":
+    page_bank_exercise_play()
 elif page == "free_theme":
     page_free_theme()
 elif page == "free_level":
