@@ -1,4 +1,4 @@
-# VERSION_UI_2026_09_02_V80_EXERCISE_PUBLICATION_STUDENT_ACCESS
+# VERSION_UI_2026_09_02_V81_SHARING_AND_STUDENT_ANSWERS
 import re
 import base64
 import json
@@ -2844,6 +2844,135 @@ def bank_exercise_content_id(exercise_id):
     return f"bank_exercise:{exercise_id}"
 
 
+SHARED_EXERCISE_BANK_KEY = "ludo:exercise_bank:shared"
+
+
+def get_shared_exercises():
+    rows = redis_read_json(SHARED_EXERCISE_BANK_KEY, [])
+    return rows if isinstance(rows, list) else []
+
+
+def save_shared_exercises(rows):
+    redis_write_json(SHARED_EXERCISE_BANK_KEY, rows)
+
+
+def exercise_share_id(teacher_id, exercise_id):
+    return f"{teacher_id}:{exercise_id}"
+
+
+def shared_exercise_entry(exercise_id, teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    target = exercise_share_id(teacher_id, exercise_id)
+    return next(
+        (
+            row for row in get_shared_exercises()
+            if str(row.get("share_id")) == target
+        ),
+        None,
+    )
+
+
+def exercise_is_shared(exercise_id, teacher_id=None):
+    return shared_exercise_entry(exercise_id, teacher_id) is not None
+
+
+def share_exercise_with_colleagues(exercise, teacher_id=None, teacher_name=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        raise RuntimeError("Aucun professeur connecté.")
+
+    if exercise.get("status") != "ready":
+        raise RuntimeError(
+            "Seuls les exercices marqués « Prêt à utiliser » peuvent être partagés."
+        )
+
+    teacher_name = teacher_name or current_teacher_name()
+    rows = get_shared_exercises()
+    share_id = exercise_share_id(teacher_id, exercise.get("id"))
+
+    # Copie JSON indépendante : un collègue ne travaille jamais sur l'original.
+    snapshot = json.loads(json.dumps(exercise, ensure_ascii=False))
+    entry = {
+        "share_id": share_id,
+        "source_teacher_id": teacher_id,
+        "source_teacher_name": teacher_name,
+        "source_exercise_id": exercise.get("id"),
+        "shared_at": datetime.now().isoformat(timespec="seconds"),
+        "exercise": snapshot,
+    }
+
+    replaced = False
+    for index, row in enumerate(rows):
+        if str(row.get("share_id")) == share_id:
+            # On conserve la date du premier partage, mais on actualise la version.
+            entry["shared_at"] = row.get("shared_at") or entry["shared_at"]
+            entry["updated_at"] = datetime.now().isoformat(timespec="seconds")
+            rows[index] = entry
+            replaced = True
+            break
+
+    if not replaced:
+        entry["updated_at"] = entry["shared_at"]
+        rows.append(entry)
+
+    save_shared_exercises(rows)
+
+
+def unshare_exercise(exercise_id, teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if not teacher_id:
+        return
+    share_id = exercise_share_id(teacher_id, exercise_id)
+    rows = [
+        row for row in get_shared_exercises()
+        if str(row.get("share_id")) != share_id
+    ]
+    save_shared_exercises(rows)
+
+
+def sync_shared_exercise_if_needed(exercise, teacher_id=None):
+    teacher_id = teacher_id or st.session_state.get("teacher_id")
+    if teacher_id and exercise_is_shared(exercise.get("id"), teacher_id):
+        if exercise.get("status") == "ready":
+            share_exercise_with_colleagues(exercise, teacher_id=teacher_id)
+        else:
+            # Un exercice redevenu brouillon disparaît automatiquement de la banque commune.
+            unshare_exercise(exercise.get("id"), teacher_id=teacher_id)
+
+
+def import_shared_exercise(entry):
+    source = entry.get("exercise") or {}
+    if not source:
+        raise RuntimeError("Cet exercice partagé n'est plus disponible.")
+
+    copied = exercise_normalize_draft(
+        json.loads(json.dumps(source, ensure_ascii=False))
+    )
+    copied["id"] = exercise_new_id()
+    copied["status"] = "draft"
+    copied["created_at"] = datetime.now().isoformat(timespec="seconds")
+    copied["updated_at"] = copied["created_at"]
+    copied["copied_from_teacher_id"] = entry.get("source_teacher_id")
+    copied["copied_from_teacher_name"] = entry.get("source_teacher_name")
+    copied["copied_from_exercise_id"] = entry.get("source_exercise_id")
+    copied["copied_at"] = copied["created_at"]
+
+    for question in copied.get("questions") or []:
+        question["id"] = f"q_{secrets.token_hex(5)}"
+
+    return exercise_save_draft(copied)
+
+
+def shared_exercise_already_imported(entry):
+    source_teacher = str(entry.get("source_teacher_id") or "")
+    source_exercise = str(entry.get("source_exercise_id") or "")
+    return any(
+        str(exercise.get("copied_from_teacher_id") or "") == source_teacher
+        and str(exercise.get("copied_from_exercise_id") or "") == source_exercise
+        for exercise in get_teacher_exercises()
+    )
+
+
 def class_level_label(class_name):
     """Déduit 4e depuis 4B, 5e depuis 5A, etc. sans imposer un format de classe."""
     match = re.match(r"\s*([3-6])", str(class_name or ""))
@@ -3030,6 +3159,7 @@ def exercise_save_draft(draft):
         exercises.append(draft)
 
     save_teacher_exercises(exercises)
+    sync_shared_exercise_if_needed(draft)
     return draft
 
 
@@ -3039,6 +3169,7 @@ def exercise_delete(exercise_id):
         if str(exercise.get("id")) != str(exercise_id)
     ]
     save_teacher_exercises(exercises)
+    unshare_exercise(exercise_id)
 
 
 def exercise_image_from_upload(uploaded_file):
@@ -5631,6 +5762,49 @@ def bank_question_student_answer(exercise_id, question):
     )
 
 
+def bank_format_answer(question, answer, expected=False):
+    qtype = question.get("type")
+
+    if answer is None or answer == "" or answer == {} or answer == []:
+        return "Aucune réponse"
+
+    if qtype == "Nombre + unité":
+        if expected:
+            value = question.get("answer", "")
+            unit = question.get("unit", "")
+        else:
+            value = (answer or {}).get("value", "") if isinstance(answer, dict) else answer
+            unit = (answer or {}).get("unit", "") if isinstance(answer, dict) else ""
+        rendered = f"{value} {unit}".strip()
+        return rendered or "Aucune réponse"
+
+    if qtype == "Association":
+        if expected:
+            pairs = question.get("pairs") or []
+            return "\n".join(
+                f"{pair.get('left', '')} → {pair.get('right', '')}"
+                for pair in pairs
+            ) or "Aucune réponse"
+        if isinstance(answer, dict):
+            return "\n".join(
+                f"{left} → {right if right and right != '—' else '—'}"
+                for left, right in answer.items()
+            ) or "Aucune réponse"
+
+    if qtype == "Classement":
+        items = question.get("items") if expected else answer
+        if isinstance(items, list):
+            return "\n".join(
+                f"{index}. {item}"
+                for index, item in enumerate(items, start=1)
+            ) or "Aucune réponse"
+
+    if expected:
+        return str(question.get("answer") or "Aucune réponse attendue renseignée")
+
+    return str(answer)
+
+
 def bank_question_check(question, student_answer):
     qtype = question.get("type")
     expected = question.get("answer", "")
@@ -5733,8 +5907,10 @@ def page_bank_exercise_play():
 
     submitted_key = f"bankplay_{exercise_id}_submitted"
     results_key = f"bankplay_{exercise_id}_results"
+    answers_key = f"bankplay_{exercise_id}_answers"
     submitted = bool(st.session_state.get(submitted_key, False))
     student_answers = {}
+    stored_answers = st.session_state.get(answers_key) or {}
 
     for index, question in enumerate(exercise.get("questions") or [], start=1):
         qid = question.get("id")
@@ -5763,6 +5939,8 @@ def page_bank_exercise_play():
                             st.rerun()
             else:
                 result = (st.session_state.get(results_key) or {}).get(qid)
+                given_answer = stored_answers.get(qid)
+
                 if result is True:
                     st.success("✅ Bonne réponse")
                 elif result is False:
@@ -5770,12 +5948,15 @@ def page_bank_exercise_play():
                 else:
                     st.info("Cette question demande une correction ou une appréciation personnelle.")
 
+                st.markdown("**Ta réponse**")
+                st.text(bank_format_answer(question, given_answer, expected=False))
+
+                st.markdown("**Réponse attendue**")
+                st.text(bank_format_answer(question, question.get("answer"), expected=True))
+
                 if question.get("correction"):
                     st.markdown("**Correction expliquée**")
                     st.write(question.get("correction"))
-                elif question.get("answer"):
-                    st.markdown("**Réponse attendue**")
-                    st.write(question.get("answer"))
 
                 aids = question.get("aids") or []
                 if aids and current_aid:
@@ -5802,6 +5983,11 @@ def page_bank_exercise_play():
                         auto_correct += 1
 
             st.session_state[results_key] = results
+            # On mémorise exactement les réponses données avant le rerun.
+            # Elles seront affichées avec la correction.
+            st.session_state[answers_key] = json.loads(
+                json.dumps(student_answers, ensure_ascii=False)
+            )
             st.session_state[submitted_key] = True
 
             if user_type == "student" and student and auto_total > 0:
@@ -17343,9 +17529,10 @@ def teacher_exercise_existing_screen():
                 with c1:
                     status = "✅ Prêt" if exercise.get("status") == "ready" else "📝 Brouillon"
                     st.markdown(f"#### {html.escape(str(exercise.get('title') or 'Sans titre'))}")
+                    share_status = " · 🤝 Partagé" if exercise_is_shared(exercise.get("id")) else ""
                     st.caption(
                         f"{' · '.join(exercise.get('levels') or [])} · "
-                        f"{exercise.get('difficulty','')} · {status}"
+                        f"{exercise.get('difficulty','')} · {status}{share_status}"
                     )
                     if exercise.get("notion"):
                         st.write(f"**Notion :** {exercise['notion']}")
@@ -17358,6 +17545,35 @@ def teacher_exercise_existing_screen():
                     ):
                         exercise_editor_start(exercise, creation_mode="edit")
                         st.rerun()
+
+                    is_shared = exercise_is_shared(exercise.get("id"))
+                    if exercise.get("status") == "ready":
+                        if is_shared:
+                            if st.button(
+                                "🔒 Retirer du partage",
+                                use_container_width=True,
+                                key=f"exercise_unshare_{exercise['id']}",
+                            ):
+                                unshare_exercise(exercise["id"])
+                                st.session_state.exercise_bank_flash = (
+                                    f"🔒 Exercice « {exercise.get('title') or 'Sans titre'} » "
+                                    "retiré de la banque commune."
+                                )
+                                st.rerun()
+                        else:
+                            if st.button(
+                                "🤝 Partager",
+                                use_container_width=True,
+                                key=f"exercise_share_{exercise['id']}",
+                            ):
+                                share_exercise_with_colleagues(exercise)
+                                st.session_state.exercise_bank_flash = (
+                                    f"🤝 Exercice « {exercise.get('title') or 'Sans titre'} » "
+                                    "partagé avec les collègues."
+                                )
+                                st.rerun()
+                    else:
+                        st.caption("Passez l'exercice en « Prêt » pour le partager.")
 
                     confirm_key = f"exercise_delete_confirm_{exercise['id']}"
                     if st.checkbox(
@@ -17378,12 +17594,127 @@ def teacher_exercise_existing_screen():
         st.rerun()
 
 
+def teacher_exercise_shared_screen():
+    current_teacher_id = str(st.session_state.get("teacher_id") or "")
+    rows = get_shared_exercises()
+
+    st.markdown("### 🤝 Banque commune des professeurs")
+    st.caption(
+        "Les exercices partagés restent la propriété de leur auteur. "
+        "« Ajouter à ma banque » crée une copie personnelle que vous pourrez modifier librement."
+    )
+
+    colleague_rows = [
+        row for row in rows
+        if str(row.get("source_teacher_id") or "") != current_teacher_id
+    ]
+    my_rows = [
+        row for row in rows
+        if str(row.get("source_teacher_id") or "") == current_teacher_id
+    ]
+
+    colleague_tab, my_tab = st.tabs([
+        f"Partagés par les collègues ({len(colleague_rows)})",
+        f"Mes exercices partagés ({len(my_rows)})",
+    ])
+
+    with colleague_tab:
+        if not colleague_rows:
+            st.info("Aucun collègue n'a encore partagé d'exercice.")
+        else:
+            for row in sorted(
+                colleague_rows,
+                key=lambda item: str(item.get("updated_at") or item.get("shared_at") or ""),
+                reverse=True,
+            ):
+                exercise = row.get("exercise") or {}
+                with st.container(border=True):
+                    c1, c2 = st.columns([4.2, 1.25], gap="medium")
+                    with c1:
+                        st.markdown(
+                            f"#### {html.escape(str(exercise.get('title') or 'Exercice sans titre'))}"
+                        )
+                        st.caption(
+                            f"Par {row.get('source_teacher_name') or 'un collègue'} · "
+                            f"{' · '.join(exercise.get('levels') or [])} · "
+                            f"{exercise.get('difficulty') or ''}"
+                        )
+                        if exercise.get("notion"):
+                            st.write(f"**Notion :** {exercise.get('notion')}")
+                        st.write(f"{len(exercise.get('questions') or [])} question(s)")
+                    with c2:
+                        already = shared_exercise_already_imported(row)
+                        if already:
+                            st.success("Déjà ajouté")
+                        else:
+                            if st.button(
+                                "📥 Ajouter à ma banque",
+                                use_container_width=True,
+                                key=f"shared_import_{row.get('share_id')}",
+                            ):
+                                copied = import_shared_exercise(row)
+                                st.session_state.exercise_bank_flash = (
+                                    f"📥 Exercice « {copied.get('title') or 'Sans titre'} » "
+                                    "ajouté à votre banque comme brouillon."
+                                )
+                                st.session_state.exercise_bank_screen = "home"
+                                st.rerun()
+
+    with my_tab:
+        if not my_rows:
+            st.info("Vous ne partagez encore aucun exercice.")
+        else:
+            for row in sorted(
+                my_rows,
+                key=lambda item: str(item.get("updated_at") or item.get("shared_at") or ""),
+                reverse=True,
+            ):
+                exercise = row.get("exercise") or {}
+                with st.container(border=True):
+                    c1, c2 = st.columns([4.2, 1.25], gap="medium")
+                    with c1:
+                        st.markdown(
+                            f"#### {html.escape(str(exercise.get('title') or 'Exercice sans titre'))}"
+                        )
+                        st.caption(
+                            f"{' · '.join(exercise.get('levels') or [])} · "
+                            f"{exercise.get('difficulty') or ''} · "
+                            f"{len(exercise.get('questions') or [])} question(s)"
+                        )
+                    with c2:
+                        if st.button(
+                            "🔒 Retirer du partage",
+                            use_container_width=True,
+                            key=f"shared_unshare_{row.get('share_id')}",
+                        ):
+                            unshare_exercise(row.get("source_exercise_id"))
+                            st.session_state.exercise_bank_flash = (
+                                "🔒 Exercice retiré de la banque commune."
+                            )
+                            st.session_state.exercise_bank_screen = "home"
+                            st.rerun()
+
+    if st.button("← Retour à ma banque", key="exercise_shared_back"):
+        st.session_state.exercise_bank_screen = "home"
+        st.rerun()
+
+
 def teacher_exercise_bank():
     teacher_header("Banque d’exercices")
 
     exercises = get_teacher_exercises()
     ready_count = sum(1 for exercise in exercises if exercise.get("status") == "ready")
     draft_count = len(exercises) - ready_count
+    shared_rows = get_shared_exercises()
+    current_teacher_id = str(st.session_state.get("teacher_id") or "")
+    shared_by_me_count = sum(
+        1 for row in shared_rows
+        if str(row.get("source_teacher_id") or "") == current_teacher_id
+    )
+    shared_by_colleagues_count = sum(
+        1 for row in shared_rows
+        if str(row.get("source_teacher_id") or "") != current_teacher_id
+    )
 
     st.markdown(
         """
@@ -17399,17 +17730,19 @@ def teacher_exercise_bank():
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns(3, gap="medium")
+    c1, c2, c3, c4 = st.columns(4, gap="medium")
     with c1:
         st.metric("Mes exercices", len(exercises))
     with c2:
         st.metric("Prêts à utiliser", ready_count)
     with c3:
-        st.metric("Brouillons", draft_count)
+        st.metric("Partagés par moi", shared_by_me_count)
+    with c4:
+        st.metric("Partagés par collègues", shared_by_colleagues_count)
 
     screen = st.session_state.get("exercise_bank_screen", "home")
 
-    if screen == "home" and st.session_state.get("exercise_bank_flash"):
+    if st.session_state.get("exercise_bank_flash"):
         st.success(st.session_state.pop("exercise_bank_flash"))
 
     if screen == "editor":
@@ -17424,9 +17757,12 @@ def teacher_exercise_bank():
     if screen == "existing":
         teacher_exercise_existing_screen()
         return
+    if screen == "shared":
+        teacher_exercise_shared_screen()
+        return
 
     st.markdown("### Que souhaitez-vous faire ?")
-    create_col, edit_col = st.columns(2, gap="large")
+    create_col, edit_col, share_col = st.columns(3, gap="medium")
 
     with create_col:
         with st.container(border=True):
@@ -17459,6 +17795,21 @@ def teacher_exercise_bank():
                 st.session_state.exercise_bank_screen = "existing"
                 st.rerun()
 
+    with share_col:
+        with st.container(border=True):
+            st.markdown("#### 🤝 Banque commune")
+            st.write(
+                "Partagez vos exercices prêts et récupérez ceux proposés "
+                "par les collègues sous forme de copies modifiables."
+            )
+            if st.button(
+                "Voir les exercices partagés",
+                use_container_width=True,
+                key="exercise_bank_shared",
+            ):
+                st.session_state.exercise_bank_screen = "shared"
+                st.rerun()
+
     if exercises:
         st.markdown("### Exercices récents")
         recent = sorted(
@@ -17468,10 +17819,11 @@ def teacher_exercise_bank():
         )[:5]
         for exercise in recent:
             status = "✅ Prêt" if exercise.get("status") == "ready" else "📝 Brouillon"
+            share_mark = " · 🤝 Partagé" if exercise_is_shared(exercise.get("id")) else ""
             st.markdown(
                 f"- **{html.escape(str(exercise.get('title') or 'Sans titre'))}** "
                 f"— {' · '.join(exercise.get('levels') or [])} "
-                f"— {len(exercise.get('questions') or [])} question(s) — {status}"
+                f"— {len(exercise.get('questions') or [])} question(s) — {status}{share_mark}"
             )
 
 
