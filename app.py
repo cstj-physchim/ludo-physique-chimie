@@ -2180,6 +2180,67 @@ def normalize_column_name(name):
     )
 
 
+def read_school_export_dataframe(file_or_bytes):
+    """
+    Lit directement un export Excel ÉcoleDirecte sans demander de modification.
+
+    ÉcoleDirecte place plusieurs lignes d'informations (date, classe, professeur
+    principal, effectif...) avant le vrai tableau. Cette fonction cherche
+    automatiquement la ligne d'en-tête contenant au minimum « Nom » et « Classe »,
+    puis reconstruit un DataFrame propre à partir de cette ligne.
+    """
+    if hasattr(file_or_bytes, "getvalue"):
+        raw_bytes = file_or_bytes.getvalue()
+    elif isinstance(file_or_bytes, (bytes, bytearray)):
+        raw_bytes = bytes(file_or_bytes)
+    else:
+        raw_bytes = file_or_bytes
+
+    # Lecture brute : aucune ligne n'est supposée être l'en-tête.
+    raw_df = pd.read_excel(
+        BytesIO(raw_bytes) if isinstance(raw_bytes, (bytes, bytearray)) else raw_bytes,
+        header=None,
+    )
+
+    header_row = None
+
+    # On cherche la première ligne contenant simultanément "Nom" et "Classe".
+    for idx, row in raw_df.iterrows():
+        normalized_values = {
+            normalize_column_name(value)
+            for value in row.tolist()
+            if pd.notna(value) and str(value).strip()
+        }
+        if "nom" in normalized_values and "classe" in normalized_values:
+            header_row = idx
+            break
+
+    if header_row is None:
+        raise ValueError(
+            "Le tableau des élèves n'a pas été trouvé. "
+            "La Ludothèque attend une ligne contenant les colonnes « Nom » et « Classe »."
+        )
+
+    headers = []
+    for value in raw_df.iloc[header_row].tolist():
+        if pd.isna(value):
+            headers.append("")
+        else:
+            headers.append(str(value).strip())
+
+    data = raw_df.iloc[header_row + 1:].copy()
+    data.columns = headers
+
+    # Supprime les colonnes totalement vides et les lignes totalement vides.
+    valid_columns = [
+        col for col in data.columns
+        if str(col).strip() and not data[col].isna().all()
+    ]
+    data = data[valid_columns]
+    data = data.dropna(how="all").reset_index(drop=True)
+
+    return data
+
 def detect_student_columns(df):
     normalized = {normalize_column_name(col): col for col in df.columns}
 
@@ -18526,7 +18587,7 @@ def teacher_classes_students():
 
             for uploaded_file in uploaded_students:
                 try:
-                    excel_df = pd.read_excel(uploaded_file)
+                    excel_df = read_school_export_dataframe(uploaded_file)
                     preview_rows, preview_errors = preview_students_from_dataframe(excel_df)
 
                     parsed_files.append((uploaded_file.name, excel_df))
