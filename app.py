@@ -342,6 +342,46 @@ def update_student(student_id, first_name, last_name, class_name):
     save_students(students)
     return True, None
 
+def move_all_students_between_classes(source_class, target_class):
+    """
+    Déplace tous les élèves d'une classe vers une autre classe.
+
+    - conserve l'identifiant interne, le code personnel et le QR de chaque élève ;
+    - ne modifie pas les anciens résultats, qui restent des instantanés historiques ;
+    - crée automatiquement la classe de destination ;
+    - supprime la classe source de la liste si elle devient vide.
+    """
+    source_class = normalize_class_name(source_class)
+    target_class = normalize_class_name(target_class)
+
+    if not source_class or not target_class:
+        return False, "La classe d'origine et la classe de destination sont obligatoires.", 0
+
+    if source_class == target_class:
+        return False, "La classe de destination doit être différente de la classe d'origine.", 0
+
+    students = get_students()
+    moved = 0
+
+    for student in students:
+        if normalize_class_name(student.get("class_name", "")) == source_class:
+            student["class_name"] = target_class
+            student["updated_at"] = datetime.now().isoformat(timespec="seconds")
+            moved += 1
+
+    if moved == 0:
+        return False, f"Aucun élève n'est enregistré dans la classe {source_class}.", 0
+
+    save_students(students)
+
+    classes = set(get_classes())
+    classes.add(target_class)
+    classes.discard(source_class)
+    redis_write_json(teacher_key("classes"), sorted(classes))
+
+    return True, None, moved
+
+
 
 
 def content_pilot_enabled_for_teacher(teacher_id=None, teacher_name=None):
@@ -18563,7 +18603,7 @@ def teacher_advanced_management(scope):
     """
     configs = {
         "classes_students": {
-            "title": "⚙️ Gestion avancée — Classes et élèves",
+            "title": "⚠️ Réinitialiser mes classes et mes élèves",
             "phrase": "SUPPRIMER CLASSES ET ELEVES",
             "button": "🗑️ Supprimer mes classes et mes élèves",
             "message": (
@@ -18977,19 +19017,27 @@ def teacher_classes_students():
     st.markdown("---")
 
     # -------------------------
-    # Gestion individuelle
+    # Gestion simplifiée
     # -------------------------
-    st.subheader("⚙️ Gérer les élèves et les classes")
+    st.subheader("⚙️ Gérer mes élèves")
 
     students = get_students()
     classes = get_classes()
 
-    tab_edit, tab_student, tab_class = st.tabs([
-        "Modifier / changer de classe",
-        "Retirer un élève",
-        "Supprimer une classe",
+    st.caption(
+        "Modifiez une fiche, changez un élève de classe ou gérez une classe entière. "
+        "Les codes personnels et les identifiants internes sont conservés lors des déplacements."
+    )
+
+    tab_edit, tab_remove, tab_classes = st.tabs([
+        "✏️ Modifier",
+        "🗑️ Retirer",
+        "📦 Gérer les classes",
     ])
 
+    # ========================================================
+    # Modifier un élève
+    # ========================================================
     with tab_edit:
         if students:
             sorted_students = sorted(
@@ -19000,39 +19048,51 @@ def teacher_classes_students():
                     s["first_name"].casefold(),
                 ),
             )
+
             student_options = {
-                f"{person_display_name(s)} — {s['class_name']} — {s['code']}": s["id"]
+                f"{person_display_name(s)} — {s['class_name']}": s["id"]
                 for s in sorted_students
             }
+
             selected_label = st.selectbox(
-                "Élève à modifier",
+                "Choisir un élève",
                 list(student_options.keys()),
                 key="student_to_edit",
             )
+
             selected_id = student_options[selected_label]
             selected_student = next(
                 s for s in students if s["id"] == selected_id
             )
 
+            st.markdown(
+                f"**Code personnel :** `{selected_student['code']}`"
+            )
+
             with st.form(key=f"edit_student_form_{selected_id}"):
                 e1, e2, e3 = st.columns([2, 2, 1])
+
                 with e1:
                     edit_last_name = st.text_input(
                         "Nom",
                         value=person_last_name(selected_student).rstrip("."),
                     )
+
                 with e2:
                     edit_first_name = st.text_input(
                         "Prénom",
                         value=selected_student["first_name"],
                     )
+
                 with e3:
                     class_options = get_classes()
                     current_class = selected_student["class_name"]
-                    class_index = (
-                        class_options.index(current_class)
-                        if current_class in class_options else 0
-                    )
+
+                    if current_class not in class_options:
+                        class_options = sorted(set(class_options + [current_class]))
+
+                    class_index = class_options.index(current_class)
+
                     edit_class = st.selectbox(
                         "Classe",
                         class_options,
@@ -19040,12 +19100,12 @@ def teacher_classes_students():
                     )
 
                 st.caption(
-                    "Changer de classe ne change ni le code, ni le QR, ni l'identifiant interne "
-                    "de l'élève. Les anciens résultats restent conservés comme historique."
+                    "Un changement de classe conserve le code, le QR et l'identifiant de l'élève. "
+                    "Les résultats déjà enregistrés restent dans leur classe historique."
                 )
 
                 submitted = st.form_submit_button(
-                    "💾 Enregistrer les modifications",
+                    "💾 Enregistrer",
                     type="primary",
                     use_container_width=True,
                 )
@@ -19057,6 +19117,7 @@ def teacher_classes_students():
                     edit_last_name,
                     edit_class,
                 )
+
                 if ok:
                     st.success("Fiche élève mise à jour.")
                     st.rerun()
@@ -19065,35 +19126,54 @@ def teacher_classes_students():
         else:
             st.info("Aucun élève enregistré.")
 
-    with tab_student:
+    # ========================================================
+    # Retirer un élève
+    # ========================================================
+    with tab_remove:
         if students:
+            sorted_students = sorted(
+                students,
+                key=lambda s: (
+                    s["class_name"],
+                    person_last_name(s).casefold(),
+                    s["first_name"].casefold(),
+                ),
+            )
+
             student_options = {
-                f"{person_display_name(s)} — {s['class_name']} — {s['code']}": s["id"]
-                for s in sorted(
-                    students,
-                    key=lambda s: (
-                        s["class_name"],
-                        person_last_name(s).casefold(),
-                        s["first_name"].casefold(),
-                    ),
-                )
+                f"{person_display_name(s)} — {s['class_name']}": s["id"]
+                for s in sorted_students
             }
+
             selected_student_label = st.selectbox(
-                "Élève à retirer",
+                "Choisir l'élève à retirer",
                 list(student_options.keys()),
                 key="student_to_delete",
             )
+
+            selected_id = student_options[selected_student_label]
+            selected_student = next(
+                s for s in students if s["id"] == selected_id
+            )
+
+            st.warning(
+                f"Vous allez retirer **{person_display_name(selected_student)}** "
+                f"de la classe **{selected_student['class_name']}**. "
+                "Ses anciens résultats restent conservés."
+            )
+
             confirm_student = st.checkbox(
-                "Je confirme le retrait de cet élève de la base.",
+                "Je confirme le retrait de cet élève.",
                 key="confirm_delete_student",
             )
+
             if st.button(
                 "🗑️ Retirer cet élève",
                 disabled=not confirm_student,
                 use_container_width=True,
                 key="delete_student_button",
             ):
-                if delete_student(student_options[selected_student_label]):
+                if delete_student(selected_id):
                     st.success("Élève retiré de la base.")
                     st.rerun()
                 else:
@@ -19101,43 +19181,113 @@ def teacher_classes_students():
         else:
             st.info("Aucun élève enregistré.")
 
-    with tab_class:
-        if classes:
-            class_to_delete = st.selectbox(
-                "Classe à supprimer",
-                classes,
-                key="class_to_delete",
-            )
-            effectif_to_delete = sum(
-                1 for s in students if s["class_name"] == class_to_delete
-            )
+    # ========================================================
+    # Gérer les classes
+    # ========================================================
+    with tab_classes:
+        if not classes:
+            st.info("Aucune classe enregistrée.")
+        else:
+            st.markdown("#### Mes classes")
 
-            if effectif_to_delete:
-                st.warning(
-                    f"La classe {class_to_delete} contient encore "
-                    f"{effectif_to_delete} élève(s). "
-                    "Déplacez ou retirez d'abord ces élèves."
+            for class_item in classes:
+                effectif = sum(
+                    1 for student in students
+                    if normalize_class_name(student.get("class_name", "")) == class_item
                 )
-            else:
-                confirm_class = st.checkbox(
-                    f"Je confirme la suppression de la classe {class_to_delete}.",
-                    key="confirm_delete_class",
+
+                with st.container(border=True):
+                    c_name, c_count, c_action = st.columns([2.2, 1.2, 1.4])
+
+                    with c_name:
+                        st.markdown(f"### 🏫 {class_item}")
+
+                    with c_count:
+                        st.metric("Élèves", effectif)
+
+                    with c_action:
+                        if effectif == 0:
+                            if st.button(
+                                "🗑️ Supprimer",
+                                key=f"quick_delete_empty_class_{class_item}",
+                                use_container_width=True,
+                            ):
+                                ok, error = delete_class(class_item)
+                                if ok:
+                                    st.success(f"Classe {class_item} supprimée.")
+                                    st.rerun()
+                                else:
+                                    st.error(error or "Suppression impossible.")
+                        else:
+                            st.caption("Classe utilisée")
+
+            with st.expander(
+                "↔️ Déplacer ou corriger une classe entière",
+                expanded=False,
+            ):
+                st.write(
+                    "Utilisez cette fonction lorsqu'une classe a été mal nommée ou lorsqu'un groupe "
+                    "complet doit changer de classe. Tous les élèves sont déplacés en une fois, "
+                    "sans changer leurs codes personnels."
                 )
+
+                source_class = st.selectbox(
+                    "Classe d'origine",
+                    classes,
+                    key="bulk_move_source_class",
+                )
+
+                target_class = st.text_input(
+                    "Classe de destination",
+                    placeholder="Ex. 4E",
+                    key="bulk_move_target_class",
+                )
+
+                source_effectif = sum(
+                    1 for student in students
+                    if normalize_class_name(student.get("class_name", "")) == source_class
+                )
+
+                normalized_target = normalize_class_name(target_class)
+
+                if normalized_target:
+                    st.info(
+                        f"**{source_effectif} élève(s)** seront déplacés de "
+                        f"**{source_class}** vers **{normalized_target}**."
+                    )
+
+                confirm_bulk_move = st.checkbox(
+                    "Je confirme le déplacement de toute cette classe.",
+                    key="confirm_bulk_class_move",
+                )
+
                 if st.button(
-                    "🗑️ Supprimer cette classe",
-                    disabled=not confirm_class,
+                    "↔️ Déplacer toute la classe",
+                    type="primary",
                     use_container_width=True,
-                    key="delete_class_button",
+                    disabled=not (
+                        confirm_bulk_move
+                        and normalized_target
+                        and normalized_target != source_class
+                        and source_effectif > 0
+                    ),
+                    key="bulk_move_class_button",
                 ):
-                    ok, error = delete_class(class_to_delete)
+                    ok, error, moved = move_all_students_between_classes(
+                        source_class,
+                        normalized_target,
+                    )
+
                     if ok:
-                        st.success(f"Classe {class_to_delete} supprimée.")
+                        st.success(
+                            f"✅ {moved} élève(s) déplacé(s) de "
+                            f"{source_class} vers {normalized_target}."
+                        )
                         st.rerun()
                     else:
-                        st.error(error or "Suppression impossible.")
-        else:
-            st.info("Aucune classe enregistrée.")
+                        st.error(error or "Déplacement impossible.")
 
+    st.markdown("---")
     teacher_advanced_management("classes_students")
 
 def teacher_contents():
