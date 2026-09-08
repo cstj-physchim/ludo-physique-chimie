@@ -1,4 +1,5 @@
 # VERSION_UI_2026_09_02_V82_SEMANTIC_GRADING_AI_QUALITY_CONTROL
+import unicodedata
 import re
 import base64
 import json
