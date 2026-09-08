@@ -18682,6 +18682,149 @@ def teacher_classes_students():
     classes = get_classes()
     students = get_students()
 
+    # ========================================================
+    # Import direct depuis ÉcoleDirecte
+    # ========================================================
+    st.subheader("👥 Importer mes classes")
+
+    with st.expander(
+        "📥 Importer mes classes depuis ÉcoleDirecte",
+        expanded=not bool(classes),
+    ):
+        st.write(
+            "Sélectionnez directement **un ou plusieurs fichiers Excel exportés depuis ÉcoleDirecte**, "
+            "sans les modifier. La Ludothèque détecte automatiquement le tableau des élèves, "
+            "le nom complet et la classe, puis crée les classes manquantes."
+        )
+
+        uploaded_students = st.file_uploader(
+            "Choisir un ou plusieurs fichiers Excel ÉcoleDirecte",
+            type=["xlsx", "xlsm"],
+            accept_multiple_files=True,
+            key="student_excel_upload",
+        )
+
+        if uploaded_students:
+            parsed_files = []
+            combined_preview = []
+            combined_errors = []
+            file_summaries = []
+
+            for uploaded_file in uploaded_students:
+                try:
+                    excel_df = read_school_export_dataframe(uploaded_file)
+                    preview_rows, preview_errors = preview_students_from_dataframe(excel_df)
+
+                    parsed_files.append((uploaded_file.name, excel_df))
+                    combined_preview.extend(preview_rows)
+                    combined_errors.extend(
+                        [f"{uploaded_file.name} — {message}" for message in preview_errors]
+                    )
+
+                    classes_in_file = sorted({
+                        row["Classe"]
+                        for row in preview_rows
+                        if row.get("Classe")
+                    })
+
+                    file_summaries.append({
+                        "Fichier": uploaded_file.name,
+                        "Classe(s)": ", ".join(classes_in_file)
+                            if classes_in_file else "classe non détectée",
+                        "Élèves détectés": len(preview_rows),
+                    })
+
+                except Exception as exc:
+                    combined_errors.append(
+                        f"{uploaded_file.name} — impossible de lire le fichier : {exc}"
+                    )
+
+            if file_summaries:
+                st.markdown("#### Fichiers analysés")
+                st.dataframe(
+                    pd.DataFrame(file_summaries),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+            if combined_preview:
+                preview_df = pd.DataFrame(combined_preview)
+
+                class_counts = (
+                    preview_df.groupby("Classe", dropna=False)
+                    .size()
+                    .reset_index(name="Élèves")
+                    .sort_values("Classe")
+                )
+
+                st.markdown("#### Classes détectées")
+                st.dataframe(
+                    class_counts,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                st.success(
+                    f"✅ {len(uploaded_students)} fichier(s) sélectionné(s) · "
+                    f"{len(class_counts)} classe(s) détectée(s) · "
+                    f"{len(combined_preview)} élève(s) détecté(s)."
+                )
+
+                with st.expander("Vérifier la liste des élèves avant import"):
+                    st.dataframe(
+                        preview_df[["Nom", "Prénom", "Classe"]],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+            if combined_errors:
+                st.warning(
+                    f"{len(combined_errors)} anomalie(s) détectée(s). "
+                    "Les lignes correctement reconnues pourront tout de même être importées."
+                )
+                for message in combined_errors[:30]:
+                    st.write("• " + message)
+
+            if st.button(
+                "📥 Importer les classes et les élèves",
+                type="primary",
+                use_container_width=True,
+                key="import_students_button",
+                disabled=not bool(combined_preview),
+            ):
+                added, duplicates, errors, created_classes = import_students_from_dataframes(
+                    parsed_files
+                )
+
+                if added or created_classes:
+                    parts = []
+                    if created_classes:
+                        parts.append(f"{created_classes} classe(s) créée(s)")
+                    if added:
+                        parts.append(f"{added} élève(s) ajouté(s)")
+                    if duplicates:
+                        parts.append(f"{duplicates} doublon(s) ignoré(s)")
+
+                    st.success("✅ " + " · ".join(parts) + ".")
+
+                elif not errors:
+                    st.info(
+                        f"Aucun nouvel élève ni nouvelle classe. "
+                        f"{duplicates} doublon(s) ignoré(s)."
+                    )
+
+                if errors:
+                    st.warning(f"{len(errors)} ligne(s) n'ont pas été importées.")
+                    for message in errors[:30]:
+                        st.write("• " + message)
+
+                if added or created_classes:
+                    st.rerun()
+
+    # Recharge la base après un éventuel import
+    classes = get_classes()
+    students = get_students()
+
     st.markdown("---")
     st.subheader("🏫 Mes classes")
 
