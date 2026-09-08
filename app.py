@@ -1,4 +1,4 @@
-# VERSION_UI_2026_09_02_V82_SEMANTIC_GRADING_AI_QUALITY_CONTROL
+# VERSION_UI_2026_09_08_V83_FULL_STUDENT_NAMES_SMART_EXCEL_IMPORT
 import re
 import base64
 import json
@@ -11,6 +11,7 @@ import secrets
 import time
 import urllib.request
 import urllib.error
+import unicodedata
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -121,6 +122,36 @@ def get_teacher_accounts():
 
 def current_teacher_name():
     return st.session_state.get("teacher_name", "Professeur")
+
+
+def normalize_person_name(value):
+    """Nettoie un nom ou un prénom sans modifier sa casse choisie par le professeur."""
+    return re.sub(r"\s+", " ", str(value or "").strip())
+
+
+def person_last_name(person):
+    """Nom complet, avec compatibilité pour les anciennes fiches à initiale seule."""
+    last_name = normalize_person_name((person or {}).get("last_name", ""))
+    if last_name:
+        return last_name
+    initial = normalize_person_name((person or {}).get("last_initial", "")).upper().replace(".", "")
+    return f"{initial}." if initial else ""
+
+
+def person_display_name(person):
+    """Affichage non ambigu : Prénom + nom complet si disponible."""
+    first_name = normalize_person_name((person or {}).get("first_name", ""))
+    last_name = person_last_name(person)
+    return " ".join(part for part in [first_name, last_name] if part).strip()
+
+
+def student_last_initial(student):
+    """Conserve une initiale dérivée pour compatibilité avec les anciennes structures."""
+    last_name = normalize_person_name((student or {}).get("last_name", ""))
+    if last_name:
+        return last_name[0].upper()
+    return normalize_person_name((student or {}).get("last_initial", "")).upper().replace(".", "")[:1]
+
 
 
 def content_pilot_enabled_for_teacher(teacher_id=None, teacher_name=None):
@@ -372,988 +403,14 @@ def current_app_user_label():
         student = st.session_state.get("app_student") or {}
         if student:
             return (
-                f"{student.get('first_name', '')} {student.get('last_initial', '')}. "
-                f"— {student.get('class_name', '')}"
-            ).strip()
+                f"{person_display_name(student)} — {student.get('class_name', '')}"
+            ).strip(" —")
         return "Élève"
 
     if st.session_state.get("app_user_type") == "teacher":
         return current_teacher_name()
 
     return ""
-
-APP_PUBLIC_URL = st.secrets.get(
-    "APP_PUBLIC_URL",
-    "https://ludo-physique-chimie.streamlit.app",
-).rstrip("/")
-
-
-# ============================================================
-# STYLE MODERNE
-# ============================================================
-
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 45%);
-    }
-
-    .block-container {
-        padding-top: 1.4rem;
-        padding-bottom: 2rem;
-        max-width: 1500px;
-    }
-
-    h1, h2, h3 {
-        letter-spacing: -0.02em;
-    }
-
-    div[data-testid="stButton"] > button {
-        border-radius: 14px;
-        min-height: 3rem;
-        font-weight: 700;
-        border: 1px solid #d9e3f2;
-        box-shadow: 0 4px 12px rgba(31, 55, 90, 0.06);
-        transition: all 0.18s ease;
-    }
-
-    div[data-testid="stButton"] > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 7px 18px rgba(31, 55, 90, 0.11);
-    }
-
-    div[data-testid="stButton"] > button[kind="primary"] {
-        background: #22a447;
-        color: white;
-        border-color: #22a447;
-    }
-
-    div[data-testid="stButton"] > button[kind="primary"]:hover {
-        background: #198b3b;
-        border-color: #198b3b;
-        color: white;
-    }
-
-    div[data-testid="stDownloadButton"] > button[kind="primary"] {
-        background: #2f6fe4;
-        color: white;
-        border-color: #2f6fe4;
-        font-weight: 700;
-    }
-
-    div[data-testid="stDownloadButton"] > button[kind="primary"]:hover {
-        background: #245fc8;
-        border-color: #245fc8;
-        color: white;
-    }
-
-        
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    @media (max-width: 900px) {
-        
-
-        
-
-        
-
-        
-    }
-
-    .section-title {
-        text-align: center;
-        font-size: 1.65rem;
-        font-weight: 800;
-        margin: 0.5rem 0 1.1rem 0;
-        color: #15284a;
-    }
-
-    .nav-card {
-        background: white;
-        border: 1px solid #e0e8f4;
-        border-radius: 22px;
-        padding: 1.25rem 1.15rem 1rem 1.15rem;
-        min-height: 255px;
-        text-align: center;
-        box-shadow: 0 8px 24px rgba(31, 55, 90, 0.07);
-        margin-bottom: 0.55rem;
-    }
-
-    .nav-icon {
-        font-size: 3.4rem;
-        line-height: 1;
-        margin-bottom: 0.75rem;
-    }
-
-    .nav-title {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: #153160;
-        margin-bottom: 0.55rem;
-    }
-
-    .nav-text {
-        color: #52647d;
-        font-size: 0.96rem;
-        line-height: 1.45;
-        min-height: 72px;
-    }
-
-    .card-blue { border-top: 5px solid #2f6fe4; }
-    .card-green { border-top: 5px solid #25a55a; }
-    .card-purple { border-top: 5px solid #8f52c7; }
-    .card-orange { border-top: 5px solid #f08a24; }
-    .card-pink { border-top: 5px solid #cf4a92; }
-    .card-cyan { border-top: 5px solid #2ba7b8; }
-
-    .teacher-band {
-        background: linear-gradient(135deg, #102a56 0%, #183866 100%);
-        color: white;
-        border-radius: 18px;
-        padding: 1rem 1.25rem;
-        margin-bottom: 1rem;
-    }
-
-    .teacher-band-title {
-        font-weight: 800;
-        font-size: 1.35rem;
-    }
-
-    .breadcrumb {
-        color: #69809e;
-        font-size: 0.92rem;
-        margin-bottom: 0.65rem;
-    }
-
-    .coming-soon {
-        display: inline-block;
-        padding: 0.2rem 0.55rem;
-        background: #eef3f9;
-        color: #71829a;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        margin-top: 0.45rem;
-    }
-
-    .stat-card {
-        background: white;
-        border: 1px solid #e1e8f2;
-        border-radius: 18px;
-        padding: 1rem;
-        text-align: center;
-        box-shadow: 0 6px 18px rgba(31, 55, 90, 0.05);
-    }
-
-
-    /* ============================================================
-       EXERCICE 1 — TABLEAU MODERNE DES ÉTATS DE L'EAU
-       ============================================================ */
-    .ex1-instruction {
-        background: linear-gradient(180deg, #f8fbff 0%, #f3f8ff 100%);
-        border: 1px solid #cfe0fb;
-        border-radius: 16px;
-        padding: 0.9rem 1.1rem;
-        color: #324a68;
-        margin: 0.4rem 0 1rem 0;
-        box-shadow: 0 4px 14px rgba(31, 55, 90, 0.04);
-    }
-
-    .ex1-header-cell {
-        background: linear-gradient(180deg, #f6f9fd 0%, #eef4fb 100%);
-        border-top: 1px solid #dce5f1;
-        border-bottom: 1px solid #dce5f1;
-        min-height: 52px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        color: #16335f;
-        font-size: 1rem;
-    }
-
-    .ex1-header-left {
-        justify-content: flex-start;
-        padding-left: 1rem;
-        border-left: 1px solid #dce5f1;
-        border-top-left-radius: 14px;
-    }
-
-    .ex1-header-right {
-        border-right: 1px solid #dce5f1;
-        border-top-right-radius: 14px;
-    }
-
-    .ex1-row-label {
-        min-height: 58px;
-        display: flex;
-        align-items: center;
-        padding: 0.3rem 1rem;
-        border-left: 1px solid #e3e9f2;
-        border-bottom: 1px solid #dfe6ef;
-        color: #162b4d;
-        font-weight: 750;
-        font-size: 0.98rem;
-    }
-
-    .ex1-row-white,
-    .ex1-row-gray {
-        background: #f1f3f6;
-    }
-
-    /* Chaque ligne checkbox adopte le même fond alterné */
-    .ex1-check-wrap {
-        min-height: 58px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-bottom: 1px solid #dfe6ef;
-    }
-
-    .ex1-check-white,
-    .ex1-check-gray {
-        background: #f1f3f6;
-    }
-
-    /* Cases à cocher plus grandes et bien contrastées */
-    div[data-testid="stCheckbox"] {
-        min-height: 58px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    div[data-testid="stCheckbox"] label {
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        width: 100% !important;
-        min-height: 58px !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    div[data-testid="stCheckbox"] span[data-baseweb="checkbox"] {
-        transform: scale(1.48);
-        transform-origin: center center;
-    }
-
-    div[data-testid="stCheckbox"] span[data-baseweb="checkbox"] > div {
-        width: 24px !important;
-        height: 24px !important;
-        border: 2px solid #0f9fb3 !important;
-        border-radius: 6px !important;
-        background: #bfeff4 !important;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
-    }
-
-    div[data-testid="stCheckbox"] input:checked + div {
-        background: #10a9bd !important;
-        border-color: #087f91 !important;
-    }
-
-    div[data-testid="stCheckbox"] svg {
-        width: 22px !important;
-        height: 22px !important;
-        color: white !important;
-        stroke-width: 3 !important;
-    }
-
-    div[data-testid="stCheckbox"] label:hover span[data-baseweb="checkbox"] > div {
-        border-color: #087f91 !important;
-        background: #a9e8ef !important;
-    }
-
-
-    /* Correctif renforcé pour les versions récentes de Streamlit/BaseWeb :
-       cible directement le carré visuel du checkbox, quel que soit le wrapper. */
-    div[data-testid="stCheckbox"] label[data-baseweb="checkbox"] > div:first-child,
-    div[data-testid="stCheckbox"] label[data-baseweb="checkbox"] > span:first-child,
-    div[data-testid="stCheckbox"] [data-baseweb="checkbox"] > div:first-child,
-    div[data-testid="stCheckbox"] [data-baseweb="checkbox"] > span:first-child {
-        width: 30px !important;
-        height: 30px !important;
-        min-width: 30px !important;
-        min-height: 30px !important;
-        border-radius: 7px !important;
-        border: 3px solid #087f91 !important;
-        background-color: #66dbe7 !important;
-        box-sizing: border-box !important;
-        opacity: 1 !important;
-        box-shadow:
-            0 0 0 2px rgba(8,127,145,.08),
-            inset 0 0 0 1px rgba(255,255,255,.35) !important;
-    }
-
-    /* État coché : turquoise foncé, coche blanche très visible. */
-    div[data-testid="stCheckbox"] label[data-baseweb="checkbox"] input:checked ~ div:first-of-type,
-    div[data-testid="stCheckbox"] label[data-baseweb="checkbox"] input:checked ~ span:first-of-type,
-    div[data-testid="stCheckbox"] [data-baseweb="checkbox"] input:checked ~ div:first-of-type,
-    div[data-testid="stCheckbox"] [data-baseweb="checkbox"] input:checked ~ span:first-of-type {
-        background-color: #007f92 !important;
-        border-color: #005d6c !important;
-    }
-
-    div[data-testid="stCheckbox"] label[data-baseweb="checkbox"] svg,
-    div[data-testid="stCheckbox"] [data-baseweb="checkbox"] svg {
-        width: 24px !important;
-        height: 24px !important;
-        color: #ffffff !important;
-        fill: #ffffff !important;
-        stroke: #ffffff !important;
-        stroke-width: 3.2 !important;
-        opacity: 1 !important;
-    }
-
-    /* Au survol, le carré devient encore un peu plus soutenu. */
-    div[data-testid="stCheckbox"] label[data-baseweb="checkbox"]:hover > div:first-child,
-    div[data-testid="stCheckbox"] [data-baseweb="checkbox"]:hover > div:first-child {
-        background-color: #4bcbd8 !important;
-        border-color: #006f80 !important;
-    }
-
-    .ex1-tip {
-        background: #fff9eb;
-        border: 1px solid #f5dda4;
-        border-radius: 12px;
-        padding: 0.75rem 0.9rem;
-        color: #72551a;
-        font-weight: 600;
-    }
-
-    .ex1-feedback-hint {
-        background: #fff7e6;
-        border: 1px solid #f4d69b;
-        border-radius: 12px;
-        padding: .65rem .8rem;
-        margin: .25rem 0 .7rem 0;
-        color: #73541c;
-    }
-
-    .ex1-feedback-correction {
-        background: #fff1f1;
-        border: 1px solid #f0c8c8;
-        border-radius: 12px;
-        padding: .65rem .8rem;
-        margin: .25rem 0 .7rem 0;
-        color: #7b2c2c;
-    }
-
-    .ex1-feedback-ok {
-        background: #eefaf2;
-        border: 1px solid #cdebd6;
-        border-radius: 12px;
-        padding: .6rem .8rem;
-        margin: .25rem 0 .7rem 0;
-        color: #24623a;
-    }
-
-    .footer-note {
-        background: #eef6ff;
-        border: 1px solid #d9eafa;
-        border-radius: 14px;
-        padding: 0.75rem 1rem;
-        color: #45617f;
-        text-align: center;
-        margin-top: 0.15rem;
-    }
-
-
-    /* ============================================================
-       ESPACE PROFESSEUR — BANDEAU GAUCHE VISIBLE
-       Ce panneau fait partie de la mise en page principale.
-       Il ne dépend PAS de la sidebar native Streamlit.
-       ============================================================ */
-
-    .st-key-teacher_nav_panel {
-        background:
-            radial-gradient(circle at 50% 94%, rgba(62, 106, 255, .22), transparent 35%),
-            linear-gradient(180deg, #083e7e 0%, #06336b 52%, #042858 100%);
-        border-radius: 16px;
-        min-height: 100%;
-        height: auto;
-        padding: .8rem .68rem 1rem .68rem;
-        box-shadow: 0 12px 28px rgba(18, 48, 93, .16);
-        border: 1px solid rgba(255,255,255,.08);
-        position: relative;
-        top: 0;
-        overflow: visible;
-        box-sizing: border-box;
-    }
-
-    .st-key-teacher_nav_panel * {
-        color: #f6f9ff;
-    }
-
-    .teacher-left-logo {
-        padding: .5rem .45rem 1rem .45rem;
-        margin-bottom: .5rem;
-        border-bottom: 1px solid rgba(255,255,255,.12);
-    }
-
-    .teacher-left-logo-title {
-        color: #ffffff;
-        font-size: 1.02rem;
-        line-height: 1.18;
-        font-weight: 900;
-        letter-spacing: -.02em;
-    }
-
-    .teacher-left-logo-sub {
-        margin-top: .3rem;
-        color: #bdd2ef;
-        font-size: .74rem;
-        font-weight: 650;
-    }
-
-    .teacher-left-section {
-        margin: .85rem .55rem .32rem .55rem;
-        color: #91b4df !important;
-        font-size: .64rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .12em;
-    }
-
-    .teacher-left-primary-active {
-        display: flex;
-        align-items: center;
-        min-height: 2.75rem;
-        padding: .68rem .78rem;
-        margin: .18rem 0;
-        border-radius: 11px;
-        color: #ffffff !important;
-        font-size: .96rem;
-        font-weight: 800;
-        letter-spacing: -.01em;
-        background: linear-gradient(135deg, #315dff 0%, #4b72ff 100%);
-        box-shadow: 0 7px 17px rgba(19, 63, 196, .28);
-    }
-
-    .st-key-teacher_nav_panel div[data-testid="stButton"] > button {
-        width: 100%;
-        min-height: 2.45rem !important;
-        justify-content: flex-start !important;
-        text-align: left !important;
-        padding-left: .7rem !important;
-        padding-right: .55rem !important;
-        border-radius: 11px !important;
-        border: 1px solid transparent !important;
-        background: transparent !important;
-        color: #edf5ff !important;
-        box-shadow: none !important;
-        font-size: .80rem !important;
-        font-weight: 720 !important;
-    }
-
-    /* Streamlit centre parfois le contenu interne du bouton :
-       on force aussi son wrapper et son texte à gauche. */
-    .st-key-teacher_nav_panel div[data-testid="stButton"] > button > div,
-    .st-key-teacher_nav_panel div[data-testid="stButton"] > button p,
-    .st-key-teacher_nav_panel div[data-testid="stButton"] > button span {
-        width: 100% !important;
-        text-align: left !important;
-        justify-content: flex-start !important;
-        margin-left: 0 !important;
-        margin-right: auto !important;
-    }
-
-    .teacher-left-primary-active,
-    .teacher-left-subactive {
-        justify-content: flex-start !important;
-        text-align: left !important;
-    }
-
-    .st-key-teacher_nav_panel div[data-testid="stButton"] > button:hover {
-        transform: none !important;
-        background: rgba(86, 123, 255, .22) !important;
-        border-color: rgba(181, 205, 255, .16) !important;
-    }
-
-    /* Entraînement, Défi et Espace professeur :
-       même niveau d'importance, texte plus grand et plus affirmé. */
-    .st-key-teacher_primary_training div[data-testid="stButton"] > button,
-    .st-key-teacher_primary_challenge div[data-testid="stButton"] > button,
-    .st-key-teacher_primary_prof div[data-testid="stButton"] > button {
-        min-height: 2.75rem !important;
-        padding-left: .78rem !important;
-        padding-right: .55rem !important;
-        justify-content: flex-start !important;
-        text-align: left !important;
-        font-size: .96rem !important;
-        font-weight: 800 !important;
-        letter-spacing: -.01em !important;
-        color: #ffffff !important;
-    }
-
-    /* Sous-rubriques : retrait visuel uniquement, sans icône ni flèche. */
-    .teacher-left-tree {
-        margin: .10rem 0 .20rem 0;
-        padding: 0;
-        border: 0;
-        height: 0;
-    }
-
-    /* Les sous-rubriques sont volontairement plus petites et décalées.
-       Le retrait suffit à montrer qu'elles appartiennent à Espace professeur. */
-    .st-key-teacher_sub_classes_students,
-    .st-key-teacher_sub_contents,
-    .st-key-teacher_sub_exercise_bank,
-    .st-key-teacher_sub_murlab,
-    .st-key-teacher_sub_tracking,
-    .st-key-teacher_sub_challenges,
-    .st-key-teacher_sub_results {
-        margin-left: 1.15rem !important;
-        width: calc(100% - 1.15rem) !important;
-        position: relative;
-    }
-
-    .st-key-teacher_sub_classes_students::before,
-    .st-key-teacher_sub_contents::before,
-    .st-key-teacher_sub_exercise_bank::before,
-    .st-key-teacher_sub_murlab::before,
-    .st-key-teacher_sub_tracking::before,
-    .st-key-teacher_sub_challenges::before,
-    .st-key-teacher_sub_results::before {
-        content: "";
-        position: absolute;
-        left: -.62rem;
-        top: .42rem;
-        bottom: .42rem;
-        width: 2px;
-        border-radius: 999px;
-        background: rgba(183, 207, 241, .22);
-    }
-
-    .st-key-teacher_sub_classes_students div[data-testid="stButton"] > button,
-    .st-key-teacher_sub_contents div[data-testid="stButton"] > button,
-    .st-key-teacher_sub_exercise_bank div[data-testid="stButton"] > button,
-    .st-key-teacher_sub_murlab div[data-testid="stButton"] > button,
-    .st-key-teacher_sub_tracking div[data-testid="stButton"] > button,
-    .st-key-teacher_sub_challenges div[data-testid="stButton"] > button,
-    .st-key-teacher_sub_results div[data-testid="stButton"] > button {
-        min-height: 2.08rem !important;
-        padding-left: .42rem !important;
-        padding-right: .35rem !important;
-        justify-content: flex-start !important;
-        text-align: left !important;
-        font-size: .76rem !important;
-        font-weight: 600 !important;
-        color: #dce9fb !important;
-        border-radius: 8px !important;
-    }
-
-    .teacher-left-separator {
-        height: 1px;
-        background: rgba(255,255,255,.18);
-        margin: .85rem .35rem .7rem .35rem;
-    }
-
-    .teacher-left-subactive {
-        display: flex;
-        align-items: center;
-        min-height: 2.08rem;
-        padding: .46rem .48rem;
-        margin: .10rem 0 .10rem 1.15rem;
-        width: calc(100% - 1.15rem);
-        border-radius: 8px;
-        background: rgba(72,112,255,.25);
-        color: #ffffff !important;
-        font-size: .76rem;
-        font-weight: 720;
-        position: relative;
-    }
-
-    .teacher-left-subactive::before {
-        content: "";
-        position: absolute;
-        left: -.62rem;
-        top: .42rem;
-        bottom: .42rem;
-        width: 2px;
-        border-radius: 999px;
-        background: rgba(183,207,241,.30);
-    }
-
-    /* ============================================================
-       TABLEAU DE BORD PROFESSEUR — RENDU MODERNE
-       Le bandeau gauche reste inchangé.
-       ============================================================ */
-
-    .st-key-teacher_dashboard_hero_shell {
-        position: relative;
-        overflow: hidden;
-        min-height: 132px;
-        margin: .15rem 0 1.05rem 0;
-        padding: .35rem .55rem .35rem 1.15rem;
-        border: 1px solid #e1e9f4;
-        border-radius: 22px;
-        background:
-            radial-gradient(circle at 88% 30%, rgba(66, 126, 255, .07), transparent 30%),
-            linear-gradient(135deg, #ffffff 0%, #f8fbff 72%, #f2f7ff 100%);
-        box-shadow: 0 10px 28px rgba(30, 62, 110, .07);
-    }
-
-    .teacher-dashboard-hero-copy {
-        padding: .7rem .2rem .7rem .15rem;
-    }
-
-    .st-key-teacher_dashboard_hero_image {
-        overflow: hidden;
-        border-radius: 18px;
-        min-height: 116px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .st-key-teacher_dashboard_hero_image div[data-testid="stImage"] {
-        width: 100% !important;
-        margin: 0 !important;
-    }
-
-    .st-key-teacher_dashboard_hero_image div[data-testid="stImage"] img {
-        width: 100% !important;
-        height: 126px !important;
-        object-fit: cover !important;
-        object-position: center 52% !important;
-        display: block !important;
-        border-radius: 16px !important;
-        opacity: .92;
-        -webkit-mask-image: linear-gradient(to right, transparent 0%, black 22%, black 100%);
-        mask-image: linear-gradient(to right, transparent 0%, black 22%, black 100%);
-    }
-
-    .teacher-dashboard-illustration-fallback {
-        min-height: 110px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        gap:1rem;
-        font-size:3.6rem;
-        opacity:.16;
-    }
-
-    .teacher-dashboard-eyebrow {
-        color: #58708f;
-        font-size: .77rem;
-        font-weight: 800;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-        margin-bottom: .42rem;
-    }
-
-    .teacher-dashboard-title {
-        color: #102a56;
-        font-size: 2rem;
-        line-height: 1.08;
-        font-weight: 900;
-        letter-spacing: -.035em;
-        margin: 0;
-        max-width: 78%;
-    }
-
-    .teacher-dashboard-subtitle {
-        color: #6b7e98;
-        font-size: .94rem;
-        line-height: 1.5;
-        margin-top: .48rem;
-        max-width: 72%;
-    }
-
-    .teacher-dashboard-section-title {
-        color: #17335d;
-        font-size: 1.08rem;
-        font-weight: 850;
-        margin: .2rem 0 .65rem 0;
-    }
-
-    /* Cartes modernes : le conteneur entier forme un seul composant. */
-    .st-key-teacher_card_classes_students,
-    .st-key-teacher_card_contents,
-    .st-key-teacher_card_exercise_bank,
-    .st-key-teacher_card_murlab,
-    .st-key-teacher_card_tracking,
-    .st-key-teacher_card_challenges,
-    .st-key-teacher_card_results {
-        min-height: 305px;
-        padding: 1.05rem 1rem .95rem 1rem;
-        border-radius: 18px;
-        border: 1px solid #e3e9f2;
-        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-        box-shadow: 0 9px 24px rgba(31, 55, 90, .065);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .st-key-teacher_card_classes_students { border-top: 4px solid #3f72f2; }
-    .st-key-teacher_card_contents         { border-top: 4px solid #35b56b; }
-    .st-key-teacher_card_exercise_bank   { border-top: 4px solid #16a7a0; }
-    .st-key-teacher_card_murlab           { border-top: 4px solid #5870e8; }
-    .st-key-teacher_card_tracking         { border-top: 4px solid #7659ef; }
-    .st-key-teacher_card_challenges       { border-top: 4px solid #f49a2b; }
-    .st-key-teacher_card_results          { border-top: 4px solid #ed5aa7; }
-
-    .teacher-modern-card-icon-wrap {
-        width: 76px;
-        height: 66px;
-        margin: 0 auto .58rem auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 20px;
-        position: relative;
-        font-size: 2.75rem;
-        line-height: 1;
-    }
-
-    .teacher-modern-card-icon-wrap::before,
-    .teacher-modern-card-icon-wrap::after {
-        content: "";
-        position: absolute;
-        border-radius: 50%;
-        pointer-events: none;
-    }
-
-    .teacher-modern-card-icon-wrap::before {
-        width: 68px;
-        height: 42px;
-        background: currentColor;
-        opacity: .07;
-        filter: blur(1px);
-    }
-
-    .teacher-modern-card-icon-wrap::after {
-        width: 7px;
-        height: 7px;
-        top: 5px;
-        right: 7px;
-        background: currentColor;
-        opacity: .18;
-        box-shadow: -48px 38px 0 currentColor, -7px 46px 0 currentColor;
-    }
-
-    .teacher-card-blue   { color:#3f72f2; }
-    .teacher-card-green  { color:#35b56b; }
-    .teacher-card-teal   { color:#16a7a0; }
-    .teacher-card-indigo { color:#5870e8; }
-    .teacher-card-purple { color:#7659ef; }
-    .teacher-card-orange { color:#f49a2b; }
-    .teacher-card-pink   { color:#ed5aa7; }
-
-    .teacher-modern-card-title {
-        color: #112c55;
-        font-size: 1rem;
-        font-weight: 900;
-        text-align: center;
-        margin: .25rem 0 .42rem 0;
-        letter-spacing: -.015em;
-    }
-
-    .teacher-modern-card-text {
-        color: #6a7d97;
-        font-size: .81rem;
-        line-height: 1.45;
-        text-align: center;
-        min-height: 58px;
-        margin: 0 auto .55rem auto;
-    }
-
-    .teacher-modern-card-stat {
-        color: #3f5879;
-        font-size: .78rem;
-        line-height: 1.35;
-        font-weight: 800;
-        text-align: center;
-        min-height: 34px;
-        margin: .15rem 0 .7rem 0;
-    }
-
-    /* Boutons intégrés visuellement dans les cartes */
-    .st-key-teacher_card_classes_students div[data-testid="stButton"] > button,
-    .st-key-teacher_card_contents div[data-testid="stButton"] > button,
-    .st-key-teacher_card_exercise_bank div[data-testid="stButton"] > button,
-    .st-key-teacher_card_murlab div[data-testid="stButton"] > button,
-    .st-key-teacher_card_tracking div[data-testid="stButton"] > button,
-    .st-key-teacher_card_challenges div[data-testid="stButton"] > button,
-    .st-key-teacher_card_results div[data-testid="stButton"] > button {
-        min-height: 2.45rem !important;
-        border-radius: 11px !important;
-        background: #ffffff !important;
-        font-weight: 800 !important;
-        box-shadow: none !important;
-        margin-top: .15rem !important;
-    }
-
-    .st-key-teacher_card_classes_students div[data-testid="stButton"] > button {
-        color:#3267e7 !important; border:1px solid #8eb0ff !important;
-    }
-    .st-key-teacher_card_contents div[data-testid="stButton"] > button {
-        color:#269655 !important; border:1px solid #7ed4a2 !important;
-    }
-    .st-key-teacher_card_exercise_bank div[data-testid="stButton"] > button {
-        color:#128b86 !important; border:1px solid #75d2cd !important;
-    }
-    .st-key-teacher_card_murlab div[data-testid="stButton"] > button {
-        color:#4f63d8 !important; border:1px solid #aab4f5 !important;
-    }
-    .st-key-teacher_card_tracking div[data-testid="stButton"] > button {
-        color:#684be1 !important; border:1px solid #ad9af7 !important;
-    }
-    .st-key-teacher_card_challenges div[data-testid="stButton"] > button {
-        color:#df8117 !important; border:1px solid #ffc16e !important;
-    }
-    .st-key-teacher_card_results div[data-testid="stButton"] > button {
-        color:#d84591 !important; border:1px solid #f39ac8 !important;
-    }
-
-    .st-key-teacher_card_classes_students div[data-testid="stButton"] > button:hover,
-    .st-key-teacher_card_contents div[data-testid="stButton"] > button:hover,
-    .st-key-teacher_card_exercise_bank div[data-testid="stButton"] > button:hover,
-    .st-key-teacher_card_murlab div[data-testid="stButton"] > button:hover,
-    .st-key-teacher_card_tracking div[data-testid="stButton"] > button:hover,
-    .st-key-teacher_card_challenges div[data-testid="stButton"] > button:hover,
-    .st-key-teacher_card_results div[data-testid="stButton"] > button:hover {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 14px rgba(31,55,90,.08) !important;
-    }
-
-    .teacher-dashboard-sync {
-        margin-top: .75rem;
-        padding: .52rem .85rem;
-        border-radius: 11px;
-        border: 1px solid #d8e7f8;
-        background: #f3f8ff;
-        color: #54708e;
-        text-align: center;
-        font-size: .74rem;
-        line-height: 1.25;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-
-    @media (max-width: 1050px) {
-        .teacher-dashboard-title { font-size: 1.6rem; max-width: 100%; }
-        .teacher-dashboard-subtitle { max-width: 100%; }
-        .teacher-dashboard-hero::after { opacity: .08; }
-    }
-
-    /* Pages générales ouvertes par un professeur : même implantation que l'espace prof. */
-    .st-key-teacher_context_shell_training,
-    .st-key-teacher_context_shell_challenge {
-        margin-top: -3.4rem !important;
-        padding-top: 0 !important;
-    }
-
-    .st-key-teacher_context_shell_training > div,
-    .st-key-teacher_context_shell_challenge > div {
-        padding-top: 0 !important;
-        margin-top: 0 !important;
-    }
-
-    /* Remonte tout l'espace professeur pour récupérer le blanc inutile en haut. */
-    .st-key-teacher_page_shell {
-        margin-top: -3.4rem !important;
-        padding-top: 0 !important;
-    }
-
-    .st-key-teacher_page_shell > div {
-        padding-top: 0 !important;
-        margin-top: 0 !important;
-    }
-
-    .st-key-teacher_page_shell div[data-testid="stHorizontalBlock"],
-    .st-key-teacher_context_shell_training div[data-testid="stHorizontalBlock"],
-    .st-key-teacher_context_shell_challenge div[data-testid="stHorizontalBlock"] {
-        align-items: stretch !important;
-    }
-
-    .st-key-teacher_page_shell div[data-testid="stColumn"],
-    .st-key-teacher_context_shell_training div[data-testid="stColumn"],
-    .st-key-teacher_context_shell_challenge div[data-testid="stColumn"] {
-        display: flex !important;
-        flex-direction: column !important;
-        align-self: stretch !important;
-    }
-
-    .st-key-teacher_page_shell div[data-testid="stColumn"]:first-child > div,
-    .st-key-teacher_context_shell_training div[data-testid="stColumn"]:first-child > div,
-    .st-key-teacher_context_shell_challenge div[data-testid="stColumn"]:first-child > div {
-        display: flex !important;
-        flex-direction: column !important;
-        flex: 1 1 auto !important;
-        height: 100% !important;
-        min-height: 100% !important;
-    }
-
-    .st-key-teacher_page_shell div[data-testid="stColumn"]:first-child [data-testid="stVerticalBlock"],
-    .st-key-teacher_context_shell_training div[data-testid="stColumn"]:first-child [data-testid="stVerticalBlock"],
-    .st-key-teacher_context_shell_challenge div[data-testid="stColumn"]:first-child [data-testid="stVerticalBlock"] {
-        display: flex !important;
-        flex-direction: column !important;
-        flex: 1 1 auto !important;
-        height: 100% !important;
-        min-height: 100% !important;
-    }
-
-    .st-key-teacher_page_shell .st-key-teacher_nav_panel,
-    .st-key-teacher_context_shell_training .st-key-teacher_nav_panel,
-    .st-key-teacher_context_shell_challenge .st-key-teacher_nav_panel {
-        flex: 1 1 auto !important;
-        min-height: 100% !important;
-        height: 100% !important;
-        overflow: visible !important;
-    }
-
-    .teacher-left-account {
-        margin-top: 1rem;
-        padding: .72rem .55rem .15rem .55rem;
-        border-top: 1px solid rgba(255,255,255,.11);
-        color: #bcd0ec !important;
-        font-size: .73rem;
-        line-height: 1.4;
-    }
-
-    /* La colonne de navigation garde une largeur raisonnable. */
-    @media (max-width: 950px) {
-        .st-key-teacher_nav_panel {
-            min-height: auto !important;
-            height: auto !important;
-            position: relative;
-            top: 0;
-        }
-
-        .st-key-teacher_page_shell div[data-testid="stHorizontalBlock"],
-        .st-key-teacher_context_shell_training div[data-testid="stHorizontalBlock"],
-        .st-key-teacher_context_shell_challenge div[data-testid="stHorizontalBlock"] {
-            align-items: flex-start !important;
-        }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# ============================================================
-# OUTILS D'INTERFACE
-# ============================================================
 
 def hero():
     hero_html = (
@@ -1692,7 +749,8 @@ def create_collab_team(student, challenge):
     member = {
         "id": student["id"],
         "first_name": student["first_name"],
-        "last_initial": student["last_initial"],
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student["class_name"],
         "joined_at": time.time(),
         "turns": 0,
@@ -1750,7 +808,8 @@ def join_collab_team(student, challenge, team_code):
         {
             "id": student["id"],
             "first_name": student["first_name"],
-            "last_initial": student["last_initial"],
+            "last_name": student.get("last_name", ""),
+            "last_initial": student_last_initial(student),
             "class_name": student["class_name"],
             "joined_at": time.time(),
             "turns": 0,
@@ -1833,7 +892,8 @@ def leave_collab_team(student, challenge, team_code):
         {
             "id": leaving_member["id"],
             "first_name": leaving_member["first_name"],
-            "last_initial": leaving_member["last_initial"],
+            "last_name": leaving_member.get("last_name", ""),
+            "last_initial": student_last_initial(leaving_member),
             "left_at": time.time(),
             "left_at_text": datetime.now().isoformat(timespec="seconds"),
             "reason": "quit_button",
@@ -1879,7 +939,7 @@ def get_classes():
 
 
 def add_class(class_name):
-    class_name = class_name.strip().upper()
+    class_name = normalize_class_name(class_name)
     if not class_name:
         return False
 
@@ -1890,11 +950,6 @@ def add_class(class_name):
     classes.append(class_name)
     redis_write_json(teacher_key("classes"), sorted(classes))
     return True
-
-
-# ============================================================
-# ÉLÈVES
-# ============================================================
 
 def get_students():
     return redis_read_json(teacher_key("students"), [])
@@ -1926,20 +981,36 @@ def generate_student_code():
     raise RuntimeError("Impossible de générer un code élève unique.")
 
 
-def add_student(first_name, last_initial, class_name):
-    first_name = first_name.strip()
-    last_initial = last_initial.strip().upper().replace(".", "")[:1]
+def add_student(first_name, last_name, class_name):
+    first_name = normalize_person_name(first_name)
+    last_name = normalize_person_name(last_name)
+    class_name = normalize_class_name(class_name)
 
-    if not first_name or not last_initial or not class_name:
-        return None, "Prénom, initiale et classe sont obligatoires."
+    if not first_name or not last_name or not class_name:
+        return None, "Nom, prénom et classe sont obligatoires."
 
     students = get_students()
+    duplicate = next(
+        (
+            s for s in students
+            if normalize_person_name(s.get("first_name", "")).casefold() == first_name.casefold()
+            and normalize_person_name(s.get("last_name", "")).casefold() == last_name.casefold()
+            and normalize_class_name(s.get("class_name", "")) == class_name
+        ),
+        None,
+    )
+    if duplicate:
+        return None, "Cet élève est déjà enregistré dans cette classe."
+
+    add_class(class_name)
 
     student = {
         "id": secrets.token_urlsafe(12),
         "code": generate_student_code(),
         "first_name": first_name,
-        "last_initial": last_initial,
+        "last_name": last_name,
+        # Conservé pour les anciennes parties du programme et les anciennes données.
+        "last_initial": last_name[0].upper(),
         "class_name": class_name,
         "active": True,
         "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -1947,9 +1018,7 @@ def add_student(first_name, last_initial, class_name):
 
     students.append(student)
     save_students(students)
-
     return student, None
-
 
 def find_student_by_code(code):
     code = code.strip().upper()
@@ -1974,142 +1043,205 @@ def find_student_by_id(student_id):
 
 
 def normalize_column_name(name):
-    return (
-        str(name)
-        .strip()
-        .lower()
-        .replace("é", "e")
-        .replace("è", "e")
-        .replace("ê", "e")
-        .replace("à", "a")
-        .replace("ù", "u")
-        .replace("ï", "i")
-        .replace("î", "i")
-        .replace("ô", "o")
-        .replace("ç", "c")
-        .replace("_", " ")
-        .replace("-", " ")
-    )
+    value = unicodedata.normalize("NFD", str(name or ""))
+    value = "".join(char for char in value if unicodedata.category(char) != "Mn")
+    value = value.lower().replace("_", " ").replace("-", " ")
+    return re.sub(r"\s+", " ", value).strip()
+
+def normalize_class_name(value):
+    """Transforme notamment 'Quatrième D', '4e D' ou '4ème D' en '4D'."""
+    raw = normalize_person_name(value)
+    if not raw:
+        return ""
+
+    plain = unicodedata.normalize("NFD", raw)
+    plain = "".join(char for char in plain if unicodedata.category(char) != "Mn")
+    plain = plain.upper().replace("È", "E")
+    plain = re.sub(r"[._\-/]+", " ", plain)
+    plain = re.sub(r"\s+", " ", plain).strip()
+
+    words = {
+        "SIXIEME": "6",
+        "CINQUIEME": "5",
+        "QUATRIEME": "4",
+        "TROISIEME": "3",
+    }
+
+    for word, digit in words.items():
+        match = re.match(rf"^{word}\s*([A-Z0-9]+)?$", plain)
+        if match:
+            suffix = (match.group(1) or "").strip()
+            return f"{digit}{suffix}"
+
+    match = re.match(r"^([3-6])\s*(?:E|EME|IEME|ÈME)?\s*([A-Z0-9]+)?$", plain)
+    if match:
+        return f"{match.group(1)}{(match.group(2) or '').strip()}"
+
+    return plain.replace(" ", "")
+
+
+def parse_combined_student_name(value):
+    """
+    Lit une cellule du type 'BLAEVOET Elise' ou 'MBUYI WA TSHIPELA Freddy'.
+    Les mots en capitales sont considérés comme le nom et la partie restante comme le prénom.
+    En dernier recours, le dernier mot est considéré comme le prénom.
+    """
+    raw = normalize_person_name(value)
+    if not raw:
+        return "", ""
+
+    if "," in raw:
+        last_name, first_name = raw.split(",", 1)
+        return normalize_person_name(first_name), normalize_person_name(last_name)
+
+    tokens = raw.split()
+    if len(tokens) < 2:
+        return "", raw
+
+    def looks_like_surname_token(token):
+        letters = "".join(ch for ch in token if ch.isalpha())
+        return bool(letters) and letters == letters.upper()
+
+    split_at = None
+    for index, token in enumerate(tokens):
+        if index > 0 and not looks_like_surname_token(token):
+            split_at = index
+            break
+
+    if split_at is None:
+        split_at = len(tokens) - 1
+
+    last_name = " ".join(tokens[:split_at]).strip()
+    first_name = " ".join(tokens[split_at:]).strip()
+    return first_name, last_name
 
 
 def detect_student_columns(df):
     normalized = {normalize_column_name(col): col for col in df.columns}
 
-    candidates = {
-        "first": ["prenom", "prénom", "first name", "firstname"],
-        "initial": [
-            "initiale",
-            "initiale nom",
-            "initiale du nom",
-            "initiale nom de famille",
-        ],
-        "class": ["classe", "class", "division"],
-    }
-
-    def find_candidate(values):
-        for value in values:
-            key = normalize_column_name(value)
+    def find(*names):
+        for name in names:
+            key = normalize_column_name(name)
             if key in normalized:
                 return normalized[key]
         return None
 
-    return (
-        find_candidate(candidates["first"]),
-        find_candidate(candidates["initial"]),
-        find_candidate(candidates["class"]),
-    )
+    first_col = find("Prénom", "Prenom", "First name", "Firstname")
+    last_col = find("Nom de famille", "Nom famille", "Last name", "Lastname")
+    name_col = find("Nom", "Élève", "Eleve", "Nom et prénom", "Nom prénom")
+    class_col = find("Classe", "Class", "Division")
+
+    # Si Prénom + Nom existent, "Nom" est interprété comme nom de famille.
+    # Si seul "Nom" existe, il est interprété comme la cellule combinée NOM Prénom.
+    if first_col and not last_col and name_col:
+        last_col = name_col
+        name_col = None
+    elif first_col and last_col:
+        name_col = None
+
+    return {
+        "first": first_col,
+        "last": last_col,
+        "combined": name_col,
+        "class": class_col,
+    }
 
 
-def import_students_from_dataframe(df):
-    first_col, initial_col, class_col = detect_student_columns(df)
+def preview_students_from_dataframe(df):
+    cols = detect_student_columns(df)
+    errors = []
+    preview = []
 
-    missing = []
-
-    if not first_col:
-        missing.append("Prénom")
-    if not initial_col:
-        missing.append("Initiale du nom")
-    if not class_col:
-        missing.append("Classe")
-
-    if missing:
-        return 0, 0, [
-            "Colonne(s) obligatoire(s) introuvable(s) : "
-            + ", ".join(missing)
-            + "."
+    if not cols["class"]:
+        return [], ["Colonne obligatoire introuvable : Classe."]
+    if not ((cols["first"] and cols["last"]) or cols["combined"]):
+        return [], [
+            "Colonnes d'identité introuvables. Le fichier doit contenir soit "
+            "« Nom » + « Prénom », soit une colonne « Nom » contenant NOM Prénom."
         ]
 
+    for excel_index, row in df.iterrows():
+        row_number = int(excel_index) + 2 if isinstance(excel_index, (int, float)) else "?"
+        class_name = normalize_class_name(row.get(cols["class"], ""))
+
+        if cols["combined"]:
+            first_name, last_name = parse_combined_student_name(row.get(cols["combined"], ""))
+        else:
+            first_name = normalize_person_name(row.get(cols["first"], ""))
+            last_name = normalize_person_name(row.get(cols["last"], ""))
+
+        if not first_name and not last_name and not class_name:
+            continue
+
+        if not first_name or not last_name or not class_name:
+            errors.append(
+                f"Ligne {row_number} : impossible d'identifier correctement le nom, "
+                "le prénom ou la classe."
+            )
+            continue
+
+        preview.append({
+            "Nom": last_name,
+            "Prénom": first_name,
+            "Classe": class_name,
+            "_row": row_number,
+        })
+
+    return preview, errors
+
+def import_students_from_dataframe(df):
+    preview, errors = preview_students_from_dataframe(df)
     students = get_students()
 
     existing_keys = {
         (
-            s["first_name"].strip().lower(),
-            s["last_initial"].strip().upper(),
-            s["class_name"].strip().upper(),
+            normalize_person_name(s.get("first_name", "")).casefold(),
+            normalize_person_name(s.get("last_name", "")).casefold()
+                if normalize_person_name(s.get("last_name", ""))
+                else student_last_initial(s).casefold(),
+            normalize_class_name(s.get("class_name", "")),
         )
         for s in students
     }
 
     added = 0
     duplicates = 0
-    errors = []
 
-    for excel_index, row in df.iterrows():
-        row_number = excel_index + 2
-
-        first_name = str(row.get(first_col, "")).strip()
-        class_name = str(row.get(class_col, "")).strip().upper()
-        last_initial = (
-            str(row.get(initial_col, ""))
-            .strip()
-            .upper()
-            .replace(".", "")[:1]
-        )
-
-        if not first_name and not class_name and not last_initial:
-            continue
-
-        if not first_name or not class_name or not last_initial:
-            errors.append(
-                f"Ligne {row_number} : prénom, initiale du nom ou classe manquant."
-            )
-            continue
-
-        key = (first_name.lower(), last_initial, class_name)
+    for row in preview:
+        first_name = row["Prénom"]
+        last_name = row["Nom"]
+        class_name = row["Classe"]
+        key = (first_name.casefold(), last_name.casefold(), class_name)
 
         if key in existing_keys:
             duplicates += 1
             continue
 
         add_class(class_name)
-
         student = {
             "id": secrets.token_urlsafe(12),
             "code": generate_student_code(),
             "first_name": first_name,
-            "last_initial": last_initial,
+            "last_name": last_name,
+            "last_initial": last_name[0].upper(),
             "class_name": class_name,
             "active": True,
             "created_at": datetime.now().isoformat(timespec="seconds"),
         }
-
         students.append(student)
         existing_keys.add(key)
         added += 1
 
     save_students(students)
-
     return added, duplicates, errors
-
 
 def make_student_template():
     return pd.DataFrame(
         [
-            {"Prénom": "Emma", "Initiale du nom": "D", "Classe": "4B"},
-            {"Prénom": "Lucas", "Initiale du nom": "M", "Classe": "4B"},
+            {"Nom": "DUPONT", "Prénom": "Emma", "Classe": "4D"},
+            {"Nom": "MARTIN", "Prénom": "Lucas", "Classe": "4D"},
         ]
     )
-
 
 def student_template_xlsx_bytes():
     """Génère un véritable fichier Excel .xlsx servant de modèle d'import."""
@@ -2125,8 +1257,8 @@ def student_template_xlsx_bytes():
 
         worksheet = writer.book["Élèves"]
         worksheet.freeze_panes = "A2"
-        worksheet.column_dimensions["A"].width = 18
-        worksheet.column_dimensions["B"].width = 22
+        worksheet.column_dimensions["A"].width = 24
+        worksheet.column_dimensions["B"].width = 20
         worksheet.column_dimensions["C"].width = 12
 
         for cell in worksheet[1]:
@@ -2135,6 +1267,43 @@ def student_template_xlsx_bytes():
 
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def update_student(student_id, first_name, last_name, class_name):
+    """Modifie l'identité ou la classe sans changer l'identifiant ni le code de l'élève."""
+    first_name = normalize_person_name(first_name)
+    last_name = normalize_person_name(last_name)
+    class_name = normalize_class_name(class_name)
+
+    if not first_name or not last_name or not class_name:
+        return False, "Nom, prénom et classe sont obligatoires."
+
+    students = get_students()
+    target = next((s for s in students if s.get("id") == student_id), None)
+    if not target:
+        return False, "Élève introuvable."
+
+    duplicate = next(
+        (
+            s for s in students
+            if s.get("id") != student_id
+            and normalize_person_name(s.get("first_name", "")).casefold() == first_name.casefold()
+            and normalize_person_name(s.get("last_name", "")).casefold() == last_name.casefold()
+            and normalize_class_name(s.get("class_name", "")) == class_name
+        ),
+        None,
+    )
+    if duplicate:
+        return False, "Un autre élève porte déjà ce nom dans cette classe."
+
+    add_class(class_name)
+    target["first_name"] = first_name
+    target["last_name"] = last_name
+    target["last_initial"] = last_name[0].upper()
+    target["class_name"] = class_name
+    target["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    save_students(students)
+    return True, None
 
 
 def delete_student(student_id):
@@ -2181,7 +1350,7 @@ def regenerate_student_code_dialog(student_id):
         return
 
     st.markdown(
-        f"### {student['first_name']} {student['last_initial']}. — {student['class_name']}"
+        f"### {person_display_name(student)} — {student['class_name']}"
     )
     st.warning(
         "L'ancien code ne fonctionnera plus et le QR de l'ancienne carte "
@@ -2202,7 +1371,8 @@ def regenerate_student_code_dialog(student_id):
                 st.session_state["last_regenerated_student"] = {
                     "id": student["id"],
                     "first_name": student["first_name"],
-                    "last_initial": student["last_initial"],
+                    "last_name": student.get("last_name", ""),
+                    "last_initial": student_last_initial(student),
                     "new_code": new_code,
                 }
                 st.rerun()
@@ -2342,8 +1512,8 @@ def generate_student_cards_pdf(students):
         students,
         key=lambda s: (
             s["class_name"],
+            s["last_name"].lower() if s.get("last_name") else s["first_name"].lower(),
             s["first_name"].lower(),
-            s["last_initial"],
         ),
     )
 
@@ -2383,7 +1553,7 @@ def generate_student_cards_pdf(students):
         pdf.drawString(
             x + 5 * mm,
             y + card_height - 16 * mm,
-            f"{student['first_name']} {student['last_initial']}.",
+            person_display_name(student),
         )
 
         pdf.setFont("Helvetica", 10)
@@ -2712,7 +1882,8 @@ def record_training_result(
         "status": "completed",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": resource_id,
         "resource_label": resource_label or PILOT_CONTENTS.get(resource_id, {}).get("label", resource_id),
@@ -3797,7 +2968,8 @@ def save_result(student, challenge, errors, elapsed):
         "student_id": student["id"],
         "student_code": student["code"],
         "first_name": student["first_name"],
-        "last_initial": student["last_initial"],
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student["class_name"],
         "challenge_code": challenge["code"],
         "game": challenge["game"],
@@ -3853,7 +3025,8 @@ def save_collab_result(team, challenge):
                 {
                     "id": m["id"],
                     "first_name": m["first_name"],
-                    "last_initial": m["last_initial"],
+                    "last_name": m.get("last_name", ""),
+                    "last_initial": student_last_initial(m),
                     "turns": m.get("turns", 0),
                 }
                 for m in team["members"]
@@ -4752,7 +3925,8 @@ def collab_validate_proposal(team, challenge):
             {
                 "student_id": active["id"],
                 "first_name": active["first_name"],
-                "last_initial": active["last_initial"],
+                "last_name": active.get("last_name", ""),
+                "last_initial": student_last_initial(active),
                 "domino_id": domino_id,
                 "validated_at": datetime.now().isoformat(timespec="seconds"),
             }
@@ -4791,7 +3965,7 @@ def collaborative_domino_fragment(student, challenge, team_code):
     st.markdown(f"### 👥 Équipe {team_code} — {len(members)}/{target}")
     st.write(
         " • ".join(
-            f"**{m['first_name']} {m['last_initial']}.**"
+            f"**{person_display_name(m)}**"
             for m in members
         )
     )
@@ -4801,7 +3975,7 @@ def collaborative_domino_fragment(student, challenge, team_code):
         latest_departure = departures[-1]
         st.warning(
             f"⚠️ {latest_departure['first_name']} "
-            f"{latest_departure['last_initial']}. a quitté l'équipe. "
+            f"{person_last_name(latest_departure)} a quitté l'équipe. "
             "La partie continue avec les élèves restants."
         )
 
@@ -4842,7 +4016,7 @@ def collaborative_domino_fragment(student, challenge, team_code):
         st.markdown("### Participation")
         for m in members:
             st.write(
-                f"• {m['first_name']} {m['last_initial']}. "
+                f"• {person_display_name(m)} "
                 f"— {m.get('turns', 0)} tour(s)"
             )
 
@@ -4851,8 +4025,7 @@ def collaborative_domino_fragment(student, challenge, team_code):
             st.markdown("### Élèves ayant quitté la partie")
             for departure in departures:
                 st.write(
-                    f"• {departure['first_name']} "
-                    f"{departure['last_initial']}."
+                    f"• {person_display_name(departure)}"
                 )
 
         if teacher_challenge_test_mode():
@@ -4875,7 +4048,7 @@ def collaborative_domino_fragment(student, challenge, team_code):
         )
     else:
         st.info(
-            f"👀 **C'est à {active['first_name']} {active['last_initial']}. de jouer.** "
+            f"👀 **C'est à {person_display_name(active)} de jouer.** "
             "Aidez-vous oralement."
         )
 
@@ -4892,8 +4065,7 @@ def collaborative_domino_fragment(student, challenge, team_code):
         )
 
         st.markdown(
-            f"### 🤔 Proposition de {proposer['first_name']} "
-            f"{proposer['last_initial']}."
+            f"### 🤔 Proposition de {person_display_name(proposer)}"
         )
 
         proposal_left, proposal_center, proposal_right = st.columns(3)
@@ -6531,7 +5703,8 @@ def _ex1_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise1_states_water",
         "resource_label": PILOT_CONTENTS.get("exercise1_states_water", {}).get("label", "Exercice 1"),
@@ -6996,7 +6169,8 @@ def _ex2_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise2_water_properties",
         "resource_label": PILOT_CONTENTS["exercise2_water_properties"]["label"],
@@ -7464,7 +6638,8 @@ def _ex3_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise3_particle_models",
         "resource_label": PILOT_CONTENTS["exercise3_particle_models"]["label"],
@@ -8807,7 +7982,8 @@ def _ex4_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise4_oxygen_bottle",
         "resource_label": PILOT_CONTENTS["exercise4_oxygen_bottle"]["label"],
@@ -9324,7 +8500,8 @@ def _ex5_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise5_seawater_mixture",
         "resource_label": PILOT_CONTENTS["exercise5_seawater_mixture"]["label"],
@@ -10690,7 +9867,8 @@ def _ex6_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise6_water_alcohol_volume",
         "resource_label": PILOT_CONTENTS["exercise6_water_alcohol_volume"]["label"],
@@ -11812,7 +10990,8 @@ def _ex7_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise7_solid_mixtures_alloys",
         "resource_label": PILOT_CONTENTS["exercise7_solid_mixtures_alloys"]["label"],
@@ -13076,7 +12255,8 @@ def _ex8_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise8_element_symbols",
         "resource_label": PILOT_CONTENTS["exercise8_element_symbols"]["label"],
@@ -13824,7 +13004,8 @@ def _ex9_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise9_atom_or_molecule",
         "resource_label": PILOT_CONTENTS["exercise9_atom_or_molecule"]["label"],
@@ -14158,7 +13339,8 @@ def _ex10_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise10_ethanol",
         "resource_label": PILOT_CONTENTS["exercise10_ethanol"]["label"],
@@ -15063,7 +14245,8 @@ def _ex11_record_restart_if_needed():
         "status": "restarted",
         "student_id": student.get("id"),
         "first_name": student.get("first_name"),
-        "last_initial": student.get("last_initial"),
+        "last_name": student.get("last_name", ""),
+        "last_initial": student_last_initial(student),
         "class_name": student.get("class_name"),
         "resource_id": "exercise11_nitrous_oxide",
         "resource_label": PILOT_CONTENTS["exercise11_nitrous_oxide"]["label"],
@@ -16525,7 +15708,7 @@ def _page_challenge_body():
         return
 
     st.success(
-        f"Bonjour **{student['first_name']} {student['last_initial']}.** "
+        f"Bonjour **{person_display_name(student)}** "
         f"— classe **{student['class_name']}**"
     )
 
@@ -18255,14 +17438,12 @@ def teacher_classes_students():
     st.subheader("🏫 Mes classes")
 
     c1, c2 = st.columns([3, 1])
-
     with c1:
         class_name = st.text_input(
             "Nom de la classe",
-            placeholder="Ex. 4B",
+            placeholder="Ex. 4D",
             key="class_name_input",
         )
-
     with c2:
         st.write("")
         st.write("")
@@ -18272,8 +17453,9 @@ def teacher_classes_students():
             use_container_width=True,
             key="create_class_button",
         ):
-            if add_class(class_name):
-                st.success(f"Classe {class_name.strip().upper()} créée.")
+            normalized = normalize_class_name(class_name)
+            if add_class(normalized):
+                st.success(f"Classe {normalized} créée.")
                 st.rerun()
             else:
                 st.warning("Cette classe existe déjà ou le nom est vide.")
@@ -18286,7 +17468,6 @@ def teacher_classes_students():
         for class_item in classes:
             effectif = sum(1 for s in students if s["class_name"] == class_item)
             class_rows.append({"Classe": class_item, "Effectif": effectif})
-
         st.dataframe(class_rows, use_container_width=True, hide_index=True)
     else:
         st.info("Aucune classe enregistrée.")
@@ -18300,8 +17481,10 @@ def teacher_classes_students():
 
     with st.expander("📥 Importer une classe depuis Excel", expanded=not students):
         st.write(
-            "Le fichier doit contenir les informations nécessaires : "
-            "**Prénom**, **Initiale du nom** et **Classe**."
+            "La Ludothèque accepte désormais deux formats : "
+            "**Nom + Prénom + Classe**, ou un fichier d'établissement avec une colonne "
+            "**Nom** contenant « NOM Prénom » et une colonne **Classe**. "
+            "Les classes comme « Quatrième D » sont automatiquement converties en **4D**."
         )
 
         st.download_button(
@@ -18321,40 +17504,63 @@ def teacher_classes_students():
         if uploaded_students is not None:
             try:
                 excel_df = pd.read_excel(uploaded_students)
+                preview_rows, preview_errors = preview_students_from_dataframe(excel_df)
 
-                st.markdown("#### Aperçu")
+                st.markdown("#### Aperçu du fichier")
                 st.dataframe(
                     excel_df.head(15),
                     use_container_width=True,
                     hide_index=True,
                 )
 
-                first_col, initial_col, class_col = detect_student_columns(excel_df)
-                detected = []
+                detected = detect_student_columns(excel_df)
+                labels = []
+                if detected.get("combined"):
+                    labels.append(f"Nom complet → **{detected['combined']}**")
+                else:
+                    if detected.get("last"):
+                        labels.append(f"Nom → **{detected['last']}**")
+                    if detected.get("first"):
+                        labels.append(f"Prénom → **{detected['first']}**")
+                if detected.get("class"):
+                    labels.append(f"Classe → **{detected['class']}**")
+                if labels:
+                    st.info("Colonnes détectées : " + " · ".join(labels))
 
-                if first_col:
-                    detected.append(f"Prénom → **{first_col}**")
-                if initial_col:
-                    detected.append(f"Initiale → **{initial_col}**")
-                if class_col:
-                    detected.append(f"Classe → **{class_col}**")
+                if preview_rows:
+                    st.markdown("#### Élèves qui seront importés")
+                    st.dataframe(
+                        pd.DataFrame(preview_rows)[["Nom", "Prénom", "Classe"]].head(50),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    st.caption(
+                        "Vérifiez particulièrement les noms ou prénoms composés avant de valider. "
+                        "Aucun code n'est créé tant que vous ne cliquez pas sur Importer."
+                    )
 
-                if detected:
-                    st.info("Colonnes détectées : " + " · ".join(detected))
+                if preview_errors:
+                    st.warning(
+                        f"{len(preview_errors)} ligne(s) nécessitent une vérification."
+                    )
+                    for message in preview_errors[:20]:
+                        st.write("• " + message)
 
                 if st.button(
                     "📥 Importer les élèves",
                     type="primary",
                     use_container_width=True,
                     key="import_students_button",
+                    disabled=not bool(preview_rows),
                 ):
                     added, duplicates, errors = import_students_from_dataframe(excel_df)
-
                     if added:
                         st.success(
                             f"✅ {added} élève(s) importé(s). "
                             f"{duplicates} doublon(s) ignoré(s)."
                         )
+                    elif not errors:
+                        st.info(f"Aucun nouvel élève. {duplicates} doublon(s) ignoré(s).")
 
                     if errors:
                         st.warning(f"{len(errors)} ligne(s) n'ont pas été importées.")
@@ -18374,18 +17580,11 @@ def teacher_classes_students():
 
     if classes:
         with st.expander("➕ Ajouter ponctuellement un élève"):
-            c1, c2, c3 = st.columns([2, 1, 1])
-
+            c1, c2, c3 = st.columns([2, 2, 1])
             with c1:
-                first_name = st.text_input("Prénom", key="new_student_firstname")
-
+                last_name = st.text_input("Nom", key="new_student_lastname")
             with c2:
-                last_initial = st.text_input(
-                    "Initiale",
-                    max_chars=1,
-                    key="new_student_initial",
-                )
-
+                first_name = st.text_input("Prénom", key="new_student_firstname")
             with c3:
                 student_class = st.selectbox(
                     "Classe",
@@ -18398,12 +17597,17 @@ def teacher_classes_students():
                 use_container_width=True,
                 key="add_single_student_button",
             ):
-                student, error = add_student(first_name, last_initial, student_class)
-
+                student, error = add_student(
+                    first_name,
+                    last_name,
+                    student_class,
+                )
                 if error:
                     st.error(error)
                 else:
-                    st.success(f"Élève ajouté — code **{student['code']}**")
+                    st.success(
+                        f"{person_display_name(student)} ajouté(e) — code **{student['code']}**"
+                    )
                     st.rerun()
     else:
         st.caption("Créez d'abord une classe avant d'ajouter un élève ponctuellement.")
@@ -18428,8 +17632,7 @@ def teacher_classes_students():
         )
 
         filtered = [
-            s
-            for s in students
+            s for s in students
             if selected_filter == "Toutes" or s["class_name"] == selected_filter
         ]
 
@@ -18440,7 +17643,6 @@ def teacher_classes_students():
                 if selected_filter == "Toutes"
                 else f"cartes_eleves_ludotheque_{selected_filter}.pdf"
             )
-
             st.download_button(
                 "🖨️ Télécharger les cartes élèves (QR + volet code)",
                 data=pdf_cards,
@@ -18451,14 +17653,13 @@ def teacher_classes_students():
             )
 
         st.caption(
-            "Les nouveaux codes comportent 6 caractères. Les anciennes fiches à 4 caractères "
-            "restent valides tant que vous ne régénérez pas leur code."
+            "Le nom et le prénom complets sont conservés pour éviter toute ambiguïté entre élèves. "
+            "Chaque élève garde en parallèle un identifiant interne et un code personnel uniques."
         )
 
-        # En-tête de la liste interactive.
-        h1, h2, h3, h4, h5 = st.columns([2.2, 0.8, 1.0, 1.4, 1.8])
-        h1.markdown("**Prénom**")
-        h2.markdown("**Initiale**")
+        h1, h2, h3, h4, h5 = st.columns([2.1, 1.8, 0.9, 1.2, 1.6])
+        h1.markdown("**Nom**")
+        h2.markdown("**Prénom**")
         h3.markdown("**Classe**")
         h4.markdown("**Code**")
         h5.markdown("**Accès**")
@@ -18467,18 +17668,17 @@ def teacher_classes_students():
             filtered,
             key=lambda s: (
                 s["class_name"],
-                s["first_name"].lower(),
-                s["last_initial"],
+                person_last_name(s).casefold(),
+                s["first_name"].casefold(),
             ),
         )
 
         last_regenerated = st.session_state.get("last_regenerated_student")
 
         for student in sorted_filtered:
-            c1, c2, c3, c4, c5 = st.columns([2.2, 0.8, 1.0, 1.4, 1.8])
-
-            c1.write(student["first_name"])
-            c2.write(student["last_initial"] + ".")
+            c1, c2, c3, c4, c5 = st.columns([2.1, 1.8, 0.9, 1.2, 1.6])
+            c1.write(person_last_name(student))
+            c2.write(student["first_name"])
             c3.write(student["class_name"])
             c4.code(student["code"], language=None)
 
@@ -18491,89 +17691,154 @@ def teacher_classes_students():
                 regenerate_student_code_dialog(student["id"])
 
             if isinstance(last_regenerated, dict) and last_regenerated.get("id") == student["id"]:
+                regenerated_name = person_display_name(last_regenerated)
                 st.success(
-                    f"Nouveau code créé pour **{last_regenerated['first_name']} "
-                    f"{last_regenerated['last_initial']}.** : **{last_regenerated['new_code']}**. "
-                    "L'ancienne carte est désormais invalide."
+                    f"Nouveau code créé pour **{regenerated_name}** : "
+                    f"**{last_regenerated['new_code']}**. L'ancienne carte est désormais invalide."
                 )
 
-                # Récupère la fiche mise à jour afin de générer uniquement la nouvelle carte
-                # de l'élève concerné, avec son nouveau code et son nouveau QR.
-                refreshed_students = get_students()
                 refreshed_student = next(
-                    (s for s in refreshed_students if s.get("id") == student["id"]),
+                    (s for s in get_students() if s.get("id") == student["id"]),
                     None,
                 )
-
                 if refreshed_student:
                     single_card_pdf = generate_student_cards_pdf([refreshed_student])
                     safe_first_name = re.sub(
-                        r"[^A-Za-z0-9_-]+",
-                        "_",
-                        refreshed_student["first_name"],
+                        r"[^A-Za-z0-9_-]+", "_", refreshed_student["first_name"]
                     ).strip("_") or "eleve"
+                    safe_last_name = re.sub(
+                        r"[^A-Za-z0-9_-]+", "_", person_last_name(refreshed_student)
+                    ).strip("_") or "nom"
                     safe_class_name = re.sub(
-                        r"[^A-Za-z0-9_-]+",
-                        "_",
-                        refreshed_student["class_name"],
+                        r"[^A-Za-z0-9_-]+", "_", refreshed_student["class_name"]
                     ).strip("_") or "classe"
 
                     st.download_button(
-                        f"🖨️ Télécharger la nouvelle carte de {refreshed_student['first_name']} "
-                        f"{refreshed_student['last_initial']}.",
+                        f"🖨️ Télécharger la nouvelle carte de {person_display_name(refreshed_student)}",
                         data=single_card_pdf,
                         file_name=(
-                            f"carte_ludotheque_{safe_first_name}_"
-                            f"{refreshed_student['last_initial']}_{safe_class_name}.pdf"
+                            f"carte_ludotheque_{safe_last_name}_{safe_first_name}_{safe_class_name}.pdf"
                         ),
                         mime="application/pdf",
                         type="primary",
                         use_container_width=False,
                         key=f"download_new_card_{student['id']}_{last_regenerated['new_code']}",
                     )
-
-                st.caption(
-                    "Vous pouvez aussi retélécharger les cartes de toute la classe avec le bouton bleu situé au-dessus."
-                )
                 st.session_state.pop("last_regenerated_student", None)
 
     st.markdown("---")
 
     # -------------------------
-    # Suppressions
+    # Gestion individuelle
     # -------------------------
-    st.subheader("🗑️ Retirer un élève ou supprimer une classe")
+    st.subheader("⚙️ Gérer les élèves et les classes")
 
     students = get_students()
     classes = get_classes()
 
-    tab_student, tab_class = st.tabs(["Retirer un élève", "Supprimer une classe"])
+    tab_edit, tab_student, tab_class = st.tabs([
+        "Modifier / changer de classe",
+        "Retirer un élève",
+        "Supprimer une classe",
+    ])
+
+    with tab_edit:
+        if students:
+            sorted_students = sorted(
+                students,
+                key=lambda s: (
+                    s["class_name"],
+                    person_last_name(s).casefold(),
+                    s["first_name"].casefold(),
+                ),
+            )
+            student_options = {
+                f"{person_display_name(s)} — {s['class_name']} — {s['code']}": s["id"]
+                for s in sorted_students
+            }
+            selected_label = st.selectbox(
+                "Élève à modifier",
+                list(student_options.keys()),
+                key="student_to_edit",
+            )
+            selected_id = student_options[selected_label]
+            selected_student = next(
+                s for s in students if s["id"] == selected_id
+            )
+
+            with st.form(key=f"edit_student_form_{selected_id}"):
+                e1, e2, e3 = st.columns([2, 2, 1])
+                with e1:
+                    edit_last_name = st.text_input(
+                        "Nom",
+                        value=person_last_name(selected_student).rstrip("."),
+                    )
+                with e2:
+                    edit_first_name = st.text_input(
+                        "Prénom",
+                        value=selected_student["first_name"],
+                    )
+                with e3:
+                    class_options = get_classes()
+                    current_class = selected_student["class_name"]
+                    class_index = (
+                        class_options.index(current_class)
+                        if current_class in class_options else 0
+                    )
+                    edit_class = st.selectbox(
+                        "Classe",
+                        class_options,
+                        index=class_index,
+                    )
+
+                st.caption(
+                    "Changer de classe ne change ni le code, ni le QR, ni l'identifiant interne "
+                    "de l'élève. Les anciens résultats restent conservés comme historique."
+                )
+
+                submitted = st.form_submit_button(
+                    "💾 Enregistrer les modifications",
+                    type="primary",
+                    use_container_width=True,
+                )
+
+            if submitted:
+                ok, error = update_student(
+                    selected_id,
+                    edit_first_name,
+                    edit_last_name,
+                    edit_class,
+                )
+                if ok:
+                    st.success("Fiche élève mise à jour.")
+                    st.rerun()
+                else:
+                    st.error(error or "Modification impossible.")
+        else:
+            st.info("Aucun élève enregistré.")
 
     with tab_student:
         if students:
             student_options = {
-                f"{s['first_name']} {s['last_initial']}. — {s['class_name']} — {s['code']}": s["id"]
+                f"{person_display_name(s)} — {s['class_name']} — {s['code']}": s["id"]
                 for s in sorted(
                     students,
                     key=lambda s: (
                         s["class_name"],
-                        s["first_name"].lower(),
-                        s["last_initial"],
+                        person_last_name(s).casefold(),
+                        s["first_name"].casefold(),
                     ),
                 )
             }
-
             selected_student_label = st.selectbox(
                 "Élève à retirer",
                 list(student_options.keys()),
                 key="student_to_delete",
             )
-
             confirm_student = st.checkbox(
                 "Je confirme le retrait de cet élève de la base.",
                 key="confirm_delete_student",
             )
-
             if st.button(
                 "🗑️ Retirer cet élève",
                 disabled=not confirm_student,
@@ -18595,7 +17860,6 @@ def teacher_classes_students():
                 classes,
                 key="class_to_delete",
             )
-
             effectif_to_delete = sum(
                 1 for s in students if s["class_name"] == class_to_delete
             )
@@ -18604,14 +17868,13 @@ def teacher_classes_students():
                 st.warning(
                     f"La classe {class_to_delete} contient encore "
                     f"{effectif_to_delete} élève(s). "
-                    "Supprimez ou déplacez d'abord ces élèves."
+                    "Déplacez ou retirez d'abord ces élèves."
                 )
             else:
                 confirm_class = st.checkbox(
                     f"Je confirme la suppression de la classe {class_to_delete}.",
                     key="confirm_delete_class",
                 )
-
                 if st.button(
                     "🗑️ Supprimer cette classe",
                     disabled=not confirm_class,
@@ -18619,7 +17882,6 @@ def teacher_classes_students():
                     key="delete_class_button",
                 ):
                     ok, error = delete_class(class_to_delete)
-
                     if ok:
                         st.success(f"Classe {class_to_delete} supprimée.")
                         st.rerun()
@@ -18627,7 +17889,6 @@ def teacher_classes_students():
                         st.error(error or "Suppression impossible.")
         else:
             st.info("Aucune classe enregistrée.")
-
 
     teacher_advanced_management("classes_students")
 
@@ -19024,7 +18285,7 @@ def teacher_challenges():
                 game = team.get("game") or {}
                 departures = team.get("departures", [])
                 departed_names = ", ".join(
-                    f"{d['first_name']} {d['last_initial']}."
+                    person_display_name(d)
                     for d in departures
                 )
 
@@ -19201,7 +18462,7 @@ def teacher_tracking():
                 result_text = "—"
 
             table.append({
-                "Élève": f"{student.get('first_name', '')} {student.get('last_initial', '')}.",
+                "Élève": person_display_name(student),
                 "Classe": student.get("class_name", ""),
                 "Activité": status,
                 "Exercices faits": f"{done}/{len(resource_ids)}" if resource_ids else "—",
@@ -19378,7 +18639,7 @@ def teacher_tracking():
                         bonus = "—"
 
                 prep_table.append({
-                    "Élève": f"{student.get('first_name', '')} {student.get('last_initial', '')}.",
+                    "Élève": person_display_name(student),
                     "Préparation": status,
                     "Exercices faits": f"{done}/{total}",
                     "Résultat": result,
@@ -19546,11 +18807,11 @@ def teacher_results():
     for rank, r in enumerate(filtered, start=1):
         if r.get("result_type") == "team":
             members_text = ", ".join(
-                f"{m['first_name']} {m['last_initial']}."
+                person_display_name(m)
                 for m in r.get("team_members", [])
             )
             departed_text = ", ".join(
-                f"{d['first_name']} {d['last_initial']}."
+                person_display_name(d)
                 for d in r.get("team_departures", [])
             )
             participant = f"Équipe {r.get('team_code', '')}"
@@ -19558,7 +18819,7 @@ def teacher_results():
         else:
             members_text = ""
             departed_text = ""
-            participant = f"{r['first_name']} {r['last_initial']}."
+            participant = person_display_name(r)
             mode = "👤 Individuel"
 
         table.append(
@@ -19576,7 +18837,7 @@ def teacher_results():
                 "Erreurs": r["errors"],
                 "Détail erreurs": (
                     ", ".join(
-                        f"{detail.get('first_name', '')} {detail.get('last_initial', '')}."
+                        person_display_name(detail)
                         for detail in r.get("error_details", [])
                     )
                     if r.get("result_type") == "team" and r.get("error_details")
