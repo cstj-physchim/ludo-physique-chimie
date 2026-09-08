@@ -149,35 +149,85 @@ def student_last_initial(student):
     return normalize_person_name((student or {}).get("last_initial", "")).upper().replace(".", "")[:1]
 
 def normalize_class_name(value):
-    """Transforme notamment 'Quatrième D', '4e D' ou '4ème D' en '4D'."""
+    """
+    Normalise les libellés de classe sans confondre la division E avec
+    l'abréviation du niveau « 4e ».
+
+    Exemples :
+    - « Quatrième D » -> « 4D »
+    - « Quatrième E » -> « 4E »
+    - « 4 D » -> « 4D »
+    - « 4 E » -> « 4E »
+    - « 4ème D » -> « 4D »
+    - « 4e D » -> « 4D »
+    - « 4E » -> « 4E »   (E majuscule = division)
+    - « 4e » -> « 4 »    (e minuscule = niveau seul)
+    """
     raw = normalize_person_name(value)
     if not raw:
         return ""
 
-    plain = unicodedata.normalize("NFD", raw)
-    plain = "".join(char for char in plain if unicodedata.category(char) != "Mn")
-    plain = plain.upper().replace("È", "E")
-    plain = re.sub(r"[._\-/]+", " ", plain)
-    plain = re.sub(r"\s+", " ", plain).strip()
+    raw_compact = re.sub(r"\s+", "", raw)
 
-    words = {
+    # Cas explicite et prioritaire : "4E" = classe 4E.
+    # On utilise ici la casse originale pour distinguer 4E de 4e.
+    match = re.fullmatch(r"([3-6])([A-Z])", raw_compact)
+    if match:
+        return f"{match.group(1)}{match.group(2)}"
+
+    # Niveau seul écrit 4e, 5e, etc.
+    match = re.fullmatch(r"([3-6])e", raw_compact)
+    if match:
+        return match.group(1)
+
+    folded = "".join(
+        char
+        for char in unicodedata.normalize("NFD", raw)
+        if unicodedata.category(char) != "Mn"
+    ).upper()
+
+    folded = folded.replace("’", "'").replace("–", "-").replace("—", "-")
+    folded = re.sub(r"[._/\\-]+", " ", folded)
+    folded = re.sub(r"\s+", " ", folded).strip()
+
+    level_words = {
         "SIXIEME": "6",
         "CINQUIEME": "5",
         "QUATRIEME": "4",
         "TROISIEME": "3",
     }
 
-    for word, digit in words.items():
-        match = re.match(rf"^{word}\s*([A-Z0-9]+)?$", plain)
+    for word, digit in level_words.items():
+        match = re.fullmatch(rf"{word}(?:\s+([A-Z0-9]+))?", folded)
         if match:
-            suffix = (match.group(1) or "").strip()
-            return f"{digit}{suffix}"
+            division = (match.group(1) or "").strip()
+            return f"{digit}{division}"
 
-    match = re.match(r"^([3-6])\s*(?:E|EME|IEME|ÈME)?\s*([A-Z0-9]+)?$", plain)
+    # 4ème D, 4eme D, 4ième D...
+    match = re.fullmatch(
+        r"([3-6])\s*(?:EME|IEME)\s*([A-Z0-9]+)?",
+        folded,
+    )
     if match:
         return f"{match.group(1)}{(match.group(2) or '').strip()}"
 
-    return plain.replace(" ", "")
+    # 4e D : le E sert ici de suffixe de niveau car une division distincte suit.
+    match = re.fullmatch(r"([3-6])\s*E\s+([A-Z0-9]+)", folded)
+    if match:
+        return f"{match.group(1)}{match.group(2)}"
+
+    # 4 D, 4 E, 5 B...
+    match = re.fullmatch(r"([3-6])\s+([A-Z])", folded)
+    if match:
+        return f"{match.group(1)}{match.group(2)}"
+
+    # Niveau seul.
+    match = re.fullmatch(r"([3-6])", folded)
+    if match:
+        return match.group(1)
+
+    compact = re.sub(r"[^A-Z0-9]", "", folded)
+    return compact
 
 def parse_combined_student_name(value):
     """
