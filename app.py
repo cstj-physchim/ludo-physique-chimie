@@ -2048,7 +2048,40 @@ def leave_collab_team(student, challenge, team_code):
 # ============================================================
 
 def get_classes():
-    return sorted(set(redis_read_json(teacher_key("classes"), [])))
+    """
+    Retourne les classes du professeur.
+
+    Sécurité supplémentaire :
+    - conserve les classes déjà enregistrées ;
+    - ajoute automatiquement toute classe réellement présente dans les fiches élèves ;
+    - normalise les noms (ex. « Quatrième E » -> « 4E ») ;
+    - resynchronise la clé Upstash des classes si nécessaire.
+
+    Ainsi, une classe contenant des élèves ne peut plus disparaître du filtre
+    simplement parce que l'index des classes n'a pas été mis à jour.
+    """
+    stored_classes = redis_read_json(teacher_key("classes"), [])
+    students = redis_read_json(teacher_key("students"), [])
+
+    normalized_stored = {
+        normalize_class_name(value)
+        for value in stored_classes
+        if normalize_class_name(value)
+    }
+    student_classes = {
+        normalize_class_name(student.get("class_name", ""))
+        for student in students
+        if normalize_class_name(student.get("class_name", ""))
+    }
+
+    merged = sorted(normalized_stored | student_classes)
+
+    # Auto-réparation de l'index des classes.
+    stored_normalized_sorted = sorted(normalized_stored)
+    if merged != stored_normalized_sorted:
+        redis_write_json(teacher_key("classes"), merged)
+
+    return merged
 
 
 def add_class(class_name):
@@ -2339,21 +2372,73 @@ def import_students_from_dataframe(df):
 def import_students_from_dataframes(dataframes):
     """
     Importe plusieurs exports ÉcoleDirecte en une seule validation.
-    Chaque élément est un tuple (nom_fichier, dataframe).
+
+    L'import est traité comme un seul lot :
+    - toutes les classes détectées sont ajoutées à l'index des classes ;
+    - tous les nouveaux élèves sont ajoutés ;
+    - les doublons sont ignorés ;
+    - les écritures Upstash sont regroupées pour éviter les incohérences entre
+      la liste des élèves et la liste des classes.
     """
+    students = get_students()
+    current_classes = set(get_classes())
+
+    existing_keys = {
+        (
+            normalize_person_name(s.get("first_name", "")).casefold(),
+            normalize_person_name(s.get("last_name", "")).casefold()
+                if normalize_person_name(s.get("last_name", ""))
+                else student_last_initial(s).casefold(),
+            normalize_class_name(s.get("class_name", "")),
+        )
+        for s in students
+    }
+
     total_added = 0
     total_duplicates = 0
-    total_created_classes = 0
     all_errors = []
+    detected_classes = set()
 
     for file_name, df in dataframes:
-        added, duplicates, errors, created_classes = import_students_from_dataframe(df)
-        total_added += added
-        total_duplicates += duplicates
-        total_created_classes += created_classes
+        preview, errors = preview_students_from_dataframe(df)
         all_errors.extend([f"{file_name} — {message}" for message in errors])
 
-    return total_added, total_duplicates, all_errors, total_created_classes
+        for row in preview:
+            first_name = normalize_person_name(row.get("Prénom", ""))
+            last_name = normalize_person_name(row.get("Nom", ""))
+            class_name = normalize_class_name(row.get("Classe", ""))
+
+            if not first_name or not last_name or not class_name:
+                continue
+
+            detected_classes.add(class_name)
+            key = (first_name.casefold(), last_name.casefold(), class_name)
+
+            if key in existing_keys:
+                total_duplicates += 1
+                continue
+
+            students.append({
+                "id": secrets.token_urlsafe(12),
+                "code": generate_student_code(),
+                "first_name": first_name,
+                "last_name": last_name,
+                "last_initial": last_name[0].upper(),
+                "class_name": class_name,
+                "active": True,
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+            })
+            existing_keys.add(key)
+            total_added += 1
+
+    new_classes = detected_classes - current_classes
+    merged_classes = sorted(current_classes | detected_classes)
+
+    # Une seule sauvegarde élèves + une seule sauvegarde classes.
+    save_students(students)
+    redis_write_json(teacher_key("classes"), merged_classes)
+
+    return total_added, total_duplicates, all_errors, len(new_classes)
 
 
 def make_student_template():
