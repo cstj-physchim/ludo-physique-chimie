@@ -1767,6 +1767,263 @@ def redis_read_json(key, default):
 def redis_write_json(key, value):
     redis.set(key, json.dumps(value, ensure_ascii=False))
 
+BACKUP_DATA_KINDS = [
+    "classes",
+    "students",
+    "content_access",
+    "exercise_bank",
+    "challenges",
+    "results",
+    "activity_log",
+    "evaluation_preparations",
+]
+
+
+def build_teacher_backup():
+    """
+    Construit une sauvegarde JSON des données du professeur connecté.
+    Aucun mot de passe, token Upstash ou clé OpenAI n'est exporté.
+    """
+    teacher_id = st.session_state.get("teacher_id")
+    if not teacher_id:
+        raise RuntimeError("Aucun professeur connecté.")
+
+    list_kinds = {
+        "classes",
+        "students",
+        "exercise_bank",
+        "challenges",
+        "results",
+        "activity_log",
+        "evaluation_preparations",
+    }
+
+    data = {}
+    for kind in BACKUP_DATA_KINDS:
+        default = [] if kind in list_kinds else {}
+        data[kind] = redis_read_json(
+            teacher_key(kind, teacher_id),
+            default,
+        )
+
+    collab_teams = {}
+    for challenge in data.get("challenges", []) or []:
+        challenge_code = str(challenge.get("code", "")).strip()
+        if not challenge_code:
+            continue
+
+        teams = redis_read_json(
+            collab_teams_key(teacher_id, challenge_code),
+            {},
+        )
+        if teams:
+            collab_teams[challenge_code] = teams
+
+    return {
+        "format": "ludotheque_physique_chimie_backup",
+        "schema_version": 1,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "teacher_id": str(teacher_id),
+        "teacher_name": current_teacher_name(),
+        "data": data,
+        "collab_teams": collab_teams,
+    }
+
+
+def teacher_backup_json_bytes():
+    return json.dumps(
+        build_teacher_backup(),
+        ensure_ascii=False,
+        indent=2,
+    ).encode("utf-8")
+
+
+def validate_teacher_backup(payload):
+    if not isinstance(payload, dict):
+        return False, "Le fichier n'est pas une sauvegarde valide."
+
+    if payload.get("format") != "ludotheque_physique_chimie_backup":
+        return False, "Ce fichier n'est pas une sauvegarde de la Ludothèque."
+
+    if int(payload.get("schema_version", 0) or 0) != 1:
+        return False, "Version de sauvegarde non prise en charge."
+
+    current_teacher_id = str(
+        st.session_state.get("teacher_id", "")
+    ).strip()
+    backup_teacher_id = str(
+        payload.get("teacher_id", "")
+    ).strip()
+
+    if not current_teacher_id:
+        return False, "Aucun professeur connecté."
+
+    if backup_teacher_id != current_teacher_id:
+        return False, (
+            "Cette sauvegarde appartient à un autre espace professeur "
+            f"({backup_teacher_id or 'identifiant inconnu'})."
+        )
+
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return False, "Le bloc de données de la sauvegarde est invalide."
+
+    for kind in BACKUP_DATA_KINDS:
+        if kind not in data:
+            return False, f"Donnée manquante dans la sauvegarde : {kind}."
+
+    return True, None
+
+
+def restore_teacher_backup(payload):
+    """
+    Remplace les données actuelles du professeur par celles de la sauvegarde.
+    Les secrets et la configuration de l'application ne sont jamais modifiés.
+    """
+    ok, error = validate_teacher_backup(payload)
+    if not ok:
+        return False, error
+
+    teacher_id = st.session_state.get("teacher_id")
+    data = payload["data"]
+
+    current_challenges = redis_read_json(
+        teacher_key("challenges", teacher_id),
+        [],
+    )
+
+    for challenge in current_challenges:
+        challenge_code = str(challenge.get("code", "")).strip()
+        if challenge_code:
+            redis.delete(
+                collab_teams_key(teacher_id, challenge_code)
+            )
+
+    for kind in BACKUP_DATA_KINDS:
+        default = {} if kind == "content_access" else []
+        redis_write_json(
+            teacher_key(kind, teacher_id),
+            data.get(kind, default),
+        )
+
+    for challenge_code, teams in (
+        payload.get("collab_teams") or {}
+    ).items():
+        redis_write_json(
+            collab_teams_key(
+                teacher_id,
+                str(challenge_code),
+            ),
+            teams,
+        )
+
+    return True, None
+
+
+def render_teacher_backup_restore():
+    st.subheader("💾 Sauvegarde et restauration")
+
+    st.caption(
+        "Créez une copie de vos données avant une modification importante de la plateforme. "
+        "La sauvegarde reste sur votre ordinateur et ne contient aucun secret technique."
+    )
+
+    backup_bytes = teacher_backup_json_bytes()
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    safe_teacher = re.sub(
+        r"[^A-Za-z0-9_-]+",
+        "_",
+        current_teacher_name(),
+    ).strip("_") or "professeur"
+
+    st.download_button(
+        "💾 Sauvegarder mes données",
+        data=backup_bytes,
+        file_name=f"ludotheque_{safe_teacher}_{timestamp}.json",
+        mime="application/json",
+        type="primary",
+        use_container_width=True,
+        key="download_teacher_backup",
+    )
+
+    st.info(
+        "Sont sauvegardés : classes, élèves, accès aux contenus, banque d'exercices, "
+        "défis, résultats, suivi pédagogique, préparations et équipes collaboratives."
+    )
+
+    with st.expander("♻️ Restaurer une sauvegarde", expanded=False):
+        st.warning(
+            "La restauration remplace les données actuelles de votre espace professeur "
+            "par celles du fichier choisi."
+        )
+
+        uploaded_backup = st.file_uploader(
+            "Choisir un fichier de sauvegarde Ludothèque (.json)",
+            type=["json"],
+            accept_multiple_files=False,
+            key="teacher_backup_restore_file",
+        )
+
+        parsed_backup = None
+        restore_error = None
+
+        if uploaded_backup is not None:
+            try:
+                parsed_backup = json.loads(
+                    uploaded_backup.getvalue().decode("utf-8")
+                )
+                valid, restore_error = validate_teacher_backup(
+                    parsed_backup
+                )
+
+                if valid:
+                    backup_data = parsed_backup.get("data", {})
+                    st.success("✅ Sauvegarde reconnue.")
+                    st.write(
+                        f"**Créée le :** {parsed_backup.get('created_at', '—')}  \n"
+                        f"**Professeur :** {parsed_backup.get('teacher_name', '—')}  \n"
+                        f"**Classes :** {len(backup_data.get('classes', []) or [])}  \n"
+                        f"**Élèves :** {len(backup_data.get('students', []) or [])}  \n"
+                        f"**Résultats :** {len(backup_data.get('results', []) or [])}"
+                    )
+                else:
+                    st.error(restore_error)
+
+            except Exception as exc:
+                restore_error = (
+                    f"Impossible de lire cette sauvegarde : {exc}"
+                )
+                st.error(restore_error)
+
+        confirm_restore = st.checkbox(
+            "Je confirme que je veux remplacer les données actuelles par cette sauvegarde.",
+            key="confirm_teacher_backup_restore",
+            disabled=(
+                parsed_backup is None
+                or restore_error is not None
+            ),
+        )
+
+        if st.button(
+            "♻️ Restaurer cette sauvegarde",
+            type="primary",
+            use_container_width=True,
+            key="restore_teacher_backup_button",
+            disabled=(
+                not confirm_restore
+                or parsed_backup is None
+                or restore_error is not None
+            ),
+        ):
+            ok, error = restore_teacher_backup(parsed_backup)
+
+            if ok:
+                st.success("✅ Sauvegarde restaurée.")
+                st.rerun()
+            else:
+                st.error(error or "Restauration impossible.")
+
+
 
 # ============================================================
 # COLLABORATION — OUTILS UPSTASH
@@ -19163,10 +19420,16 @@ def teacher_classes_students():
 
     st.markdown("---")
 
+    render_teacher_backup_restore()
+
     with st.expander(
-        "⚠️ Options avancées",
+        "⚠️ Administration exceptionnelle",
         expanded=False,
     ):
+        st.caption(
+            "Ces commandes servent uniquement si vous souhaitez repartir de zéro. "
+            "Faites une sauvegarde avant de les utiliser."
+        )
         teacher_advanced_management("classes_students")
 
 def teacher_contents():
