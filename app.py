@@ -342,45 +342,6 @@ def update_student(student_id, first_name, last_name, class_name):
     save_students(students)
     return True, None
 
-def move_all_students_between_classes(source_class, target_class):
-    """
-    Déplace tous les élèves d'une classe vers une autre classe.
-
-    - conserve l'identifiant interne, le code personnel et le QR de chaque élève ;
-    - ne modifie pas les anciens résultats, qui restent des instantanés historiques ;
-    - crée automatiquement la classe de destination ;
-    - supprime la classe source de la liste si elle devient vide.
-    """
-    source_class = normalize_class_name(source_class)
-    target_class = normalize_class_name(target_class)
-
-    if not source_class or not target_class:
-        return False, "La classe d'origine et la classe de destination sont obligatoires.", 0
-
-    if source_class == target_class:
-        return False, "La classe de destination doit être différente de la classe d'origine.", 0
-
-    students = get_students()
-    moved = 0
-
-    for student in students:
-        if normalize_class_name(student.get("class_name", "")) == source_class:
-            student["class_name"] = target_class
-            student["updated_at"] = datetime.now().isoformat(timespec="seconds")
-            moved += 1
-
-    if moved == 0:
-        return False, f"Aucun élève n'est enregistré dans la classe {source_class}.", 0
-
-    save_students(students)
-
-    classes = set(get_classes())
-    classes.add(target_class)
-    classes.discard(source_class)
-    redis_write_json(teacher_key("classes"), sorted(classes))
-
-    return True, None, moved
-
 
 
 
@@ -2657,6 +2618,35 @@ def delete_class(class_name):
     classes = [c for c in get_classes() if c != class_name]
     redis_write_json(teacher_key("classes"), classes)
     return True, None
+
+def delete_class_with_students(class_name):
+    """
+    Supprime une classe et toutes les fiches élèves actuellement rattachées à cette classe.
+
+    Les anciens résultats, défis et journaux pédagogiques ne sont pas effacés :
+    ils restent des archives historiques.
+    """
+    class_name = normalize_class_name(class_name)
+    if not class_name:
+        return False, "Classe invalide.", 0
+
+    students = get_students()
+    remaining_students = [
+        student for student in students
+        if normalize_class_name(student.get("class_name", "")) != class_name
+    ]
+    removed_count = len(students) - len(remaining_students)
+
+    save_students(remaining_students)
+
+    classes = [
+        item for item in get_classes()
+        if normalize_class_name(item) != class_name
+    ]
+    redis_write_json(teacher_key("classes"), sorted(set(classes)))
+
+    return True, None, removed_count
+
 
 
 def delete_collaborative_team_data():
@@ -18692,603 +18682,349 @@ def teacher_classes_students():
     classes = get_classes()
     students = get_students()
 
-    # -------------------------
-    # Classes
-    # -------------------------
+    st.markdown("---")
     st.subheader("🏫 Mes classes")
 
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        class_name = st.text_input(
-            "Nom de la classe",
-            placeholder="Ex. 4D",
-            key="class_name_input",
+    if not classes:
+        st.info(
+            "Aucune classe enregistrée. Importez vos fichiers ÉcoleDirecte pour créer automatiquement vos classes."
         )
-    with c2:
-        st.write("")
-        st.write("")
-        if st.button(
-            "➕ Nouvelle classe",
-            type="primary",
-            use_container_width=True,
-            key="create_class_button",
-        ):
-            normalized = normalize_class_name(class_name)
-            if add_class(normalized):
-                st.success(f"Classe {normalized} créée.")
-                st.rerun()
-            else:
-                st.warning("Cette classe existe déjà ou le nom est vide.")
-
-    classes = get_classes()
-    students = get_students()
-
-    if classes:
-        class_rows = []
-        for class_item in classes:
-            effectif = sum(1 for s in students if s["class_name"] == class_item)
-            class_rows.append({"Classe": class_item, "Effectif": effectif})
-        st.dataframe(class_rows, use_container_width=True, hide_index=True)
     else:
-        st.info("Aucune classe enregistrée.")
-
-    st.markdown("---")
-
-    # -------------------------
-    # Import / ajout d'élèves
-    # -------------------------
-    st.subheader("👥 Ajouter des élèves")
-
-    with st.expander("📥 Importer mes classes depuis ÉcoleDirecte", expanded=not students):
-        st.write(
-            "Téléchargez vos listes de classes depuis **ÉcoleDirecte**, puis sélectionnez ici "
-            "**un ou plusieurs fichiers Excel sans les modifier**. "
-            "La Ludothèque détecte automatiquement les élèves et leur classe, transforme par "
-            "exemple « Quatrième D » en **4D**, et crée les classes manquantes."
+        st.caption(
+            "Ouvrez une classe pour ajouter, modifier, changer de classe ou retirer un élève."
         )
 
-        uploaded_students = st.file_uploader(
-            "Choisir un ou plusieurs fichiers Excel ÉcoleDirecte",
-            type=["xlsx", "xlsm"],
-            accept_multiple_files=True,
-            key="student_excel_upload",
-        )
-
-        if uploaded_students:
-            parsed_files = []
-            combined_preview = []
-            combined_errors = []
-            file_summaries = []
-
-            for uploaded_file in uploaded_students:
-                try:
-                    excel_df = read_school_export_dataframe(uploaded_file)
-                    preview_rows, preview_errors = preview_students_from_dataframe(excel_df)
-
-                    parsed_files.append((uploaded_file.name, excel_df))
-                    combined_preview.extend(preview_rows)
-                    combined_errors.extend(
-                        [f"{uploaded_file.name} — {message}" for message in preview_errors]
-                    )
-
-                    classes_in_file = sorted({
-                        row["Classe"] for row in preview_rows if row.get("Classe")
-                    })
-                    class_label = ", ".join(classes_in_file) if classes_in_file else "classe non détectée"
-                    file_summaries.append({
-                        "Fichier": uploaded_file.name,
-                        "Classe(s)": class_label,
-                        "Élèves détectés": len(preview_rows),
-                    })
-                except Exception as exc:
-                    combined_errors.append(
-                        f"{uploaded_file.name} — impossible de lire le fichier : {exc}"
-                    )
-
-            if file_summaries:
-                st.markdown("#### Fichiers analysés")
-                st.dataframe(
-                    pd.DataFrame(file_summaries),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-            if combined_preview:
-                preview_df = pd.DataFrame(combined_preview)
-                class_counts = (
-                    preview_df.groupby("Classe", dropna=False)
-                    .size()
-                    .reset_index(name="Élèves")
-                    .sort_values("Classe")
-                )
-
-                st.markdown("#### Classes détectées")
-                st.dataframe(
-                    class_counts,
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-                st.success(
-                    f"✅ {len(uploaded_students)} fichier(s) sélectionné(s) · "
-                    f"{len(class_counts)} classe(s) détectée(s) · "
-                    f"{len(combined_preview)} élève(s) détecté(s)."
-                )
-
-                with st.expander("Vérifier la liste des élèves avant import"):
-                    st.dataframe(
-                        preview_df[["Nom", "Prénom", "Classe"]],
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-            if combined_errors:
-                st.warning(
-                    f"{len(combined_errors)} anomalie(s) détectée(s). "
-                    "Les lignes correctement reconnues pourront tout de même être importées."
-                )
-                for message in combined_errors[:30]:
-                    st.write("• " + message)
-
-            if st.button(
-                "📥 Importer les classes et les élèves",
-                type="primary",
-                use_container_width=True,
-                key="import_students_button",
-                disabled=not bool(combined_preview),
-            ):
-                added, duplicates, errors, created_classes = import_students_from_dataframes(
-                    parsed_files
-                )
-
-                if added or created_classes:
-                    parts = []
-                    if created_classes:
-                        parts.append(f"{created_classes} classe(s) créée(s)")
-                    if added:
-                        parts.append(f"{added} élève(s) ajouté(s)")
-                    if duplicates:
-                        parts.append(f"{duplicates} doublon(s) ignoré(s)")
-                    st.success("✅ " + " · ".join(parts) + ".")
-                elif not errors:
-                    st.info(
-                        f"Aucun nouvel élève ni nouvelle classe. "
-                        f"{duplicates} doublon(s) ignoré(s)."
-                    )
-
-                if errors:
-                    st.warning(f"{len(errors)} ligne(s) n'ont pas été importées.")
-                    for message in errors[:30]:
-                        st.write("• " + message)
-
-                if added or created_classes:
-                    st.rerun()
-
-    classes = get_classes()
-
-    if classes:
-        with st.expander("➕ Ajouter ponctuellement un élève"):
-            c1, c2, c3 = st.columns([2, 2, 1])
-            with c1:
-                last_name = st.text_input("Nom", key="new_student_lastname")
-            with c2:
-                first_name = st.text_input("Prénom", key="new_student_firstname")
-            with c3:
-                student_class = st.selectbox(
-                    "Classe",
-                    classes,
-                    key="new_student_class",
-                )
-
-            if st.button(
-                "➕ Ajouter l'élève",
-                use_container_width=True,
-                key="add_single_student_button",
-            ):
-                student, error = add_student(
-                    first_name,
-                    last_name,
-                    student_class,
-                )
-                if error:
-                    st.error(error)
-                else:
-                    st.success(
-                        f"{person_display_name(student)} ajouté(e) — code **{student['code']}**"
-                    )
-                    st.rerun()
-    else:
-        st.caption("Créez d'abord une classe avant d'ajouter un élève ponctuellement.")
-
-    st.markdown("---")
-
-    # -------------------------
-    # Liste et accès élèves
-    # -------------------------
-    st.subheader("🔐 Élèves enregistrés et codes d'accès")
-
-    students = get_students()
-
-    if not students:
-        st.info("Aucun élève enregistré.")
-    else:
-        filter_classes = ["Toutes"] + get_classes()
-        selected_filter = st.selectbox(
-            "Filtrer par classe",
-            filter_classes,
-            key="student_filter",
-        )
-
-        filtered = [
-            s for s in students
-            if selected_filter == "Toutes" or s["class_name"] == selected_filter
-        ]
-
-        if filtered:
-            pdf_cards = generate_student_cards_pdf(filtered)
-            filename = (
-                "cartes_eleves_ludotheque_toutes_classes.pdf"
-                if selected_filter == "Toutes"
-                else f"cartes_eleves_ludotheque_{selected_filter}.pdf"
-            )
+        # Téléchargement global des cartes si des élèves existent.
+        if students:
+            all_cards_pdf = generate_student_cards_pdf(students)
             st.download_button(
-                "🖨️ Télécharger les cartes élèves (QR + volet code)",
-                data=pdf_cards,
-                file_name=filename,
+                "🖨️ Télécharger toutes les cartes élèves",
+                data=all_cards_pdf,
+                file_name="cartes_eleves_ludotheque_toutes_classes.pdf",
                 mime="application/pdf",
                 type="primary",
                 use_container_width=True,
+                key="download_all_student_cards",
             )
 
-        st.caption(
-            "Le nom et le prénom complets sont conservés pour éviter toute ambiguïté entre élèves. "
-            "Chaque élève garde en parallèle un identifiant interne et un code personnel uniques."
-        )
-
-        h1, h2, h3, h4, h5 = st.columns([2.1, 1.8, 0.9, 1.2, 1.6])
-        h1.markdown("**Nom**")
-        h2.markdown("**Prénom**")
-        h3.markdown("**Classe**")
-        h4.markdown("**Code**")
-        h5.markdown("**Accès**")
-
-        sorted_filtered = sorted(
-            filtered,
-            key=lambda s: (
-                s["class_name"],
-                person_last_name(s).casefold(),
-                s["first_name"].casefold(),
-            ),
-        )
-
-        last_regenerated = st.session_state.get("last_regenerated_student")
-
-        for student in sorted_filtered:
-            c1, c2, c3, c4, c5 = st.columns([2.1, 1.8, 0.9, 1.2, 1.6])
-            c1.write(person_last_name(student))
-            c2.write(student["first_name"])
-            c3.write(student["class_name"])
-            c4.code(student["code"], language=None)
-
-            if c5.button(
-                "🔄 Nouveau code",
-                key=f"regen_code_{student['id']}",
-                use_container_width=True,
-            ):
-                st.session_state.pop("last_regenerated_student", None)
-                regenerate_student_code_dialog(student["id"])
-
-            if isinstance(last_regenerated, dict) and last_regenerated.get("id") == student["id"]:
-                regenerated_name = person_display_name(last_regenerated)
-                st.success(
-                    f"Nouveau code créé pour **{regenerated_name}** : "
-                    f"**{last_regenerated['new_code']}**. L'ancienne carte est désormais invalide."
-                )
-
-                refreshed_student = next(
-                    (s for s in get_students() if s.get("id") == student["id"]),
-                    None,
-                )
-                if refreshed_student:
-                    single_card_pdf = generate_student_cards_pdf([refreshed_student])
-                    safe_first_name = re.sub(
-                        r"[^A-Za-z0-9_-]+", "_", refreshed_student["first_name"]
-                    ).strip("_") or "eleve"
-                    safe_last_name = re.sub(
-                        r"[^A-Za-z0-9_-]+", "_", person_last_name(refreshed_student)
-                    ).strip("_") or "nom"
-                    safe_class_name = re.sub(
-                        r"[^A-Za-z0-9_-]+", "_", refreshed_student["class_name"]
-                    ).strip("_") or "classe"
-
-                    st.download_button(
-                        f"🖨️ Télécharger la nouvelle carte de {person_display_name(refreshed_student)}",
-                        data=single_card_pdf,
-                        file_name=(
-                            f"carte_ludotheque_{safe_last_name}_{safe_first_name}_{safe_class_name}.pdf"
-                        ),
-                        mime="application/pdf",
-                        type="primary",
-                        use_container_width=False,
-                        key=f"download_new_card_{student['id']}_{last_regenerated['new_code']}",
-                    )
-                st.session_state.pop("last_regenerated_student", None)
-
-    st.markdown("---")
-
-    # -------------------------
-    # Gestion simplifiée
-    # -------------------------
-    st.subheader("⚙️ Gérer mes élèves")
-
-    students = get_students()
-    classes = get_classes()
-
-    st.caption(
-        "Modifiez une fiche, changez un élève de classe ou gérez une classe entière. "
-        "Les codes personnels et les identifiants internes sont conservés lors des déplacements."
-    )
-
-    tab_edit, tab_remove, tab_classes = st.tabs([
-        "✏️ Modifier",
-        "🗑️ Retirer",
-        "📦 Gérer les classes",
-    ])
-
-    # ========================================================
-    # Modifier un élève
-    # ========================================================
-    with tab_edit:
-        if students:
-            sorted_students = sorted(
-                students,
-                key=lambda s: (
-                    s["class_name"],
-                    person_last_name(s).casefold(),
-                    s["first_name"].casefold(),
-                ),
-            )
-
-            student_options = {
-                f"{person_display_name(s)} — {s['class_name']}": s["id"]
-                for s in sorted_students
-            }
-
-            selected_label = st.selectbox(
-                "Choisir un élève",
-                list(student_options.keys()),
-                key="student_to_edit",
-            )
-
-            selected_id = student_options[selected_label]
-            selected_student = next(
-                s for s in students if s["id"] == selected_id
-            )
-
-            st.markdown(
-                f"**Code personnel :** `{selected_student['code']}`"
-            )
-
-            with st.form(key=f"edit_student_form_{selected_id}"):
-                e1, e2, e3 = st.columns([2, 2, 1])
-
-                with e1:
-                    edit_last_name = st.text_input(
-                        "Nom",
-                        value=person_last_name(selected_student).rstrip("."),
-                    )
-
-                with e2:
-                    edit_first_name = st.text_input(
-                        "Prénom",
-                        value=selected_student["first_name"],
-                    )
-
-                with e3:
-                    class_options = get_classes()
-                    current_class = selected_student["class_name"]
-
-                    if current_class not in class_options:
-                        class_options = sorted(set(class_options + [current_class]))
-
-                    class_index = class_options.index(current_class)
-
-                    edit_class = st.selectbox(
-                        "Classe",
-                        class_options,
-                        index=class_index,
-                    )
-
-                st.caption(
-                    "Un changement de classe conserve le code, le QR et l'identifiant de l'élève. "
-                    "Les résultats déjà enregistrés restent dans leur classe historique."
-                )
-
-                submitted = st.form_submit_button(
-                    "💾 Enregistrer",
-                    type="primary",
-                    use_container_width=True,
-                )
-
-            if submitted:
-                ok, error = update_student(
-                    selected_id,
-                    edit_first_name,
-                    edit_last_name,
-                    edit_class,
-                )
-
-                if ok:
-                    st.success("Fiche élève mise à jour.")
-                    st.rerun()
-                else:
-                    st.error(error or "Modification impossible.")
-        else:
-            st.info("Aucun élève enregistré.")
-
-    # ========================================================
-    # Retirer un élève
-    # ========================================================
-    with tab_remove:
-        if students:
-            sorted_students = sorted(
-                students,
-                key=lambda s: (
-                    s["class_name"],
-                    person_last_name(s).casefold(),
-                    s["first_name"].casefold(),
-                ),
-            )
-
-            student_options = {
-                f"{person_display_name(s)} — {s['class_name']}": s["id"]
-                for s in sorted_students
-            }
-
-            selected_student_label = st.selectbox(
-                "Choisir l'élève à retirer",
-                list(student_options.keys()),
-                key="student_to_delete",
-            )
-
-            selected_id = student_options[selected_student_label]
-            selected_student = next(
-                s for s in students if s["id"] == selected_id
-            )
-
-            st.warning(
-                f"Vous allez retirer **{person_display_name(selected_student)}** "
-                f"de la classe **{selected_student['class_name']}**. "
-                "Ses anciens résultats restent conservés."
-            )
-
-            confirm_student = st.checkbox(
-                "Je confirme le retrait de cet élève.",
-                key="confirm_delete_student",
-            )
-
-            if st.button(
-                "🗑️ Retirer cet élève",
-                disabled=not confirm_student,
-                use_container_width=True,
-                key="delete_student_button",
-            ):
-                if delete_student(selected_id):
-                    st.success("Élève retiré de la base.")
-                    st.rerun()
-                else:
-                    st.error("Élève introuvable.")
-        else:
-            st.info("Aucun élève enregistré.")
-
-    # ========================================================
-    # Gérer les classes
-    # ========================================================
-    with tab_classes:
-        if not classes:
-            st.info("Aucune classe enregistrée.")
-        else:
-            st.markdown("#### Mes classes")
-
-            for class_item in classes:
-                effectif = sum(
-                    1 for student in students
+        for class_item in classes:
+            class_students = sorted(
+                [
+                    student for student in students
                     if normalize_class_name(student.get("class_name", "")) == class_item
-                )
+                ],
+                key=lambda s: (
+                    person_last_name(s).casefold(),
+                    s.get("first_name", "").casefold(),
+                ),
+            )
 
-                with st.container(border=True):
-                    c_name, c_count, c_action = st.columns([2.2, 1.2, 1.4])
-
-                    with c_name:
-                        st.markdown(f"### 🏫 {class_item}")
-
-                    with c_count:
-                        st.metric("Élèves", effectif)
-
-                    with c_action:
-                        if effectif == 0:
-                            if st.button(
-                                "🗑️ Supprimer",
-                                key=f"quick_delete_empty_class_{class_item}",
-                                use_container_width=True,
-                            ):
-                                ok, error = delete_class(class_item)
-                                if ok:
-                                    st.success(f"Classe {class_item} supprimée.")
-                                    st.rerun()
-                                else:
-                                    st.error(error or "Suppression impossible.")
-                        else:
-                            st.caption("Classe utilisée")
+            effectif = len(class_students)
 
             with st.expander(
-                "↔️ Déplacer ou corriger une classe entière",
+                f"🏫 {class_item} — {effectif} élève(s)",
                 expanded=False,
             ):
-                st.write(
-                    "Utilisez cette fonction lorsqu'une classe a été mal nommée ou lorsqu'un groupe "
-                    "complet doit changer de classe. Tous les élèves sont déplacés en une fois, "
-                    "sans changer leurs codes personnels."
-                )
-
-                source_class = st.selectbox(
-                    "Classe d'origine",
-                    classes,
-                    key="bulk_move_source_class",
-                )
-
-                target_class = st.text_input(
-                    "Classe de destination",
-                    placeholder="Ex. 4E",
-                    key="bulk_move_target_class",
-                )
-
-                source_effectif = sum(
-                    1 for student in students
-                    if normalize_class_name(student.get("class_name", "")) == source_class
-                )
-
-                normalized_target = normalize_class_name(target_class)
-
-                if normalized_target:
-                    st.info(
-                        f"**{source_effectif} élève(s)** seront déplacés de "
-                        f"**{source_class}** vers **{normalized_target}**."
+                # ------------------------------------------------
+                # Barre d'actions de la classe
+                # ------------------------------------------------
+                if class_students:
+                    class_cards_pdf = generate_student_cards_pdf(class_students)
+                    st.download_button(
+                        f"🖨️ Télécharger les cartes de {class_item}",
+                        data=class_cards_pdf,
+                        file_name=f"cartes_eleves_ludotheque_{class_item}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                        key=f"download_cards_class_{class_item}",
                     )
 
-                confirm_bulk_move = st.checkbox(
-                    "Je confirme le déplacement de toute cette classe.",
-                    key="confirm_bulk_class_move",
-                )
+                tab_list, tab_add, tab_manage, tab_delete_class = st.tabs([
+                    "👥 Élèves",
+                    "➕ Ajouter",
+                    "✏️ Modifier / changer de classe",
+                    "🗑️ Supprimer la classe",
+                ])
 
-                if st.button(
-                    "↔️ Déplacer toute la classe",
-                    type="primary",
-                    use_container_width=True,
-                    disabled=not (
-                        confirm_bulk_move
-                        and normalized_target
-                        and normalized_target != source_class
-                        and source_effectif > 0
-                    ),
-                    key="bulk_move_class_button",
-                ):
-                    ok, error, moved = move_all_students_between_classes(
-                        source_class,
-                        normalized_target,
-                    )
-
-                    if ok:
-                        st.success(
-                            f"✅ {moved} élève(s) déplacé(s) de "
-                            f"{source_class} vers {normalized_target}."
-                        )
-                        st.rerun()
+                # ================================================
+                # Liste des élèves de la classe
+                # ================================================
+                with tab_list:
+                    if not class_students:
+                        st.info("Cette classe ne contient aucun élève.")
                     else:
-                        st.error(error or "Déplacement impossible.")
+                        h1, h2, h3, h4 = st.columns([2.2, 2.0, 1.3, 1.6])
+                        h1.markdown("**Nom**")
+                        h2.markdown("**Prénom**")
+                        h3.markdown("**Code**")
+                        h4.markdown("**Accès**")
+
+                        last_regenerated = st.session_state.get("last_regenerated_student")
+
+                        for student in class_students:
+                            c1, c2, c3, c4 = st.columns([2.2, 2.0, 1.3, 1.6])
+                            c1.write(person_last_name(student))
+                            c2.write(student.get("first_name", ""))
+                            c3.code(student.get("code", ""), language=None)
+
+                            if c4.button(
+                                "🔄 Nouveau code",
+                                key=f"class_regen_code_{class_item}_{student['id']}",
+                                use_container_width=True,
+                            ):
+                                st.session_state.pop("last_regenerated_student", None)
+                                regenerate_student_code_dialog(student["id"])
+
+                            if (
+                                isinstance(last_regenerated, dict)
+                                and last_regenerated.get("id") == student["id"]
+                            ):
+                                refreshed_student = next(
+                                    (
+                                        s for s in get_students()
+                                        if s.get("id") == student["id"]
+                                    ),
+                                    None,
+                                )
+
+                                if refreshed_student:
+                                    st.success(
+                                        f"Nouveau code pour **{person_display_name(refreshed_student)}** : "
+                                        f"**{last_regenerated['new_code']}**."
+                                    )
+                                    single_card_pdf = generate_student_cards_pdf([refreshed_student])
+
+                                    safe_first_name = re.sub(
+                                        r"[^A-Za-z0-9_-]+",
+                                        "_",
+                                        refreshed_student.get("first_name", ""),
+                                    ).strip("_") or "eleve"
+                                    safe_last_name = re.sub(
+                                        r"[^A-Za-z0-9_-]+",
+                                        "_",
+                                        person_last_name(refreshed_student),
+                                    ).strip("_") or "nom"
+
+                                    st.download_button(
+                                        "🖨️ Télécharger la nouvelle carte",
+                                        data=single_card_pdf,
+                                        file_name=(
+                                            f"carte_ludotheque_{safe_last_name}_{safe_first_name}_{class_item}.pdf"
+                                        ),
+                                        mime="application/pdf",
+                                        key=f"class_download_new_card_{student['id']}_{last_regenerated['new_code']}",
+                                    )
+
+                                st.session_state.pop("last_regenerated_student", None)
+
+                # ================================================
+                # Ajouter un élève dans CETTE classe
+                # ================================================
+                with tab_add:
+                    st.write(f"Ajouter un élève directement dans **{class_item}**.")
+
+                    with st.form(key=f"add_student_in_class_{class_item}"):
+                        a1, a2 = st.columns(2)
+
+                        with a1:
+                            new_last_name = st.text_input(
+                                "Nom",
+                                key=f"class_new_lastname_{class_item}",
+                            )
+
+                        with a2:
+                            new_first_name = st.text_input(
+                                "Prénom",
+                                key=f"class_new_firstname_{class_item}",
+                            )
+
+                        add_submitted = st.form_submit_button(
+                            f"➕ Ajouter à {class_item}",
+                            type="primary",
+                            use_container_width=True,
+                        )
+
+                    if add_submitted:
+                        student, error = add_student(
+                            new_first_name,
+                            new_last_name,
+                            class_item,
+                        )
+
+                        if error:
+                            st.error(error)
+                        else:
+                            st.success(
+                                f"{person_display_name(student)} ajouté(e) à {class_item} "
+                                f"— code **{student['code']}**."
+                            )
+                            st.rerun()
+
+                # ================================================
+                # Modifier / changer de classe / retirer
+                # ================================================
+                with tab_manage:
+                    if not class_students:
+                        st.info("Aucun élève à modifier dans cette classe.")
+                    else:
+                        student_options = {
+                            person_display_name(student): student["id"]
+                            for student in class_students
+                        }
+
+                        selected_label = st.selectbox(
+                            "Choisir un élève",
+                            list(student_options.keys()),
+                            key=f"class_student_manage_select_{class_item}",
+                        )
+
+                        selected_id = student_options[selected_label]
+                        selected_student = next(
+                            student
+                            for student in class_students
+                            if student["id"] == selected_id
+                        )
+
+                        st.caption(
+                            f"Code personnel : {selected_student.get('code', '')} · "
+                            "Le code et le QR sont conservés lors d'un changement de classe."
+                        )
+
+                        with st.form(key=f"class_edit_student_form_{class_item}_{selected_id}"):
+                            e1, e2, e3 = st.columns([2, 2, 1.2])
+
+                            with e1:
+                                edit_last_name = st.text_input(
+                                    "Nom",
+                                    value=person_last_name(selected_student).rstrip("."),
+                                    key=f"class_edit_last_{class_item}_{selected_id}",
+                                )
+
+                            with e2:
+                                edit_first_name = st.text_input(
+                                    "Prénom",
+                                    value=selected_student.get("first_name", ""),
+                                    key=f"class_edit_first_{class_item}_{selected_id}",
+                                )
+
+                            with e3:
+                                class_options = get_classes()
+                                current_class = normalize_class_name(
+                                    selected_student.get("class_name", "")
+                                )
+
+                                if current_class not in class_options:
+                                    class_options = sorted(set(class_options + [current_class]))
+
+                                edit_class = st.selectbox(
+                                    "Classe",
+                                    class_options,
+                                    index=class_options.index(current_class),
+                                    key=f"class_edit_destination_{class_item}_{selected_id}",
+                                )
+
+                            save_changes = st.form_submit_button(
+                                "💾 Enregistrer les modifications",
+                                type="primary",
+                                use_container_width=True,
+                            )
+
+                        if save_changes:
+                            ok, error = update_student(
+                                selected_id,
+                                edit_first_name,
+                                edit_last_name,
+                                edit_class,
+                            )
+
+                            if ok:
+                                if edit_class != class_item:
+                                    st.success(
+                                        f"{edit_first_name} {edit_last_name} est maintenant en {edit_class}."
+                                    )
+                                else:
+                                    st.success("Fiche élève mise à jour.")
+                                st.rerun()
+                            else:
+                                st.error(error or "Modification impossible.")
+
+                        st.markdown("---")
+                        st.markdown("##### Retirer cet élève")
+                        st.caption(
+                            "La fiche élève sera retirée de cette plateforme. "
+                            "Ses anciens résultats restent conservés dans l'historique."
+                        )
+
+                        confirm_remove = st.checkbox(
+                            f"Je confirme le retrait de {person_display_name(selected_student)}.",
+                            key=f"class_confirm_remove_{class_item}_{selected_id}",
+                        )
+
+                        if st.button(
+                            "🗑️ Retirer cet élève",
+                            disabled=not confirm_remove,
+                            use_container_width=True,
+                            key=f"class_remove_student_{class_item}_{selected_id}",
+                        ):
+                            if delete_student(selected_id):
+                                st.success("Élève retiré.")
+                                st.rerun()
+                            else:
+                                st.error("Élève introuvable.")
+
+                        st.info(
+                            "Pour un changement vers la classe d'un **autre professeur**, "
+                            "le mécanisme de transfert entre plateformes sera ajouté séparément. "
+                            "Les plateformes restent indépendantes pour l'instant."
+                        )
+
+                # ================================================
+                # Supprimer toute la classe
+                # ================================================
+                with tab_delete_class:
+                    if effectif:
+                        st.warning(
+                            f"La suppression de **{class_item}** retirera aussi ses "
+                            f"**{effectif} élève(s)** de cette plateforme. "
+                            "Les résultats déjà enregistrés resteront dans l'historique."
+                        )
+                    else:
+                        st.info(
+                            f"La classe **{class_item}** est vide et peut être supprimée."
+                        )
+
+                    confirm_delete_class = st.checkbox(
+                        f"Je confirme la suppression de la classe {class_item}.",
+                        key=f"confirm_delete_whole_class_{class_item}",
+                    )
+
+                    if st.button(
+                        f"🗑️ Supprimer la classe {class_item}",
+                        disabled=not confirm_delete_class,
+                        use_container_width=True,
+                        key=f"delete_whole_class_{class_item}",
+                    ):
+                        ok, error, removed_count = delete_class_with_students(class_item)
+
+                        if ok:
+                            if removed_count:
+                                st.success(
+                                    f"Classe {class_item} supprimée avec "
+                                    f"{removed_count} élève(s)."
+                                )
+                            else:
+                                st.success(f"Classe {class_item} supprimée.")
+                            st.rerun()
+                        else:
+                            st.error(error or "Suppression impossible.")
 
     st.markdown("---")
-    teacher_advanced_management("classes_students")
+
+    with st.expander(
+        "⚠️ Options avancées",
+        expanded=False,
+    ):
+        teacher_advanced_management("classes_students")
 
 def teacher_contents():
     teacher_header("Contenus")
