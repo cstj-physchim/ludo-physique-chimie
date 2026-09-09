@@ -3185,9 +3185,19 @@ def generate_student_cards_pdf(students):
     def draw_verso_card(student, slot):
         """
         Imprime seulement le verso du volet.
-        Le texte est tourné à 180° pour être à l'endroit après rabattement.
+
+        Pour l'impression recto-verso, les colonnes sont inversées :
+        - recto colonne gauche -> verso colonne droite ;
+        - recto colonne droite -> verso colonne gauche.
+
+        Les lignes restent identiques.
+        Le texte reste tourné à 180° pour être à l'endroit après rabattement.
         """
-        x, y = card_position(slot)
+        row = slot // cols
+        col = slot % cols
+        mirrored_slot = row * cols + (cols - 1 - col)
+
+        x, y = card_position(mirrored_slot)
 
         flap_center_x = x + card_width / 2
         flap_center_y = y + flap_height / 2
