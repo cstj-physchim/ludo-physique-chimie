@@ -2991,24 +2991,23 @@ def make_qr_png_bytes(student):
 
 
 def generate_student_cards_pdf(students):
-    """Génère 6 cartes compactes par A4 avec volet confidentiel.
+    """Génère 6 cartes compactes par A4 avec recto/verso alternés.
 
-    V85 :
-    - 2 colonnes x 3 lignes ;
-    - carte fermée nominative : Plateforme Physique-Chimie + nom complet + classe ;
-    - ces informations sont imprimées au verso du volet, tournées à 180° pour
-      être à l'endroit après rabattement vers le haut ;
-    - code personnel + QR restent à l'intérieur du volet ;
-    - fente courbe V2 conservée dans le bon sens ;
-    - consignes longues supprimées ;
-    - marges du volet resserrées pour économiser le papier.
+    Ordre des pages :
+    - page 1 : recto du groupe 1 ;
+    - page 2 : verso correspondant ;
+    - page 3 : recto du groupe 2 ;
+    - page 4 : verso correspondant ;
+    - etc.
+
+    Cela permet d'imprimer directement en recto-verso sans devoir recomposer
+    les pages manuellement.
     """
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
 
     page_width, page_height = A4
 
-    # 6 cartes par page : 2 colonnes x 3 lignes.
     margin_x = 6 * mm
     margin_y = 6 * mm
     gap_x = 4 * mm
@@ -3016,17 +3015,13 @@ def generate_student_cards_pdf(students):
 
     cols = 2
     rows = 3
+    cards_per_sheet = cols * rows
 
     card_width = (page_width - 2 * margin_x - gap_x) / cols
     card_height = (page_height - 2 * margin_y - 2 * gap_y) / rows
 
-    # Volet plus compact que la V84.8.
     flap_height = 38 * mm
-
-    # Le bord inférieur du volet doit rencontrer la fente après rabattement :
-    # la fente est donc à la même distance au-dessus du pli.
     notch_offset = flap_height
-
     qr_size = 25 * mm
 
     sorted_students = sorted(
@@ -3047,12 +3042,7 @@ def generate_student_cards_pdf(students):
             size -= 0.5
         return size
 
-    for index, student in enumerate(sorted_students):
-        slot = index % (cols * rows)
-
-        if slot == 0 and index > 0:
-            pdf.showPage()
-
+    def card_position(slot):
         row = slot // cols
         col = slot % cols
 
@@ -3063,14 +3053,16 @@ def generate_student_cards_pdf(students):
             - (row + 1) * card_height
             - row * gap_y
         )
+        return x, y
+
+    def draw_recto_card(student, slot):
+        x, y = card_position(slot)
 
         fold_y = y + flap_height
         notch_y = fold_y + notch_offset
         top_y = y + card_height
 
-        # ----------------------------------------------------
-        # CONTOUR EXTERIEUR : découpe, coins arrondis partout
-        # ----------------------------------------------------
+        # Contour de coupe
         pdf.saveState()
         pdf.setLineWidth(0.75)
         pdf.roundRect(
@@ -3084,9 +3076,7 @@ def generate_student_cards_pdf(students):
         )
         pdf.restoreState()
 
-        # ----------------------------------------------------
-        # FACE INTERIEURE HAUTE
-        # ----------------------------------------------------
+        # Consigne courte
         pdf.setFont("Helvetica", 7.2)
         pdf.setFillGray(0.30)
         pdf.drawCentredString(
@@ -3096,9 +3086,7 @@ def generate_student_cards_pdf(students):
         )
         pdf.setFillGray(0)
 
-        # ----------------------------------------------------
-        # FENTE COURBE : cuvette, ouverte vers le haut
-        # ----------------------------------------------------
+        # Fente courbe V2
         notch_width = 24 * mm
         notch_depth = 7 * mm
         notch_left = x + (card_width - notch_width) / 2
@@ -3120,9 +3108,7 @@ def generate_student_cards_pdf(students):
         pdf.drawPath(path, stroke=1, fill=0)
         pdf.restoreState()
 
-        # ----------------------------------------------------
-        # LIGNE DE PLI : repère discret uniquement
-        # ----------------------------------------------------
+        # Ligne de pli discrète
         pdf.saveState()
         pdf.setDash(2.0, 2.0)
         pdf.setLineWidth(0.55)
@@ -3135,9 +3121,7 @@ def generate_student_cards_pdf(students):
         )
         pdf.restoreState()
 
-        # ----------------------------------------------------
-        # INTERIEUR DU VOLET : code + QR
-        # ----------------------------------------------------
+        # Volet confidentiel : face intérieure
         inner_x = x + 3.5 * mm
         inner_y = y + 3.5 * mm
         inner_w = card_width - 7 * mm
@@ -3198,37 +3182,13 @@ def generate_student_cards_pdf(students):
             mask="auto",
         )
 
-        # ----------------------------------------------------
-        # VERSO DU VOLET / FACE VISIBLE CARTE FERMEE
-        # ----------------------------------------------------
-        # Sur un PDF recto simple, on ne peut pas imprimer physiquement les deux
-        # faces du même papier au même emplacement. On ajoute donc, sur la page
-        # suivante du PDF, une planche "versos" parfaitement alignée pour
-        # impression recto-verso. Les versos sont tournés à 180° : après le pli
-        # vers le haut, Plateforme / Nom / Classe sont à l'endroit.
+    def draw_verso_card(student, slot):
+        """
+        Imprime seulement le verso du volet.
+        Le texte est tourné à 180° pour être à l'endroit après rabattement.
+        """
+        x, y = card_position(slot)
 
-    # La première passe a dessiné tous les rectos.
-    # On construit ensuite les versos par groupes de 6, dans le même ordre.
-    pdf.showPage()
-
-    for index, student in enumerate(sorted_students):
-        slot = index % (cols * rows)
-
-        if slot == 0 and index > 0:
-            pdf.showPage()
-
-        row = slot // cols
-        col = slot % cols
-
-        x = margin_x + col * (card_width + gap_x)
-        y = (
-            page_height
-            - margin_y
-            - (row + 1) * card_height
-            - row * gap_y
-        )
-
-        # Seul le verso du volet est imprimé.
         flap_center_x = x + card_width / 2
         flap_center_y = y + flap_height / 2
 
@@ -3268,6 +3228,29 @@ def generate_student_cards_pdf(students):
         )
 
         pdf.restoreState()
+
+    # --------------------------------------------------------
+    # Génération groupe par groupe :
+    # recto 1 -> verso 1 -> recto 2 -> verso 2 -> ...
+    # --------------------------------------------------------
+    for group_start in range(0, len(sorted_students), cards_per_sheet):
+        group = sorted_students[
+            group_start:group_start + cards_per_sheet
+        ]
+
+        # RECTO
+        for slot, student in enumerate(group):
+            draw_recto_card(student, slot)
+
+        pdf.showPage()
+
+        # VERSO correspondant immédiatement au recto précédent
+        for slot, student in enumerate(group):
+            draw_verso_card(student, slot)
+
+        # Nouvelle page uniquement s'il reste encore un groupe à imprimer.
+        if group_start + cards_per_sheet < len(sorted_students):
+            pdf.showPage()
 
     pdf.save()
     buffer.seek(0)
