@@ -2991,60 +2991,61 @@ def make_qr_png_bytes(student):
 
 
 def generate_student_cards_pdf(students):
-    """Génère 4 cartes par page avec volet confidentiel et fente courbe V2.
+    """Génère 6 cartes compactes par A4 avec volet confidentiel.
 
-    Géométrie reprise du prototype mécanique V2 :
-    - distance ligne de pli -> bord inférieur du volet : 48 mm ;
-    - fente courbe placée 48 mm au-dessus de la ligne de pli ;
-    - après repli, le bord du volet arrive donc exactement à la hauteur
-      des deux extrémités de la fente et peut se glisser dessous.
-
-    Le QR et le code personnel sont imprimés sur le volet inférieur.
-    Une fois ce volet replié vers le haut, ils se retrouvent contre la carte
-    et ne sont plus visibles sans soulever le volet.
+    V85 :
+    - 2 colonnes x 3 lignes ;
+    - carte fermée nominative : Plateforme Physique-Chimie + nom complet + classe ;
+    - ces informations sont imprimées au verso du volet, tournées à 180° pour
+      être à l'endroit après rabattement vers le haut ;
+    - code personnel + QR restent à l'intérieur du volet ;
+    - fente courbe V2 conservée dans le bon sens ;
+    - consignes longues supprimées ;
+    - marges du volet resserrées pour économiser le papier.
     """
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
 
     page_width, page_height = A4
 
-    # Le mécanisme V2 nécessite plus de hauteur que l'ancienne carte 8/page.
-    # On passe donc à 4 cartes par page (2 x 2), à taille réelle.
-    margin_x = 10 * mm
-    margin_y = 10 * mm
-    gap_x = 6 * mm
-    gap_y = 8 * mm
+    # 6 cartes par page : 2 colonnes x 3 lignes.
+    margin_x = 6 * mm
+    margin_y = 6 * mm
+    gap_x = 4 * mm
+    gap_y = 4 * mm
 
     cols = 2
-    rows = 2
+    rows = 3
 
     card_width = (page_width - 2 * margin_x - gap_x) / cols
-    card_height = (page_height - 2 * margin_y - gap_y) / rows
+    card_height = (page_height - 2 * margin_y - 2 * gap_y) / rows
 
-    flap_height = 48 * mm
-    notch_offset = 48 * mm
-    qr_size = 28 * mm
+    # Volet plus compact que la V84.8.
+    flap_height = 38 * mm
+
+    # Le bord inférieur du volet doit rencontrer la fente après rabattement :
+    # la fente est donc à la même distance au-dessus du pli.
+    notch_offset = flap_height
+
+    qr_size = 25 * mm
 
     sorted_students = sorted(
         students,
         key=lambda s: (
             s["class_name"],
-            s["last_name"].lower() if s.get("last_name") else s["first_name"].lower(),
-            s["first_name"].lower(),
+            person_last_name(s).casefold(),
+            s["first_name"].casefold(),
         ),
     )
 
-    def draw_fitted_name(name, x0, y0, max_width):
-        """Affiche le nom complet sans sortir de la carte."""
-        font_size = 13
+    def fitted_font(text_value, font_name, start_size, min_size, max_width):
+        size = start_size
         while (
-            font_size > 9.5
-            and pdf.stringWidth(name, "Helvetica-Bold", font_size) > max_width
+            size > min_size
+            and pdf.stringWidth(text_value, font_name, size) > max_width
         ):
-            font_size -= 0.5
-
-        pdf.setFont("Helvetica-Bold", font_size)
-        pdf.drawString(x0, y0, name)
+            size -= 0.5
+        return size
 
     for index, student in enumerate(sorted_students):
         slot = index % (cols * rows)
@@ -3065,12 +3066,13 @@ def generate_student_cards_pdf(students):
 
         fold_y = y + flap_height
         notch_y = fold_y + notch_offset
+        top_y = y + card_height
 
         # ----------------------------------------------------
-        # CONTOUR EXTERIEUR - destiné à la découpe
+        # CONTOUR EXTERIEUR : découpe, coins arrondis partout
         # ----------------------------------------------------
         pdf.saveState()
-        pdf.setLineWidth(0.8)
+        pdf.setLineWidth(0.75)
         pdf.roundRect(
             x,
             y,
@@ -3083,58 +3085,32 @@ def generate_student_cards_pdf(students):
         pdf.restoreState()
 
         # ----------------------------------------------------
-        # PARTIE FIXE
+        # FACE INTERIEURE HAUTE
         # ----------------------------------------------------
-        top_y = y + card_height
-
-        pdf.setFont("Helvetica-Bold", 10.5)
-        pdf.drawString(
-            x + 5 * mm,
-            top_y - 8 * mm,
-            "Ludothèque Physique-Chimie",
-        )
-
-        draw_fitted_name(
-            person_display_name(student),
-            x + 5 * mm,
-            top_y - 18 * mm,
-            card_width - 10 * mm,
-        )
-
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(
-            x + 5 * mm,
-            top_y - 26 * mm,
-            f"Classe : {student['class_name']}",
-        )
-
-        # Petite indication d'usage, au-dessus de la fente.
-        pdf.setFont("Helvetica", 6.5)
-        pdf.setFillGray(0.35)
+        pdf.setFont("Helvetica", 7.2)
+        pdf.setFillGray(0.30)
         pdf.drawCentredString(
             x + card_width / 2,
-            notch_y + 5.5 * mm,
+            top_y - 8 * mm,
             "Pour t'identifier, soulève simplement le volet.",
         )
         pdf.setFillGray(0)
 
         # ----------------------------------------------------
-        # FENTE COURBE V2 - destinée à la découpe
+        # FENTE COURBE : cuvette, ouverte vers le haut
         # ----------------------------------------------------
         notch_width = 24 * mm
-        notch_height = 8 * mm
+        notch_depth = 7 * mm
         notch_left = x + (card_width - notch_width) / 2
         notch_right = notch_left + notch_width
 
-        # Fente courbe en cuvette (ouverte vers le haut) : les extrémités sont exactement
-        # à notch_y, soit 48 mm au-dessus de la ligne de pli.
         path = pdf.beginPath()
         path.moveTo(notch_left, notch_y)
         path.curveTo(
             notch_left + 4 * mm,
-            notch_y - notch_height,
+            notch_y - notch_depth,
             notch_right - 4 * mm,
-            notch_y - notch_height,
+            notch_y - notch_depth,
             notch_right,
             notch_y,
         )
@@ -3145,11 +3121,12 @@ def generate_student_cards_pdf(students):
         pdf.restoreState()
 
         # ----------------------------------------------------
-        # LIGNE DE PLI
+        # LIGNE DE PLI : repère discret uniquement
         # ----------------------------------------------------
         pdf.saveState()
-        pdf.setDash(2.2, 2.2)
-        pdf.setLineWidth(0.7)
+        pdf.setDash(2.0, 2.0)
+        pdf.setLineWidth(0.55)
+        pdf.setFillGray(0.45)
         pdf.line(
             x + 3 * mm,
             fold_y,
@@ -3158,54 +3135,58 @@ def generate_student_cards_pdf(students):
         )
         pdf.restoreState()
 
-        pdf.setFont("Helvetica-Bold", 6.6)
-        pdf.setFillGray(0.25)
-        pdf.drawCentredString(
-            x + card_width / 2,
-            fold_y - 4 * mm,
-            "PLIER ICI - VOLET VERS LE HAUT",
-        )
-        pdf.setFillGray(0)
+        # ----------------------------------------------------
+        # INTERIEUR DU VOLET : code + QR
+        # ----------------------------------------------------
+        inner_x = x + 3.5 * mm
+        inner_y = y + 3.5 * mm
+        inner_w = card_width - 7 * mm
+        inner_h = flap_height - 7 * mm
 
-        # ----------------------------------------------------
-        # VOLET CONFIDENTIEL
-        # ----------------------------------------------------
+        pdf.saveState()
         pdf.setFillGray(0.95)
         pdf.roundRect(
-            x + 3 * mm,
-            y + 3 * mm,
-            card_width - 6 * mm,
-            flap_height - 10 * mm,
+            inner_x,
+            inner_y,
+            inner_w,
+            inner_h,
             3 * mm,
             stroke=0,
             fill=1,
         )
-        pdf.setFillGray(0)
+        pdf.restoreState()
 
-        pdf.setFont("Helvetica-Bold", 8)
+        pdf.setFont("Helvetica-Bold", 7.5)
         pdf.drawString(
-            x + 6 * mm,
-            y + flap_height - 15 * mm,
+            inner_x + 3 * mm,
+            fold_y - 8 * mm,
             "VOLET CONFIDENTIEL",
         )
 
-        pdf.setFont("Helvetica", 7)
+        pdf.setFont("Helvetica", 6.6)
         pdf.drawString(
-            x + 6 * mm,
-            y + flap_height - 21 * mm,
+            inner_x + 3 * mm,
+            fold_y - 14 * mm,
             "Code personnel",
         )
 
-        pdf.setFont("Helvetica-Bold", 17)
+        code_size = fitted_font(
+            student["code"],
+            "Helvetica-Bold",
+            16,
+            12,
+            inner_w - qr_size - 12 * mm,
+        )
+        pdf.setFont("Helvetica-Bold", code_size)
         pdf.drawString(
-            x + 6 * mm,
-            y + 12 * mm,
+            inner_x + 3 * mm,
+            inner_y + 7 * mm,
             student["code"],
         )
 
         qr_reader = ImageReader(BytesIO(make_qr_png_bytes(student)))
-        qr_x = x + card_width - qr_size - 7 * mm
-        qr_y = y + 8 * mm
+        qr_x = inner_x + inner_w - qr_size - 2.5 * mm
+        qr_y = inner_y + (inner_h - qr_size) / 2
 
         pdf.drawImage(
             qr_reader,
@@ -3217,22 +3198,76 @@ def generate_student_cards_pdf(students):
             mask="auto",
         )
 
-        pdf.setFont("Helvetica", 5.8)
-        pdf.drawCentredString(
-            qr_x + qr_size / 2,
-            y + 5.2 * mm,
-            "QR personnel",
+        # ----------------------------------------------------
+        # VERSO DU VOLET / FACE VISIBLE CARTE FERMEE
+        # ----------------------------------------------------
+        # Sur un PDF recto simple, on ne peut pas imprimer physiquement les deux
+        # faces du même papier au même emplacement. On ajoute donc, sur la page
+        # suivante du PDF, une planche "versos" parfaitement alignée pour
+        # impression recto-verso. Les versos sont tournés à 180° : après le pli
+        # vers le haut, Plateforme / Nom / Classe sont à l'endroit.
+
+    # La première passe a dessiné tous les rectos.
+    # On construit ensuite les versos par groupes de 6, dans le même ordre.
+    pdf.showPage()
+
+    for index, student in enumerate(sorted_students):
+        slot = index % (cols * rows)
+
+        if slot == 0 and index > 0:
+            pdf.showPage()
+
+        row = slot // cols
+        col = slot % cols
+
+        x = margin_x + col * (card_width + gap_x)
+        y = (
+            page_height
+            - margin_y
+            - (row + 1) * card_height
+            - row * gap_y
         )
 
-        # Repère discret rappelant comment fermer le volet.
-        pdf.setFont("Helvetica", 5.8)
-        pdf.setFillGray(0.35)
+        # Seul le verso du volet est imprimé.
+        flap_center_x = x + card_width / 2
+        flap_center_y = y + flap_height / 2
+
+        pdf.saveState()
+        pdf.translate(flap_center_x, flap_center_y)
+        pdf.rotate(180)
+
+        max_text_width = card_width - 12 * mm
+
+        pdf.setFont("Helvetica-Bold", 8.5)
         pdf.drawCentredString(
-            x + card_width / 2,
-            y + 3.8 * mm,
-            "Après repli, glisser le bord sous la fente courbe.",
+            0,
+            10 * mm,
+            "Plateforme Physique-Chimie",
         )
-        pdf.setFillGray(0)
+
+        full_name = person_display_name(student)
+        name_size = fitted_font(
+            full_name,
+            "Helvetica-Bold",
+            12.5,
+            8.5,
+            max_text_width,
+        )
+        pdf.setFont("Helvetica-Bold", name_size)
+        pdf.drawCentredString(
+            0,
+            1 * mm,
+            full_name,
+        )
+
+        pdf.setFont("Helvetica", 9)
+        pdf.drawCentredString(
+            0,
+            -7 * mm,
+            f"Classe : {student['class_name']}",
+        )
+
+        pdf.restoreState()
 
     pdf.save()
     buffer.seek(0)
