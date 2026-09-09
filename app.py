@@ -2991,29 +2991,39 @@ def make_qr_png_bytes(student):
 
 
 def generate_student_cards_pdf(students):
-    """Génère 8 cartes par page avec les identifiants cachés sous un volet.
+    """Génère 4 cartes par page avec volet confidentiel et fente courbe V2.
 
-    Le bandeau inférieur contient le QR et le code personnel. Une fois la carte
-    découpée, l'élève plie ce bandeau vers le haut : les deux moyens d'accès se
-    retrouvent contre la carte et ne sont plus visibles sans soulever le volet.
+    Géométrie reprise du prototype mécanique V2 :
+    - distance ligne de pli -> bord inférieur du volet : 48 mm ;
+    - fente courbe placée 48 mm au-dessus de la ligne de pli ;
+    - après repli, le bord du volet arrive donc exactement à la hauteur
+      des deux extrémités de la fente et peut se glisser dessous.
+
+    Le QR et le code personnel sont imprimés sur le volet inférieur.
+    Une fois ce volet replié vers le haut, ils se retrouvent contre la carte
+    et ne sont plus visibles sans soulever le volet.
     """
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
 
     page_width, page_height = A4
+
+    # Le mécanisme V2 nécessite plus de hauteur que l'ancienne carte 8/page.
+    # On passe donc à 4 cartes par page (2 x 2), à taille réelle.
     margin_x = 10 * mm
     margin_y = 10 * mm
     gap_x = 6 * mm
-    gap_y = 5 * mm
+    gap_y = 8 * mm
 
     cols = 2
-    rows = 4
+    rows = 2
 
     card_width = (page_width - 2 * margin_x - gap_x) / cols
-    card_height = (page_height - 2 * margin_y - 3 * gap_y) / rows
+    card_height = (page_height - 2 * margin_y - gap_y) / rows
 
-    flap_height = 27 * mm
-    qr_size = 20 * mm
+    flap_height = 48 * mm
+    notch_offset = 48 * mm
+    qr_size = 28 * mm
 
     sorted_students = sorted(
         students,
@@ -3023,6 +3033,18 @@ def generate_student_cards_pdf(students):
             s["first_name"].lower(),
         ),
     )
+
+    def draw_fitted_name(name, x0, y0, max_width):
+        """Affiche le nom complet sans sortir de la carte."""
+        font_size = 13
+        while (
+            font_size > 9.5
+            and pdf.stringWidth(name, "Helvetica-Bold", font_size) > max_width
+        ):
+            font_size -= 0.5
+
+        pdf.setFont("Helvetica-Bold", font_size)
+        pdf.drawString(x0, y0, name)
 
     for index, student in enumerate(sorted_students):
         slot = index % (cols * rows)
@@ -3041,88 +3063,149 @@ def generate_student_cards_pdf(students):
             - row * gap_y
         )
 
+        fold_y = y + flap_height
+        notch_y = fold_y + notch_offset
+
+        # ----------------------------------------------------
+        # CONTOUR EXTERIEUR - destiné à la découpe
+        # ----------------------------------------------------
+        pdf.saveState()
         pdf.setLineWidth(0.8)
         pdf.roundRect(
-            x, y, card_width, card_height, 4 * mm, stroke=1, fill=0
+            x,
+            y,
+            card_width,
+            card_height,
+            4 * mm,
+            stroke=1,
+            fill=0,
         )
+        pdf.restoreState()
 
-        fold_y = y + flap_height
+        # ----------------------------------------------------
+        # PARTIE FIXE
+        # ----------------------------------------------------
+        top_y = y + card_height
 
-        # Partie fixe de la carte.
         pdf.setFont("Helvetica-Bold", 10.5)
         pdf.drawString(
             x + 5 * mm,
-            y + card_height - 7.5 * mm,
+            top_y - 8 * mm,
             "Ludothèque Physique-Chimie",
         )
 
-        pdf.setFont("Helvetica-Bold", 13)
-        pdf.drawString(
-            x + 5 * mm,
-            y + card_height - 16 * mm,
+        draw_fitted_name(
             person_display_name(student),
+            x + 5 * mm,
+            top_y - 18 * mm,
+            card_width - 10 * mm,
         )
 
         pdf.setFont("Helvetica", 10)
         pdf.drawString(
             x + 5 * mm,
-            y + card_height - 23 * mm,
+            top_y - 26 * mm,
             f"Classe : {student['class_name']}",
         )
 
-        pdf.setFont("Helvetica", 6.8)
+        # Petite indication d'usage, au-dessus de la fente.
+        pdf.setFont("Helvetica", 6.5)
         pdf.setFillGray(0.35)
-        pdf.drawString(
-            x + 5 * mm,
-            fold_y + 2.8 * mm,
-            "Soulève le volet uniquement pour t'identifier.",
+        pdf.drawCentredString(
+            x + card_width / 2,
+            notch_y + 5.5 * mm,
+            "Pour t'identifier, soulève simplement le volet.",
         )
         pdf.setFillGray(0)
 
-        # Ligne de pli.
+        # ----------------------------------------------------
+        # FENTE COURBE V2 - destinée à la découpe
+        # ----------------------------------------------------
+        notch_width = 24 * mm
+        notch_height = 8 * mm
+        notch_left = x + (card_width - notch_width) / 2
+        notch_right = notch_left + notch_width
+
+        # Fente courbe en cuvette (ouverte vers le haut) : les extrémités sont exactement
+        # à notch_y, soit 48 mm au-dessus de la ligne de pli.
+        path = pdf.beginPath()
+        path.moveTo(notch_left, notch_y)
+        path.curveTo(
+            notch_left + 4 * mm,
+            notch_y - notch_height,
+            notch_right - 4 * mm,
+            notch_y - notch_height,
+            notch_right,
+            notch_y,
+        )
+
+        pdf.saveState()
+        pdf.setLineWidth(1.0)
+        pdf.drawPath(path, stroke=1, fill=0)
+        pdf.restoreState()
+
+        # ----------------------------------------------------
+        # LIGNE DE PLI
+        # ----------------------------------------------------
         pdf.saveState()
         pdf.setDash(2.2, 2.2)
         pdf.setLineWidth(0.7)
-        pdf.line(x + 3 * mm, fold_y, x + card_width - 3 * mm, fold_y)
+        pdf.line(
+            x + 3 * mm,
+            fold_y,
+            x + card_width - 3 * mm,
+            fold_y,
+        )
         pdf.restoreState()
 
-        pdf.setFont("Helvetica-Bold", 6.8)
+        pdf.setFont("Helvetica-Bold", 6.6)
+        pdf.setFillGray(0.25)
         pdf.drawCentredString(
             x + card_width / 2,
-            fold_y - 3 * mm,
-            "VOLET CONFIDENTIEL — PLIER ICI VERS LE HAUT",
+            fold_y - 4 * mm,
+            "PLIER ICI - VOLET VERS LE HAUT",
         )
+        pdf.setFillGray(0)
 
-        # Zone confidentielle : code + QR, tous deux cachés lorsque le volet est fermé.
-        pdf.setFillGray(0.94)
+        # ----------------------------------------------------
+        # VOLET CONFIDENTIEL
+        # ----------------------------------------------------
+        pdf.setFillGray(0.95)
         pdf.roundRect(
-            x + 2.5 * mm,
-            y + 2.5 * mm,
-            card_width - 5 * mm,
-            flap_height - 6 * mm,
-            2.5 * mm,
+            x + 3 * mm,
+            y + 3 * mm,
+            card_width - 6 * mm,
+            flap_height - 10 * mm,
+            3 * mm,
             stroke=0,
             fill=1,
         )
         pdf.setFillGray(0)
 
-        pdf.setFont("Helvetica-Bold", 7.5)
+        pdf.setFont("Helvetica-Bold", 8)
         pdf.drawString(
-            x + 5 * mm,
-            y + flap_height - 9 * mm,
+            x + 6 * mm,
+            y + flap_height - 15 * mm,
+            "VOLET CONFIDENTIEL",
+        )
+
+        pdf.setFont("Helvetica", 7)
+        pdf.drawString(
+            x + 6 * mm,
+            y + flap_height - 21 * mm,
             "Code personnel",
         )
 
-        pdf.setFont("Helvetica-Bold", 16)
+        pdf.setFont("Helvetica-Bold", 17)
         pdf.drawString(
-            x + 5 * mm,
-            y + 7 * mm,
+            x + 6 * mm,
+            y + 12 * mm,
             student["code"],
         )
 
         qr_reader = ImageReader(BytesIO(make_qr_png_bytes(student)))
-        qr_x = x + card_width - qr_size - 5 * mm
-        qr_y = y + 4.5 * mm
+        qr_x = x + card_width - qr_size - 7 * mm
+        qr_y = y + 8 * mm
 
         pdf.drawImage(
             qr_reader,
@@ -3134,12 +3217,22 @@ def generate_student_cards_pdf(students):
             mask="auto",
         )
 
-        pdf.setFont("Helvetica", 5.7)
+        pdf.setFont("Helvetica", 5.8)
         pdf.drawCentredString(
             qr_x + qr_size / 2,
-            y + 2.8 * mm,
+            y + 5.2 * mm,
             "QR personnel",
         )
+
+        # Repère discret rappelant comment fermer le volet.
+        pdf.setFont("Helvetica", 5.8)
+        pdf.setFillGray(0.35)
+        pdf.drawCentredString(
+            x + card_width / 2,
+            y + 3.8 * mm,
+            "Après repli, glisser le bord sous la fente courbe.",
+        )
+        pdf.setFillGray(0)
 
     pdf.save()
     buffer.seek(0)
